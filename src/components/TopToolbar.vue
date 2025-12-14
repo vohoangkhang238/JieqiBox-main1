@@ -7,29 +7,32 @@
             File
           </v-btn>
         </template>
-        <v-list density="compact" width="220">
+        <v-list density="compact" width="240">
           <v-list-item @click="setupNewGame" prepend-icon="mdi-chess-king">
             <v-list-item-title>{{ $t('toolbar.newGame') }}</v-list-item-title>
           </v-list-item>
-          
           <v-list-item @click="handleEditPosition" :disabled="isMatchRunning" prepend-icon="mdi-pencil-box">
             <v-list-item-title>{{ $t('toolbar.editPosition') }}</v-list-item-title>
           </v-list-item>
-
           <v-divider class="my-1"></v-divider>
-          
+          <v-list-item @click="handleCopyFen" prepend-icon="mdi-content-copy">
+            <v-list-item-title>Sao chép FEN</v-list-item-title>
+          </v-list-item>
+          <v-list-item @click="showNotationTextDialog = true" :disabled="isMatchRunning" prepend-icon="mdi-content-paste">
+            <v-list-item-title>Dán / Nhập FEN</v-list-item-title>
+          </v-list-item>
+          <v-divider class="my-1"></v-divider>
+          <v-list-item @click="handleClearDrawings" prepend-icon="mdi-eraser">
+            <v-list-item-title>Xóa hình vẽ</v-list-item-title>
+          </v-list-item>
+          <v-divider class="my-1"></v-divider>
           <v-list-item @click="handleOpenNotation" prepend-icon="mdi-folder-open">
             <v-list-item-title>{{ $t('toolbar.openNotation') }}</v-list-item-title>
           </v-list-item>
           <v-list-item @click="handleSaveNotation" prepend-icon="mdi-content-save">
             <v-list-item-title>{{ $t('toolbar.saveNotation') }}</v-list-item-title>
           </v-list-item>
-          <v-list-item @click="showNotationTextDialog = true" prepend-icon="mdi-clipboard-text">
-            <v-list-item-title>{{ $t('toolbar.viewPasteNotation') }}</v-list-item-title>
-          </v-list-item>
-          
           <v-divider class="my-1"></v-divider>
-          
           <v-list-item @click="showReviewDialog = true" prepend-icon="mdi-clipboard-pulse">
             <v-list-item-title>{{ $t('toolbar.reviewAnalysis') }}</v-list-item-title>
           </v-list-item>
@@ -49,18 +52,14 @@
           <v-list-item @click="showEngineManager = true" prepend-icon="mdi-cogs">
             <v-list-item-title>{{ $t('analysis.manageEngines') }}</v-list-item-title>
           </v-list-item>
-          
           <v-divider class="my-1"></v-divider>
-
           <v-list-item @click="showUciOptionsDialog = true" prepend-icon="mdi-cog">
             <v-list-item-title>{{ $t('toolbar.uciSettings') }}</v-list-item-title>
           </v-list-item>
           <v-list-item @click="showTimeDialog = true" prepend-icon="mdi-timer">
             <v-list-item-title>{{ $t('toolbar.analysisParams') }}</v-list-item-title>
           </v-list-item>
-          
           <v-divider class="my-1"></v-divider>
-
           <v-list-item @click="toggleFlipMode">
             <template v-slot:prepend>
               <v-icon v-if="flipMode === 'free'" icon="mdi-check" color="success"></v-icon>
@@ -68,7 +67,6 @@
             </template>
             <v-list-item-title>{{ $t('analysis.freeFlipMode') }}</v-list-item-title>
           </v-list-item>
-
           <v-list-item @click="togglePonder">
             <template v-slot:prepend>
               <v-icon v-if="enablePonder" icon="mdi-check" color="success"></v-icon>
@@ -76,13 +74,10 @@
             </template>
             <v-list-item-title>{{ $t('analysis.ponderMode') }}</v-list-item-title>
           </v-list-item>
-
           <v-divider class="my-1"></v-divider>
-          
           <v-list-item @click="showInterfaceSettingsDialog = true" prepend-icon="mdi-view-dashboard-outline">
             <v-list-item-title>{{ $t('toolbar.interfaceSettings') }}</v-list-item-title>
           </v-list-item>
-          
           <v-list-item @click="toggleDarkMode">
             <template v-slot:prepend>
                <v-icon v-if="darkMode" icon="mdi-check" color="success"></v-icon>
@@ -122,6 +117,8 @@
           <img src="@/assets/new_icon.png" alt="New Game" style="width: 24px; height: 24px; object-fit: contain;" />
         </v-btn>
 
+        <v-divider vertical class="mx-2 my-1"></v-divider>
+
         <v-btn icon size="small" variant="text" @click="handleUndoMove" :disabled="currentMoveIndex <= 0 || isMatchRunning" title="Lùi một nước">
           <img src="@/assets/prev_icon.png" alt="Undo Move" style="width: 24px; height: 24px; object-fit: contain;" />
         </v-btn>
@@ -129,44 +126,79 @@
         <v-btn icon size="small" variant="text" @click="toggleBoardFlip" :title="isBoardFlipped ? 'Xoay lại' : 'Lật bàn cờ'">
           <img src="@/assets/reverse_icon.png" alt="Flip Board" style="width: 24px; height: 24px; object-fit: contain;" />
         </v-btn>
-      </div>
 
-      <div class="toolbar-center">
-        <span class="game-title">{{ $t('toolbar.gameTitle') }}</span>
-        
-        <div class="ai-controls d-inline-flex align-center ml-4" v-if="!isMatchRunning">
-          <v-divider vertical class="mx-2"></v-divider>
-          
-          <v-btn @click="handleAnalysisButtonClick" variant="text" icon size="small" density="compact" class="mx-1" :disabled="!isEngineLoaded" :title="isManualAnalysis ? 'Dừng phân tích' : 'Bắt đầu phân tích'">
-            <img src="@/assets/analyze_icon.png" alt="Analyze" style="width: 24px; height: 24px; object-fit: contain;" :style="{ opacity: isManualAnalysis ? 1 : 0.4 }" />
+        <v-divider vertical class="mx-2 my-1"></v-divider>
+
+        <div v-if="!isMatchRunning" class="d-flex align-center" style="gap: 20px;">
+          <v-btn 
+            @click="toggleBlackAi" 
+            variant="text" 
+            icon 
+            size="small" 
+            density="compact" 
+            :disabled="!engineLoaded" 
+            :title="isBlackAi ? 'Tắt AI Đen' : 'Bật AI Đen'"
+          >
+            <img 
+              src="@/assets/robotblack.png" 
+              alt="Black AI" 
+              style="width: 24px; height: 24px; object-fit: contain;" 
+              :style="{ opacity: isBlackAi ? 1 : 0.4 }" 
+            />
           </v-btn>
 
-          <v-btn @click="toggleRedAi" variant="text" icon size="small" density="compact" class="mx-1" :disabled="!isEngineLoaded" :title="isRedAi ? 'Tắt AI Đỏ' : 'Bật AI Đỏ'">
-            <img src="@/assets/robotred.png" alt="Red AI" style="width: 24px; height: 24px; object-fit: contain;" :style="{ opacity: isRedAi ? 1 : 0.4 }" />
+          <v-btn 
+            @click="toggleRedAi" 
+            variant="text" 
+            icon 
+            size="small" 
+            density="compact" 
+            :disabled="!engineLoaded" 
+            :title="isRedAi ? 'Tắt AI Đỏ' : 'Bật AI Đỏ'"
+          >
+            <img 
+              src="@/assets/robotred.png" 
+              alt="Red AI" 
+              style="width: 24px; height: 24px; object-fit: contain;" 
+              :style="{ opacity: isRedAi ? 1 : 0.4 }" 
+            />
           </v-btn>
 
-          <v-btn @click="toggleBlackAi" variant="text" icon size="small" density="compact" class="mx-1" :disabled="!isEngineLoaded" :title="isBlackAi ? 'Tắt AI Đen' : 'Bật AI Đen'">
-            <img src="@/assets/robotblack.png" alt="Black AI" style="width: 24px; height: 24px; object-fit: contain;" :style="{ opacity: isBlackAi ? 1 : 0.4 }" />
+          <v-btn 
+            @click="handleAnalysisButtonClick" 
+            variant="text" 
+            icon 
+            size="small" 
+            density="compact" 
+            :disabled="!engineLoaded" 
+            :title="isManualAnalysis ? 'Dừng phân tích' : 'Bắt đầu phân tích'"
+          >
+            <img 
+              src="@/assets/analyze_icon.png" 
+              alt="Analyze" 
+              style="width: 24px; height: 24px; object-fit: contain;" 
+              :style="{ opacity: isManualAnalysis ? 1 : 0.4 }" 
+            />
+          </v-btn>
+
+          <v-btn 
+            icon 
+            size="small" 
+            variant="text" 
+            @click="handleVariation" 
+            :disabled="!isVariationAvailable" 
+            :title="$t('toolbar.variation')"
+          >
+            <img 
+              src="@/assets/goim.png" 
+              alt="Variation" 
+              style="width: 24px; height: 24px; object-fit: contain;" 
+            />
           </v-btn>
         </div>
       </div>
-
-      <div class="toolbar-right">
-        <v-btn 
-          icon 
-          size="small" 
-          variant="text" 
-          @click="handleVariation" 
-          :disabled="!isVariationAvailable" 
-          :title="$t('toolbar.variation')"
-        >
-          <img 
-            src="@/assets/goim.png" 
-            alt="Variation" 
-            style="width: 24px; height: 24px; object-fit: contain;" 
-          />
-        </v-btn>
-      </div>
+      
+      <div class="toolbar-right"></div>
     </div>
 
     <UciOptionsDialog v-model="showUciOptionsDialog" :engine-id="currentEngineId" />
@@ -201,20 +233,24 @@
   const engineState: any = inject('engine-state')
   const jaiEngine = inject('jai-engine-state') as any
   const { darkMode } = useInterfaceSettings()
-  // Lấy state Ponder
   const { enablePonder } = useGameSettings()
 
   const { 
     sideToMove, playMoveFromUci, pendingFlip, initialFen, history, 
     currentMoveIndex, toggleBoardFlip, isBoardFlipped, undoLastMove,
-    // Lấy flipMode
-    flipMode 
+    flipMode,
+    generateFen, 
+    clearUserArrows 
   } = gameState
 
+  // --- SỬA LỖI REACTIVITY: Truy cập trực tiếp engineState ---
   const { 
-    isEngineLoaded, isThinking, isStopping, startAnalysis, stopAnalysis, 
-    currentSearchMoves, bestMove, isPondering, stopPonder 
+    isThinking, isStopping, startAnalysis, stopAnalysis, 
+    currentSearchMoves, bestMove, isPondering, stopPonder, loadEngine 
   } = engineState
+  
+  // Tạo computed property để đảm bảo luôn lấy giá trị mới nhất
+  const engineLoaded = computed(() => engineState.isEngineLoaded.value)
 
   // Dialog states
   const showUciOptionsDialog = ref(false)
@@ -226,12 +262,10 @@
   const showOpeningBookDialog = ref(false)
   const showEngineManager = ref(false)
 
-  // Variation state
+  // Other states
   const isWaitingToRestartForVariation = ref(false)
   const variationRestartData = ref<{ fen: string; moves: string[] } | null>(null)
   const excludedMoves = ref<string[]>([])
-  
-  // IO states
   const isSaving = ref(false)
   const isOpening = ref(false)
   const isApplyingText = ref(false)
@@ -244,11 +278,30 @@
   const isRedAi = ref(false)
   const isBlackAi = ref(false)
   const isManualAnalysis = ref(false)
-
   const managedEngines = ref<any[]>([])
   const selectedEngineId = ref<string | null>(null)
 
   // --- Handlers ---
+  const handleCopyFen = async () => {
+    try {
+      const fen = generateFen ? generateFen() : ''
+      if (fen) {
+        await navigator.clipboard.writeText(fen)
+        console.log('FEN copied:', fen)
+      }
+    } catch (err) {
+      console.error('Failed to copy FEN:', err)
+    }
+  }
+
+  const handleClearDrawings = () => {
+    if (gameState.clearUserArrows) {
+      gameState.clearUserArrows()
+    } else {
+      window.dispatchEvent(new CustomEvent('clear-drawings'))
+    }
+  }
+
   function changeLocale(lang: string) {
     locale.value = lang
     if (configManager.updateLanguage) {
@@ -256,21 +309,9 @@
     }
   }
 
-  // Toggle Flip Mode
-  function toggleFlipMode() {
-    flipMode.value = flipMode.value === 'free' ? 'random' : 'free'
-  }
-
-  // Toggle Ponder
-  function togglePonder() {
-    enablePonder.value = !enablePonder.value
-  }
-
-  // Toggle Dark Mode
-  function toggleDarkMode() {
-    darkMode.value = !darkMode.value
-  }
-
+  function toggleFlipMode() { flipMode.value = flipMode.value === 'free' ? 'random' : 'free' }
+  function togglePonder() { enablePonder.value = !enablePonder.value }
+  function toggleDarkMode() { darkMode.value = !darkMode.value }
   function handleUndoMove() { if (!isMatchRunning.value) undoLastMove() }
 
   function handleAnalysisButtonClick() {
@@ -357,7 +398,7 @@
       stopAnalysis({ playBestMoveOnStop: false })
       return
     }
-    const shouldRunAi = isEngineLoaded.value && isCurrentAiTurnNow() && !isThinking.value && !pendingFlip.value && !isMatchRunning.value && !isManualAnalysis.value
+    const shouldRunAi = engineLoaded.value && isCurrentAiTurnNow() && !isThinking.value && !pendingFlip.value && !isMatchRunning.value && !isManualAnalysis.value
     if (shouldRunAi) {
       try {
         const enableBook = gameState?.openingBook?.config?.enableInGame
@@ -380,15 +421,15 @@
   }
 
   // Watchers
-  watch([sideToMove, isRedAi, isBlackAi, isEngineLoaded, pendingFlip], () => { nextTick(() => checkAndTriggerAi()) })
+  watch([sideToMove, isRedAi, isBlackAi, engineLoaded, pendingFlip], () => { nextTick(() => checkAndTriggerAi()) })
   watch(currentMoveIndex, () => {
-    if (isManualAnalysis.value && !isThinking.value && isEngineLoaded.value && !isStopping.value && !isCurrentAiTurnNow()) {
+    if (isManualAnalysis.value && !isThinking.value && engineLoaded.value && !isStopping.value && !isCurrentAiTurnNow()) {
       manualStartAnalysis()
     }
   })
   watch(bestMove, move => {
     if (!move) return
-    if (isEngineLoaded.value && isCurrentAiTurnNow() && !isMatchRunning.value && !isManualAnalysis.value) {
+    if (engineLoaded.value && isCurrentAiTurnNow() && !isMatchRunning.value && !isManualAnalysis.value) {
       ;(window as any).__LAST_AI_MOVE__ = move
       setTimeout(() => {
         const ok = playMoveFromUci(move)
@@ -426,8 +467,6 @@
     isWaitingToRestartForVariation.value = true
     engineState.stopAnalysis({ playBestMoveOnStop: false })
   }
-
-  // Đã xóa handleAnalyzeDrawings
 
   watch(engineState.isThinking, (thinking, wasThinking) => {
     if (wasThinking && !thinking) {
@@ -498,7 +537,6 @@
     handleForceStopAi()
   }
 
-  // Auto Load Engine Logic
   const refreshManagedEngines = async () => {
     await configManager.loadConfig()
     managedEngines.value = configManager.getEngines()
@@ -507,17 +545,31 @@
     }
   }
   
+  // --- CẢI THIỆN: Auto Load Engine ---
   const autoLoadEngine = async () => {
     await refreshManagedEngines()
     if (managedEngines.value.length > 0) {
       const lastId = configManager.getLastSelectedEngineId()
-      const engineToLoad = lastId ? managedEngines.value.find(e => e.id === lastId) : managedEngines.value[0]
+      // Nếu có lastId thì lấy, không thì lấy engine đầu tiên
+      const engineToLoad = lastId 
+        ? managedEngines.value.find(e => e.id === lastId) 
+        : managedEngines.value[0]
+      
       if (engineToLoad) {
         selectedEngineId.value = engineToLoad.id
+        
+        // Kiểm tra xem đang ở chế độ nào để load đúng engine
         if (isMatchMode.value) {
-           if (!jaiEngine.isEngineLoaded.value) jaiEngine.loadEngine(engineToLoad)
+           if (!jaiEngine.isEngineLoaded.value) {
+             console.log("Auto-loading Match Engine:", engineToLoad.name)
+             jaiEngine.loadEngine(engineToLoad)
+           }
         } else {
-           if (!isEngineLoaded.value) loadEngine(engineToLoad)
+           // Ở chế độ thường, kiểm tra engineState.isEngineLoaded
+           if (!engineState.isEngineLoaded.value) {
+             console.log("Auto-loading Analysis Engine:", engineToLoad.name)
+             loadEngine(engineToLoad)
+           }
         }
       }
     }
@@ -562,7 +614,8 @@
 
   .top-toolbar {
     display: flex;
-    justify-content: space-between;
+    /* Canh trái */
+    justify-content: flex-start; 
     align-items: center;
     padding: 4px 16px;
     height: 48px;
@@ -575,11 +628,12 @@
     }
   }
 
-  .toolbar-left,
-  .toolbar-right {
+  .toolbar-left {
     display: flex;
     gap: 4px;
     align-items: center;
+    /* Chiếm hết không gian */
+    flex-grow: 1; 
 
     @media (max-width: 768px) {
       gap: 2px;
@@ -587,17 +641,8 @@
     }
   }
 
-  .toolbar-center {
-    flex: 1;
-    text-align: center;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .game-title {
-    font-size: 18px;
-    font-weight: 600;
-    @media (max-width: 768px) { font-size: 16px; }
+  /* Ẩn toolbar bên phải nhưng giữ class */
+  .toolbar-right {
+    display: none; 
   }
 </style>
