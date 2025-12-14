@@ -1,5 +1,236 @@
 <template>
   <div class="sidebar">
+    <div class="engine-management">
+      <v-select
+        v-model="selectedEngineId"
+        :items="managedEngines"
+        item-title="name"
+        item-value="id"
+        :label="$t('analysis.selectEngine')"
+        density="compact"
+        hide-details
+        class="engine-select"
+        variant="outlined"
+      ></v-select>
+      <v-btn
+        @click="loadSelectedEngine"
+        :loading="
+          isMatchMode ? jaiEngine?.isEngineLoading?.value : isEngineLoading
+        "
+        :disabled="
+          (isMatchMode ? jaiEngine?.isEngineLoading?.value : isEngineLoading) ||
+          !selectedEngineId ||
+          (isMatchMode ? jaiEngine?.isEngineLoaded?.value : isEngineLoaded)
+        "
+        :color="
+          (isMatchMode ? jaiEngine?.isEngineLoaded?.value : isEngineLoaded)
+            ? 'success'
+            : 'teal'
+        "
+        size="x-small"
+        class="action-btn"
+        icon="mdi-play-circle"
+        :title="$t('analysis.loadEngine')"
+      >
+      </v-btn>
+      <v-btn
+        @click="handleUnloadEngine"
+        :disabled="
+          !(isMatchMode ? jaiEngine?.isEngineLoaded?.value : isEngineLoaded)
+        "
+        color="error"
+        size="x-small"
+        class="action-btn"
+        icon="mdi-stop-circle"
+        :title="$t('analysis.unloadEngine')"
+      >
+      </v-btn>
+      <v-btn
+        @click="showEngineManager = true"
+        color="blue-grey"
+        size="x-small"
+        class="action-btn"
+        icon="mdi-cogs"
+        :title="$t('analysis.manageEngines')"
+      >
+      </v-btn>
+    </div>
+
+    <div v-if="!isMatchMode && !isHumanVsAiMode" class="button-group">
+      <v-btn
+        @click="handleAnalysisButtonClick"
+        :disabled="!isEngineLoaded"
+        :color="isThinking || isPondering ? 'warning' : 'deep-purple'"
+        class="grouped-btn"
+        size="small"
+      >
+        {{
+          isThinking || isPondering
+            ? $t('analysis.stopAnalysis')
+            : $t('analysis.startAnalysis')
+        }}
+      </v-btn>
+    </div>
+
+    <div v-if="isMatchMode" class="match-mode-buttons">
+      <div class="button-group">
+        <v-btn
+          @click="toggleMatchMode"
+          color="success"
+          class="grouped-btn"
+          size="small"
+        >
+          {{ $t('analysis.exitMatchMode') }}
+        </v-btn>
+
+        <v-btn
+          @click="handleMatchButtonClick"
+          :disabled="!jaiEngine?.isEngineLoaded?.value"
+          :color="jaiEngine?.isMatchRunning?.value ? 'warning' : 'green'"
+          class="grouped-btn"
+          size="small"
+        >
+          {{
+            jaiEngine?.isMatchRunning?.value
+              ? $t('analysis.stopMatch')
+              : $t('analysis.startMatch')
+          }}
+        </v-btn>
+      </div>
+
+      <div class="button-group">
+        <v-btn
+          @click="showJaiOptionsDialog = true"
+          :disabled="!jaiEngine?.isEngineLoaded?.value"
+          color="purple"
+          size="small"
+          class="grouped-btn"
+          prepend-icon="mdi-cogs"
+        >
+          {{ $t('analysis.jaiSettings') }}
+        </v-btn>
+
+        <v-btn
+          @click="showEloCalculatorDialog = true"
+          color="orange"
+          size="small"
+          class="grouped-btn"
+          prepend-icon="mdi-calculator"
+        >
+          {{ $t('analysis.eloCalculator') }}
+        </v-btn>
+      </div>
+    </div>
+
+    <div v-else-if="isHumanVsAiMode" class="button-group">
+      <v-btn
+        @click="exitHumanVsAiMode"
+        color="teal"
+        class="grouped-btn"
+        size="small"
+      >
+        {{ $t('analysis.exitHumanVsAiMode') }}
+      </v-btn>
+    </div>
+
+    <div v-else class="button-group">
+      <v-btn
+        @click="toggleMatchMode"
+        color="amber"
+        class="grouped-btn"
+        size="small"
+      >
+        {{ $t('analysis.enterMatchMode') }}
+      </v-btn>
+      <v-btn
+        @click="showHumanVsAiDialog = true"
+        color="teal"
+        class="grouped-btn"
+        size="small"
+      >
+        {{ $t('analysis.enterHumanVsAiMode') }}
+      </v-btn>
+    </div>
+
+    <div class="button-group">
+      <v-btn
+        @click="handleUndoMove"
+        :disabled="currentMoveIndex <= 0 || isMatchRunning"
+        color="error"
+        class="grouped-btn"
+        size="small"
+      >
+        {{ $t('analysis.undoMove') }}
+      </v-btn>
+      <v-btn
+        @click="toggleBoardFlip()"
+        color="cyan"
+        class="grouped-btn"
+        size="small"
+      >
+        {{
+          isBoardFlipped
+            ? $t('analysis.flipBoardBack')
+            : $t('analysis.flipBoard')
+        }}
+      </v-btn>
+    </div>
+
+    <div v-if="!isMatchMode && !isHumanVsAiMode" class="autoplay-settings">
+      <v-btn
+        @click="toggleRedAi"
+        :color="isRedAi ? 'error' : 'blue-grey-darken-1'"
+        class="half-btn"
+        size="small"
+        :disabled="isManualAnalysis || !isEngineLoaded"
+      >
+        {{ isRedAi ? $t('analysis.redAiOn') : $t('analysis.redAiOff') }}
+      </v-btn>
+      <v-btn
+        @click="toggleBlackAi"
+        :color="isBlackAi ? 'error' : 'blue-grey-darken-1'"
+        class="half-btn"
+        size="small"
+        :disabled="isManualAnalysis || !isEngineLoaded"
+      >
+        {{ isBlackAi ? $t('analysis.blackAiOn') : $t('analysis.blackAiOff') }}
+      </v-btn>
+    </div>
+
+    <div class="button-group">
+      <v-btn
+        @click="restoreDefaultLayout"
+        color="grey"
+        class="grouped-btn"
+        size="small"
+        prepend-icon="mdi-backup-restore"
+      >
+        {{ $t('analysis.restorePanels') }}
+      </v-btn>
+    </div>
+
+    <div v-if="!isMatchMode && !isHumanVsAiMode" class="switch-row">
+      <v-switch
+        v-model="flipMode"
+        :label="$t('analysis.freeFlipMode')"
+        color="amber"
+        true-value="free"
+        false-value="random"
+        hide-details
+        class="compact-switch"
+        density="compact"
+      />
+
+      <v-switch
+        v-model="enablePonder"
+        :label="$t('analysis.ponderMode')"
+        color="lime"
+        hide-details
+        class="compact-switch"
+        density="compact"
+      />
+    </div>
+
     <DraggablePanel v-if="shouldShowLuckIndex" panel-id="luck-index">
       <template #header>
         <h3 class="section-title">{{ $t('analysis.luckIndex') }}</h3>
@@ -34,6 +265,73 @@
       </div>
     </DraggablePanel>
 
+    <CaptureHistoryPanel v-if="isHumanVsAiMode" />
+
+    <DraggablePanel v-if="!isHumanVsAiMode" panel-id="dark-piece-pool">
+      <template #header>
+        <h3 class="section-title">
+          {{ $t('analysis.darkPiecePool') }}
+          <v-chip
+            size="x-small"
+            :color="validationStatusKey === 'normal' ? 'green' : 'red'"
+            variant="flat"
+          >
+            {{ validationStatusMessage }}
+          </v-chip>
+        </h3>
+      </template>
+      <div class="pool-manager">
+        <div
+          v-for="item in unrevealedPiecesForDisplay"
+          :key="item.char"
+          class="pool-item"
+        >
+          <img
+            :src="getPieceImageUrl(item.name)"
+            :alt="item.name"
+            class="pool-piece-img"
+          />
+          <div class="pool-controls">
+            <div class="control-group">
+              <v-btn
+                density="compact"
+                icon="mdi-plus"
+                size="x-small"
+                @click="adjustUnrevealedCount(item.char, 1)"
+                :disabled="item.count >= item.max"
+              />
+              <v-btn
+                density="compact"
+                icon="mdi-minus"
+                size="x-small"
+                @click="adjustUnrevealedCount(item.char, -1)"
+                :disabled="item.count <= 0"
+              />
+            </div>
+            <span class="pool-count"
+              >{{ item.count }}({{ item.capturedCount }})</span
+            >
+            <div class="control-group">
+              <v-btn
+                density="compact"
+                icon="mdi-plus"
+                size="x-small"
+                @click="adjustCapturedUnrevealedCount(item.char, 1)"
+                :disabled="item.count <= 0"
+              />
+              <v-btn
+                density="compact"
+                icon="mdi-minus"
+                size="x-small"
+                @click="adjustCapturedUnrevealedCount(item.char, -1)"
+                :disabled="item.capturedCount <= 0"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </DraggablePanel>
+
     <DraggablePanel
       v-if="!isHumanVsAiMode || showEngineAnalysis"
       panel-id="engine-analysis"
@@ -48,45 +346,8 @@
         </h3>
       </template>
 
-      <div v-if="!isMatchMode" class="custom-analysis-container">
-        <div 
-          v-for="(item, index) in formattedMultiPvList" 
-          :key="index" 
-          class="analysis-block"
-          :class="{ 'active-pv': selectedMultipv === item.multipv }"
-          @click="handleSelectMultipv(item)"
-        >
-          <div class="analysis-header-line">
-            <span class="param">Độ sâu:{{ item.depth }}</span>
-            <span class="param">Điểm:<span :class="item.scoreColorClass">{{ item.score }}</span></span>
-            <span class="param">Thời gian:{{ item.time }}</span>
-            <span class="param">NPS:{{ item.nps }}</span>
-          </div>
-
-          <div class="analysis-wdl-line" v-if="item.wdl">
-            <span>T({{ item.wdl.win }}%)</span>
-            <span>H({{ item.wdl.draw }}%)</span>
-            <span>B({{ item.wdl.loss }}%)</span>
-          </div>
-
-          <div class="analysis-moves-grid">
-            <div 
-              v-for="(move, mIdx) in item.chineseMoves" 
-              :key="mIdx" 
-              class="move-cell"
-            >
-              {{ move }}
-            </div>
-          </div>
-        </div>
-        
-        <div v-if="formattedMultiPvList.length === 0" class="no-data">
-          Waiting for engine...
-        </div>
-      </div>
-
-      <div v-else class="match-output">
-         <div v-if="jaiEngine?.isEngineLoaded?.value" class="match-info">
+      <div v-if="isMatchMode" class="match-output">
+        <div v-if="jaiEngine?.isEngineLoaded?.value" class="match-info">
           <div class="match-status">
             <div class="status-line">
               <span class="label">{{ $t('analysis.matchStatus') }}:</span>
@@ -103,17 +364,186 @@
                 {{ jaiEngine.totalGames.value }}</span
               >
             </div>
-            <div v-if="jaiEngine?.analysisInfo?.value" class="analysis-info">
-              <div class="info-header">{{ $t('analysis.engineAnalysis') }}</div>
-              <div
-                class="analysis-line"
-                v-html="parseJaiAnalysisInfo(jaiEngine.analysisInfo.value)"
-              ></div>
+            <div v-if="jaiEngine?.matchEngineInfo?.value" class="status-line">
+              <span class="label">{{ $t('analysis.engineInfo') }}:</span>
+              <span class="value">{{ jaiEngine.matchEngineInfo.value }}</span>
             </div>
+            <div v-if="jaiEngine?.matchResult?.value" class="status-line">
+              <span class="label">{{ $t('analysis.lastResult') }}:</span>
+              <span class="value">{{ jaiEngine.matchResult.value }}</span>
+            </div>
+            <div
+              v-if="
+                jaiEngine?.matchWins?.value > 0 ||
+                jaiEngine?.matchLosses?.value > 0 ||
+                jaiEngine?.matchDraws?.value > 0
+              "
+              class="status-line"
+            >
+              <span class="label">{{ $t('analysis.matchWld') }}:</span>
+              <span class="value"
+                >{{ jaiEngine.matchWins.value }}-{{
+                  jaiEngine.matchLosses.value
+                }}-{{ jaiEngine.matchDraws.value }}</span
+              >
+            </div>
+            <div v-if="matchEloDisplay" class="status-line">
+              <span class="label">{{ $t('analysis.eloRating') }}:</span>
+              <span class="value">{{ matchEloDisplay }}</span>
+            </div>
+
+            <div
+              v-if="
+                jaiEngine?.redEngine?.value || jaiEngine?.blackEngine?.value
+              "
+              class="status-line"
+            >
+              <span class="label">{{ $t('analysis.matchEngines') }}:</span>
+              <span class="value"
+                >{{ jaiEngine.redEngine.value || '?' }} vs
+                {{ jaiEngine.blackEngine.value || '?' }}</span
+              >
+            </div>
+          </div>
+
+          <div v-if="jaiEngine?.analysisInfo?.value" class="analysis-info">
+            <div class="info-header">{{ $t('analysis.engineAnalysis') }}</div>
+            <div
+              class="analysis-line"
+              v-html="parseJaiAnalysisInfo(jaiEngine.analysisInfo.value)"
+            ></div>
           </div>
         </div>
         <div v-else class="no-match-info">
           {{ $t('analysis.noMatchEngine') }}
+        </div>
+      </div>
+
+      <div v-else>
+        <div v-if="parseUciInfo && latestParsedInfo" class="analysis-modern">
+          <div class="analysis-card">
+            <div class="analysis-core">
+              <div class="score-badge" :class="scoreDisplay.className">
+                {{ scoreDisplay.text }}
+              </div>
+              <div class="best-move-box">
+                <div class="best-move-label">{{ $t('analysis.bestMove') }}</div>
+                <div class="best-move-value">{{ bestMoveDisplay }}</div>
+              </div>
+            </div>
+
+            <div class="analysis-hud">
+              <div class="hud-item">
+                <v-icon size="16" class="hud-icon" icon="mdi-timer-outline" />
+                <span>{{ hudDisplay.time }}</span>
+              </div>
+              <div class="hud-item">
+                <v-icon size="16" class="hud-icon" icon="mdi-flash" />
+                <span>{{ hudDisplay.nps }}</span>
+              </div>
+              <div class="hud-item">
+                <v-icon size="16" class="hud-icon" icon="mdi-stairs" />
+                <span>{{ hudDisplay.depth }}</span>
+              </div>
+            </div>
+
+            <div v-if="wdlBar" class="wdl-bar">
+              <div
+                class="wdl-segment win"
+                :style="{ width: wdlBar.win + '%' }"
+                :title="`${wdlBar.win.toFixed(1)}%`"
+              ></div>
+              <div
+                class="wdl-segment draw"
+                :style="{ width: wdlBar.draw + '%' }"
+                :title="`${wdlBar.draw.toFixed(1)}%`"
+              ></div>
+              <div
+                class="wdl-segment loss"
+                :style="{ width: wdlBar.loss + '%' }"
+                :title="`${wdlBar.loss.toFixed(1)}%`"
+              ></div>
+
+              <div class="wdl-labels">
+                <div
+                  v-for="item in wdlBar.labels"
+                  :key="item.key"
+                  class="wdl-label"
+                  :style="{ left: item.left + '%' }"
+                >
+                  <div class="wdl-label-text">{{ item.value.toFixed(1) }}%</div>
+                  <div class="wdl-label-line"></div>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="multiPvInfos.length > 1" class="multipv-list">
+              <div class="multipv-title">{{ $t('analysis.multiPv') }}</div>
+              <div class="multipv-rows">
+                <div
+                  class="multipv-row"
+                  v-for="item in multiPvInfos"
+                  :key="`mpv-${item.multipv}`"
+                  :class="{ active: selectedMultipv === item.multipv }"
+                  @click="handleSelectMultipv(item)"
+                >
+                  <div class="multipv-col multipv-idx">#{{ item.multipv }}</div>
+                  <div
+                    class="multipv-col multipv-score"
+                    :class="item.scoreClass"
+                  >
+                    {{ item.scoreText }}
+                  </div>
+                  <div class="multipv-col multipv-move">
+                    {{ item.bestMove }}
+                  </div>
+                  <div class="multipv-col multipv-mini">
+                    {{ item.depthText }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="analysis-pv-block">
+              <div class="pv-header">
+                <div class="pv-title">{{ $t('analysis.fullLine') }}</div>
+                <v-btn
+                  class="pv-toggle-btn"
+                  size="x-small"
+                  variant="text"
+                  icon
+                  :title="
+                    isFullLineCollapsed
+                      ? $t('openingBook.showMore')
+                      : $t('openingBook.showLess')
+                  "
+                  @click="isFullLineCollapsed = !isFullLineCollapsed"
+                >
+                  <v-icon
+                    size="18"
+                    :icon="
+                      isFullLineCollapsed
+                        ? 'mdi-chevron-down'
+                        : 'mdi-chevron-up'
+                    "
+                  />
+                </v-btn>
+              </div>
+              <div v-show="!isFullLineCollapsed" class="pv-body">
+                <div class="pv-text">{{ pvDisplay }}</div>
+                <div v-if="extraInfoDisplay" class="extra-info">
+                  {{ extraInfoDisplay }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div v-else class="analysis-output">
+          <div
+            v-for="(ln, idx) in parsedAnalysisLines"
+            :key="`an-${idx}`"
+            v-html="ln"
+          ></div>
         </div>
       </div>
     </DraggablePanel>
@@ -240,684 +670,2433 @@
 </template>
 
 <script setup lang="ts">
-  import {
-    computed,
-    inject,
-    ref,
-    watch,
-    nextTick,
-    onMounted,
-    onUnmounted,
-  } from 'vue'
-  import { useI18n } from 'vue-i18n'
-  import type { HistoryEntry } from '@/composables/useChessGame'
-  import { useInterfaceSettings } from '@/composables/useInterfaceSettings'
-  import { uciToChineseMoves } from '@/utils/chineseNotation'
-  import { useGameSettings } from '@/composables/useGameSettings'
-  import { useHumanVsAiSettings } from '@/composables/useHumanVsAiSettings'
-  import AboutDialog from './AboutDialog.vue'
-  import UciTerminalDialog from './UciTerminalDialog.vue'
-  import JaiOptionsDialog from './JaiOptionsDialog.vue'
-  import EloCalculatorDialog from './EloCalculatorDialog.vue'
-  import HumanVsAiModeDialog from './HumanVsAiModeDialog.vue'
-  import OpeningBookPanel from './OpeningBookPanel.vue'
-  import OpeningBookDialog from './OpeningBookDialog.vue'
-  import {
-    useConfigManager,
-    type ManagedEngine,
-  } from '@/composables/useConfigManager'
-  import DraggablePanel from './DraggablePanel.vue'
-  import { usePanelManager } from '@/composables/usePanelManager'
-  import {
-    calculateEloRating,
-    formatEloRating,
-    formatErrorMargin,
-  } from '@/utils/eloCalculator'
-  import {
-    START_FEN,
-    JIEQI_MODEL_FEATURE_DIM as FEATURE_DIM,
-    JIEQI_MODEL_INTERCEPT as MODEL_INTERCEPT,
-    JIEQI_MODEL_WEIGHTS as MODEL_WEIGHTS,
-    JIEQI_MODEL_SCALER_MEANS as SCALER_MEANS,
-    JIEQI_MODEL_SCALER_SCALES as SCALER_SCALES,
-    JIEQI_MODEL_PIECE_TO_INDEX as PIECE_TO_INDEX,
-    MATE_SCORE_BASE
-  } from '@/utils/constants'
+  import {
+    computed,
+    inject,
+    ref,
+    watch,
+    nextTick,
+    onMounted,
+    onUnmounted,
+  } from 'vue'
+  import { useI18n } from 'vue-i18n'
+  import type { HistoryEntry } from '@/composables/useChessGame'
+  import { useInterfaceSettings } from '@/composables/useInterfaceSettings'
+  import { uciToChineseMoves } from '@/utils/chineseNotation'
+  import { useGameSettings } from '@/composables/useGameSettings'
+  import { useHumanVsAiSettings } from '@/composables/useHumanVsAiSettings'
+  import AboutDialog from './AboutDialog.vue'
+  // Import Engine Manager components and types
+  import EngineManagerDialog from './EngineManagerDialog.vue'
+  import UciTerminalDialog from './UciTerminalDialog.vue'
+  import JaiOptionsDialog from './JaiOptionsDialog.vue'
+  import EloCalculatorDialog from './EloCalculatorDialog.vue'
+  import HumanVsAiModeDialog from './HumanVsAiModeDialog.vue'
+  import CaptureHistoryPanel from './CaptureHistoryPanel.vue'
+  import OpeningBookPanel from './OpeningBookPanel.vue'
+  import OpeningBookDialog from './OpeningBookDialog.vue'
+  import {
+    useConfigManager,
+    type ManagedEngine,
+  } from '@/composables/useConfigManager'
+  import DraggablePanel from './DraggablePanel.vue'
+  import { usePanelManager } from '@/composables/usePanelManager'
+  import {
+    calculateEloRating,
+    formatEloRating,
+    formatErrorMargin,
+  } from '@/utils/eloCalculator'
+  import { marked } from 'marked'
+  import DOMPurify from 'dompurify'
+  import {
+    START_FEN,
+    JIEQI_MODEL_FEATURE_DIM as FEATURE_DIM,
+    JIEQI_MODEL_INTERCEPT as MODEL_INTERCEPT,
+    JIEQI_MODEL_WEIGHTS as MODEL_WEIGHTS,
+    JIEQI_MODEL_SCALER_MEANS as SCALER_MEANS,
+    JIEQI_MODEL_SCALER_SCALES as SCALER_SCALES,
+    JIEQI_MODEL_PIECE_TO_INDEX as PIECE_TO_INDEX,
+    MATE_SCORE_BASE,
+  } from '@/utils/constants'
 
-  const { t } = useI18n()
-  const { restoreDefaultLayout } = usePanelManager()
+  const { t } = useI18n()
 
-  // Get interface settings
-  const {
-    parseUciInfo,
-    engineLogLineLimit,
-    showChineseNotation,
-    showLuckIndex,
-    showBookMoves,
-    useNewFenFormat,
-  } = useInterfaceSettings()
+  const { restoreDefaultLayout } = usePanelManager()
 
-  const { enablePonder } = useGameSettings()
-  const { isHumanVsAiMode, showEngineAnalysis } = useHumanVsAiSettings()
+  // Get interface settings
+  const {
+    parseUciInfo,
+    engineLogLineLimit,
+    showChineseNotation,
+    showLuckIndex,
+    showBookMoves,
+    useNewFenFormat,
+  } = useInterfaceSettings()
 
-  const gameState = inject('game-state') as any
-  const engineState = inject('engine-state') as any
-  const jaiEngine = inject('jai-engine-state') as any
-  const configManager = useConfigManager()
+  const { enablePonder } = useGameSettings()
+  const { isHumanVsAiMode, showEngineAnalysis } = useHumanVsAiSettings()
 
-  // Destructure state
-  const {
-    history,
-    currentMoveIndex,
-    replayToMove,
-    playMoveFromUci,
-    flipMode,
-    sideToMove,
-    pendingFlip,
-    toggleBoardFlip,
-    isBoardFlipped,
-    initialFen,
-    undoLastMove,
-    updateMoveAnnotation,
-    generateFen
-  } = gameState
+  const gameState = inject('game-state') as any
+  const engineState = inject('engine-state') as any
+  const jaiEngine = inject('jai-engine-state') as any
+  const configManager = useConfigManager()
 
-  const {
-    engineOutput,
-    isEngineLoaded,
-    isEngineLoading,
-    analysis,
-    bestMove,
-    isThinking,
-    isStopping,
-    loadEngine,
-    unloadEngine,
-    startAnalysis,
-    stopAnalysis,
-    currentSearchMoves,
-    isPondering,
-    isInfinitePondering,
-    ponderMove,
-    ponderhit,
-    handlePonderHit,
-    stopPonder,
-    isPonderMoveMatch,
-    isDarkPieceMove,
-    setShowChineseNotation,
-  } = engineState
+  // Destructure state
+  const {
+    history,
+    currentMoveIndex,
+    replayToMove,
+    playMoveFromUci,
+    flipMode,
+    unrevealedPieceCounts,
+    capturedUnrevealedPieceCounts,
+    validationStatus,
+    adjustUnrevealedCount,
+    adjustCapturedUnrevealedCount,
+    getPieceNameFromChar,
+    sideToMove,
+    pendingFlip,
+    toggleBoardFlip,
+    isBoardFlipped,
+    initialFen,
+    undoLastMove,
+    updateMoveAnnotation,
+    generateFen
+  } = gameState
 
-  const showHumanVsAiDialog = ref(false)
-  const showOpeningBookPanel = computed(() => showBookMoves.value !== false)
-  const showOpeningBookDetail = ref(false)
-  const isMatchMode = ref(false)
-  const showJaiOptionsDialog = ref(false)
-  const showEloCalculatorDialog = ref(false)
-  const showUciTerminalDialog = ref(false)
-  const aboutDialogRef = ref<any>(null)
-  const moveListElement = ref<HTMLElement | null>(null)
-  const engineLogElement = ref<HTMLElement | null>(null) // Dùng cho logging UCI
-  
-  const isMatchRunning = computed(() => jaiEngine?.isMatchRunning?.value || false)
-  const currentJaiEngineId = computed(() => jaiEngine?.currentEngine?.value?.id || '')
-  
-  const isPlaying = ref(false)
-  const playInterval = ref<ReturnType<typeof setInterval> | null>(null)
-  const playSpeed = ref(1000)
+  const {
+    engineOutput,
+    isEngineLoaded,
+    isEngineLoading,
+    analysis,
+    bestMove,
+    isThinking,
+    isStopping,
+    loadEngine,
+    unloadEngine,
+    startAnalysis,
+    stopAnalysis,
+    currentSearchMoves,
+    isPondering,
+    isInfinitePondering,
+    ponderMove,
+    ponderhit,
+    handlePonderHit,
+    stopPonder,
+    isPonderMoveMatch,
+    isDarkPieceMove,
+    setShowChineseNotation,
+  } = engineState
 
-  const analysisLines = computed(() => {
-    return analysis.value
-      ? analysis.value.split('\n').filter((l: string) => l.trim().length > 0)
-      : []
-  })
+  const showHumanVsAiDialog = ref(false)
+  const showOpeningBookPanel = computed(() => showBookMoves.value !== false)
+  const showOpeningBookDetail = ref(false)
+  const isMatchMode = ref(false)
+  const showJaiOptionsDialog = ref(false)
+  const showEloCalculatorDialog = ref(false)
+  const showUciTerminalDialog = ref(false)
+  const aboutDialogRef = ref<any>(null)
+  const moveListElement = ref<HTMLElement | null>(null)
+  const engineLogElement = ref<HTMLElement | null>(null) // Dùng cho logging UCI
+  
+  const isMatchRunning = computed(() => jaiEngine?.isMatchRunning?.value || false)
+  const currentJaiEngineId = computed(() => jaiEngine?.currentEngine?.value?.id || '')
+  
+  const isPlaying = ref(false)
+  const playInterval = ref<ReturnType<typeof setInterval> | null>(null)
+  const playSpeed = ref(1000)
 
-  // Theo dõi và cuộn xuống cuối khi có output mới
-  watch(
-    analysisLines,
-    () => {
-      nextTick(() => {
-        if (engineLogElement.value) {
-          engineLogElement.value.scrollTop = engineLogElement.value.scrollHeight
-        }
-      })
-    },
-    { deep: true }
-  )
+  const analysisLines = computed(() => {
+    return analysis.value
+      ? analysis.value.split('\n').filter((l: string) => l.trim().length > 0)
+      : []
+  })
 
+  // Computed: use appropriate engine output based on current mode
+  const currentEngineOutput = computed(() => {
+    if (isMatchMode.value && jaiEngine?.engineOutput?.value) {
+      return jaiEngine.engineOutput.value
+    }
+    return engineOutput.value
+  })
 
-  // --- PARSING UCI INFO ---
+  // Bridge: mirror engine's analysis-time context for stable PV rendering
+  watch(
+    () => engineState?.analysisUiFen?.value,
+    val => {
+      if (val) lastAnalysisFen.value = val
+    }
+  )
+  watch(
+    () => engineState?.analysisPrefixMoves?.value,
+    val => {
+      if (val) lastAnalysisPrefixMoves.value = [...val]
+    }
+  )
 
-  function parseUciInfoLine(line: string) {
-    if (!line.startsWith('info ')) return null
-    const result: Record<string, any> = {}
-    const regexps = [
-      { key: 'depth', re: /depth (\d+)/ },
-      { key: 'seldepth', re: /seldepth (\d+)/ },
-      { key: 'multipv', re: /multipv (\d+)/ },
-      { key: 'score', re: /score (cp|mate) ([\-\d]+)/ },
-      { key: 'wdl', re: /wdl (\d+) (\d+) (\d+)/ },
-      { key: 'nps', re: /nps (\d+)/ },
-      { key: 'time', re: /time (\d+)/ },
-    ]
-    for (const { key, re } of regexps) {
-      const m = line.match(re)
-      if (m) {
-        if (key === 'score') {
-          result['scoreType'] = m[1]; result['scoreValue'] = m[2]
-        } else if (key === 'wdl') {
-          result['wdlWin'] = parseInt(m[1], 10); result['wdlDraw'] = parseInt(m[2], 10); result['wdlLoss'] = parseInt(m[3], 10)
-        } else {
-          result[key] = m[1] || m[2]
-        }
-      }
-    }
-    const pvMatch = line.match(/\spv\s(.+)$/)
-    if (pvMatch) result['pv'] = pvMatch[1].trim()
-    return result
-  }
+  // Sync Chinese notation setting with engine
+  watch(
+    showChineseNotation,
+    newValue => {
+      setShowChineseNotation(newValue)
+    },
+    { immediate: true }
+  )
 
-  function getRootFenForConversion() {
-    let rootFen = isMatchMode.value
-      ? gameState.generateFen()
-      : engineState.analysisUiFen.value || gameState.generateFen()
-    
-    if (!rootFen && initialFen && initialFen.value) rootFen = initialFen.value
+  // Load analysis settings from config file
+  const loadAnalysisSettings = async () => {
+    try {
+      await configManager.loadConfig()
+      const settings = configManager.getAnalysisSettings()
+      analysisSettings.value = {
+        movetime: settings.movetime || 1000,
+        maxThinkTime: settings.maxThinkTime || 5000,
+        maxDepth: settings.maxDepth || 20,
+        maxNodes: settings.maxNodes || 1000000,
+        analysisMode: settings.analysisMode || 'movetime',
+        advancedScript: settings.advancedScript || '',
+      }
+    } catch (error) {
+      console.error('Failed to load analysis settings:', error)
+    }
+  }
 
-    if (!useNewFenFormat.value && gameState.convertFenFormat) {
-      rootFen = gameState.convertFenFormat(rootFen, 'new')
-    }
-    return rootFen
-  }
+  // Listen for config changes and update analysis settings in real-time
+  let configCheckInterval: ReturnType<typeof setInterval> | null = null
 
-  // --- LOGIC: HIỂN THỊ DANH SÁCH LỊCH SỬ PHÂN TÍCH (Giống ảnh) ---
-  const formattedMultiPvList = computed(() => {
-    if (!parseUciInfo.value) return []
-    
-    const items: any[] = []
-    const processedKeys = new Set<string>() // Dùng để loại bỏ các dòng bị lặp hoàn toàn
-    
-    const limit = 50 
-    let count = 0
+  const watchConfigChanges = () => {
+    // Listen for settings changes within the same page (via interval check)
+    configCheckInterval = setInterval(async () => {
+      try {
+        const settings = configManager.getAnalysisSettings()
+        const currentSettings = analysisSettings.value
 
-    for (let i = analysisLines.value.length - 1; i >= 0; i--) {
-      if (count >= limit) break
-      
-      const line = analysisLines.value[i]
-      if (!line.startsWith('info ')) continue
-      
-      const info = parseUciInfoLine(line)
-      // Chỉ lấy những dòng có điểm số (score) và nước đi (pv)
-      if (!info || !info.scoreType || !info.pv) continue
+        // Check if there are any changes
+        if (
+          settings.movetime !== currentSettings.movetime ||
+          settings.maxThinkTime !== currentSettings.maxThinkTime ||
+          settings.maxDepth !== currentSettings.maxDepth ||
+          settings.maxNodes !== currentSettings.maxNodes ||
+          settings.analysisMode !== currentSettings.analysisMode ||
+          settings.advancedScript !== currentSettings.advancedScript
+        ) {
+          analysisSettings.value = {
+            movetime: settings.movetime || 1000,
+            maxThinkTime: settings.maxThinkTime || 5000,
+            maxDepth: settings.maxDepth || 20,
+            maxNodes: settings.maxNodes || 1000000,
+            analysisMode: settings.analysisMode || 'movetime',
+            advancedScript: settings.advancedScript || '',
+          }
+        }
+      } catch (error) {
+        // Ignore errors during config checking
+      }
+    }, 100) // Check every 100ms for better responsiveness
+  }
 
-      // Tạo key duy nhất (depth + score + pv) để tránh trùng lặp
-      const itemKey = `${info.depth || 0}:${info.scoreValue || 0}:${info.pv.split(' ').slice(0, 3).join(' ')}`
-      if (processedKeys.has(itemKey)) {
-          continue;
-      }
-      processedKeys.add(itemKey);
+  // Clean up the config watcher
+  const cleanupConfigWatch = () => {
+    if (configCheckInterval) {
+      clearInterval(configCheckInterval)
+      configCheckInterval = null
+    }
+  }
 
+  /* ---------- Helper: Count unknown pieces in FEN ---------- */
+  function countUnknownPieces(fen: string): number {
+    const boardPart = fen.split(' ')[0]
+    return (boardPart.match(/[xX]/g) || []).length
+  }
 
-      // 1. Score Processing
-      let scoreVal = 0
-      let isMate = false
-      if (info.scoreType === 'cp') scoreVal = parseInt(info.scoreValue)
-      else if (info.scoreType === 'mate') { scoreVal = parseInt(info.scoreValue); isMate = true }
-      
-      // Đảo điểm nếu cần (giống logic cũ)
-      if (isPondering.value && !isInfinitePondering.value) scoreVal = -scoreVal
-      if (engineState.analysisUiFen.value.includes(' b ')) scoreVal = -scoreVal
-      if (isBoardFlipped.value) scoreVal = -scoreVal
+  /* ---------- Generate FEN and moves for current position ---------- */
 
-      let scoreText = ''
-      let scoreColorClass = 'text-green' 
-      if (isMate) {
-          scoreText = `${scoreVal > 0 ? '+' : '-'}M${Math.abs(scoreVal)}`
-          scoreColorClass = scoreVal > 0 ? 'text-mate-win' : 'text-mate-loss'
-      } else {
-          scoreText = scoreVal.toString()
-      }
+  // Helper function to find the last reveal index up to current move index
+  const findLastRevealIndex = () => {
+    if (currentMoveIndex.value === 0) {
+      return -1
+    }
 
-      // 2. Thời gian
-      const timeSec = info.time ? (parseInt(info.time) / 1000).toFixed(1) : '0.0'
+    const h = history.value.slice(0, currentMoveIndex.value)
+    for (let i = h.length - 1; i >= 0; i--) {
+      const entry = h[i]
+      // All adjust operations reset the engine state
+      if (entry.type === 'adjust') {
+        return i
+      }
+      const prevFen = i === 0 ? initialFen.value : h[i - 1].fen
+      const prevUnknown = countUnknownPieces(prevFen)
+      const currUnknown = countUnknownPieces(h[i].fen)
+      if (prevUnknown !== currUnknown) {
+        return i
+      }
+    }
+    return -1
+  }
 
-      // 3. NPS
-      let npsText = '0'
-      if (info.nps) {
-          const n = parseInt(info.nps)
-          npsText = n > 1000000 ? `${(n/1000000).toFixed(1)}M` : `${(n/1000).toFixed(0)}K`
-      }
+  const baseFenForEngine = computed(() => {
+    // If we're at the beginning (move index 0), use initial FEN
+    if (currentMoveIndex.value === 0) {
+      return initialFen.value
+    }
 
-      // 4. WDL
-      let wdl = null
-      if (info.wdlWin !== undefined) {
-          const total = info.wdlWin + info.wdlDraw + info.wdlLoss
-          if (total > 0) {
-              let w = info.wdlWin, d = info.wdlDraw, l = info.wdlLoss
-              const needFlip = (isPondering.value && !isInfinitePondering.value) || engineState.analysisUiFen.value.includes(' b ') || isBoardFlipped.value
-              if (needFlip) { const tmp = w; w = l; l = tmp; }
-              
-              wdl = {
-                  win: ((w / total) * 100).toFixed(1),
-                  draw: ((d / total) * 100).toFixed(1),
-                  loss: ((l / total) * 100).toFixed(1)
-              }
-          }
-      }
+    const lastRevealIdx = findLastRevealIndex()
+    if (lastRevealIdx >= 0) {
+      return history.value.slice(0, currentMoveIndex.value)[lastRevealIdx].fen
+    }
+    return initialFen.value
+  })
 
-      // 5. Nước đi (Chinese)
-      let chineseMoves: string[] = []
-      if (info.pv) {
-          try {
-              const rootFen = getRootFenForConversion()
-              let pvStr = info.pv
-              if (isPondering.value && ponderMove.value && !pvStr.startsWith(ponderMove.value)) {
-                  pvStr = `${ponderMove.value} ${pvStr}`
-              }
-              chineseMoves = uciToChineseMoves(rootFen, pvStr)
-          } catch (e) {
-              chineseMoves = info.pv.split(' ') 
-          }
-      }
-      
-      // Sử dụng MultiPV ID nếu có, nếu không dùng index ảo để Vue theo dõi
-      const pvId = info.multipv ? parseInt(info.multipv) : i; 
-      
-      items.push({
-          multipv: pvId, 
-          depth: info.depth || 0,
-          score: scoreText,
-          scoreColorClass,
-          time: timeSec,
-          nps: `${npsText}(0)`,
-          wdl,
-          chineseMoves,
-          rawPv: info.pv
-      })
-      
-      count++
-    }
+  const engineMovesSinceLastReveal = computed(() => {
+    // If we're at the beginning (move index 0), no moves
+    if (currentMoveIndex.value === 0) {
+      return []
+    }
 
-    return items
-  })
+    const lastRevealIdx = findLastRevealIndex()
+    const h = history.value.slice(0, currentMoveIndex.value)
 
-  const selectedMultipv = ref<number | null>(null)
+    // Get moves from the last reveal to the current position
+    const moves: string[] = []
+    for (let i = lastRevealIdx + 1; i < h.length; i++) {
+      const entry = h[i]
+      if (entry.type === 'move') {
+        moves.push(entry.data)
+      }
+    }
+    return moves
+  })
 
-  function handleSelectMultipv(item: any) {
-      selectedMultipv.value = item.multipv
-      const firstMove = item.rawPv ? item.rawPv.split(' ')[0] : null
-      if (firstMove) {
-          window.dispatchEvent(new CustomEvent('highlight-multipv', { detail: { uci: firstMove } }))
-      }
-  }
+  /* ---------- UI ---------- */
+  const INITIAL_PIECE_COUNTS: { [k: string]: number } = {
+    R: 2,
+    N: 2,
+    B: 2,
+    A: 2,
+    C: 2,
+    P: 5,
+    K: 1,
+    r: 2,
+    n: 2,
+    b: 2,
+    a: 2,
+    c: 2,
+    p: 5,
+    k: 1,
+  }
+  const unrevealedPiecesForDisplay = computed(() => {
+    const allChars = 'RNBACP'.split('')
+    return allChars.flatMap(char => [
+      {
+        char,
+        name: getPieceNameFromChar(char),
+        count: unrevealedPieceCounts?.value?.[char] || 0,
+        capturedCount: capturedUnrevealedPieceCounts?.value?.[char] || 0,
+        max: INITIAL_PIECE_COUNTS[char],
+      },
+      {
+        char: char.toLowerCase(),
+        name: getPieceNameFromChar(char.toLowerCase()),
+        count: unrevealedPieceCounts?.value?.[char.toLowerCase()] || 0,
+        capturedCount:
+          capturedUnrevealedPieceCounts?.value?.[char.toLowerCase()] || 0,
+        max: INITIAL_PIECE_COUNTS[char.toLowerCase()],
+      },
+    ])
+  })
+  function getPieceImageUrl(pieceName: string): string {
+    return new URL(`../assets/${pieceName}.svg`, import.meta.url).href
+  }
+  function getMoveNumber(historyIndex: number): string {
+    const moveCount = history.value
+      .slice(0, historyIndex + 1)
+      .filter((e: HistoryEntry) => e.type === 'move').length
+    if (moveCount === 0) return ''
+    const moveNumber = Math.floor((moveCount - 1) / 2) + 1
+    const isSecondMove = (moveCount - 1) % 2 === 1
+    return `${moveNumber}${isSecondMove ? '...' : '.'}`
+  }
 
-  // --- CÁC HÀM CŨ ĐƯỢC GIỮ NGUYÊN HOẶC KHÔI PHỤC ---
+  /* ---------- Core Logic ---------- */
+  function toggleRedAi() {
+    // If turning off Red AI and it's currently Red's turn and thinking, stop the analysis
+    if (isRedAi.value && isThinking.value && sideToMove.value === 'red') {
+      stopAnalysis({ playBestMoveOnStop: false })
+    }
+    // Disable manual analysis when AI auto-play is enabled
+    if (!isRedAi.value && isThinking.value && isManualAnalysis.value) {
+      stopAnalysis({ playBestMoveOnStop: false })
+      isManualAnalysis.value = false
+    }
+    isRedAi.value = !isRedAi.value
+  }
+  function toggleBlackAi() {
+    // If turning off Black AI and it's currently Black's turn and thinking, stop the analysis
+    if (isBlackAi.value && isThinking.value && sideToMove.value === 'black') {
+      stopAnalysis({ playBestMoveOnStop: false })
+    }
+    // Disable manual analysis when AI auto-play is enabled
+    if (!isBlackAi.value && isThinking.value && isManualAnalysis.value) {
+      stopAnalysis({ playBestMoveOnStop: false })
+      isManualAnalysis.value = false
+    }
+    isBlackAi.value = !isBlackAi.value
+  }
+  function isCurrentAiTurnNow() {
+    const redTurn = sideToMove.value === 'red'
+    return (redTurn && isRedAi.value) || (!redTurn && isBlackAi.value)
+  }
+  async function checkAndTriggerAi() {
+    // Add a guard to prevent starting analysis while the engine is in the process of stopping.
+    if (isStopping.value) {
+      console.log(
+        '[DEBUG] CHECK_AND_TRIGGER_AI: Aborted. Engine is currently stopping.'
+      )
+      return
+    }
 
-  function normalizeScoreForDisplay(info: Record<string, any>) {
-    let scoreValue = 0
-    let isMate = false
-    if (info.scoreType && info.scoreValue) {
-      if (info.scoreType === 'cp') {
-        scoreValue = parseInt(info.scoreValue, 10)
-      } else if (info.scoreType === 'mate') {
-        scoreValue = parseInt(info.scoreValue, 10)
-        isMate = true
-      }
-    }
-    if (isPondering.value && !isInfinitePondering.value) {
-      scoreValue = -scoreValue
-    }
-    if (engineState.analysisUiFen.value.includes(' b ')) {
-      scoreValue = -scoreValue
-    }
-    if (isBoardFlipped.value) {
-      scoreValue = -scoreValue
-    }
-    return { scoreValue, isMate }
-  }
+    // If the engine is thinking but it's not the AI's turn, stop the analysis first
+    if (isThinking.value && !isCurrentAiTurnNow() && !isManualAnalysis.value) {
+      // This is a "cancel" operation, not a "move now".
+      stopAnalysis({ playBestMoveOnStop: false })
+      return
+    }
 
-  // Dùng cho Match Mode
-  function parseJaiAnalysisInfo(analysisInfo: string): string {
-    if (!analysisInfo) return ''
-    const lines = analysisInfo
-      .split('\n')
-      .filter(line => line.trim().length > 0)
-    return lines
-      .map(line => {
-        if (line.startsWith('info ')) {
-          if (parseUciInfo.value) {
-            const info = parseUciInfoLine(line)
-            if (info) return formatUciInfo(info)
-          }
-          return line
-        }
-        return line
-      })
-      .join('<br>')
-  }
-  
-  // Dùng cho Match Mode (Không cần chi tiết như phân tích)
-  function formatUciInfo(info: Record<string, any>) {
-      const { scoreValue, isMate } = normalizeScoreForDisplay(info)
-      const scoreStr = isMate 
-          ? `${scoreValue > 0 ? '+' : '-'}M${Math.abs(scoreValue)}` 
-          : scoreValue.toString();
-      return `Score: ${scoreStr} | Depth: ${info.depth} | PV: ${info.pv}`
-  }
+    const should =
+      isEngineLoaded.value &&
+      isCurrentAiTurnNow() &&
+      !isThinking.value &&
+      !pendingFlip.value
 
-  function getMoveNumber(historyIndex: number): string {
-    const moveCount = history.value.slice(0, historyIndex + 1).filter((e: any) => e.type === 'move').length
-    if (moveCount === 0) return ''
-    const moveNumber = Math.floor((moveCount - 1) / 2) + 1
-    const isSecondMove = (moveCount - 1) % 2 === 1
-    return `${moveNumber}${isSecondMove ? '...' : '.'}`
-  }
+    console.log(
+      `[DEBUG] CHECK_AND_TRIGGER_AI: Checking... isEngineLoaded=${isEngineLoaded.value}, isCurrentAiTurnNow()=${isCurrentAiTurnNow()}, isThinking=${isThinking.value}, isStopping=${isStopping.value}, pendingFlip=${pendingFlip.value}. Outcome: ${
+        should ? 'STARTING ANALYSIS' : 'DOING NOTHING'
+      }`
+    )
 
-  function handleMoveClick(moveIndex: number) {
-    if (isMatchRunning.value) {
-      return
-    }
-    replayToMove(moveIndex)
-  }
+    if (should) {
+      // AI auto-play mode uses limited analysis settings (time, depth, nodes)
+      isManualAnalysis.value = false // Mark as AI auto-play analysis
+      console.log(
+        '[DEBUG] CHECK_AND_TRIGGER_AI: Starting AI analysis with settings:',
+        analysisSettings.value
+      )
+      // Record analysis-time context
+      lastAnalysisFen.value = baseFenForEngine.value
+      lastAnalysisPrefixMoves.value = [...engineMovesSinceLastReveal.value]
 
-  function setAnnotation(a: '!!' | '!' | '!?' | '?!' | '?' | '??' | undefined) {
-    if (isMatchRunning.value) return
-    const idx = currentMoveIndex.value - 1
-    if (
-      idx >= 0 &&
-      idx < history.value.length &&
-      history.value[idx].type === 'move'
-    ) {
-      updateMoveAnnotation(idx, a)
-    }
-  }
+      // Opening book first: if enabled and there is a book move, play it instead of calling engine
+      try {
+        const enableBook = gameState?.openingBook?.config?.enableInGame
+        const getBookMoveFn = gameState?.getOpeningBookMove
+        if (enableBook && typeof getBookMoveFn === 'function') {
+          const bookMove = await getBookMoveFn()
+          if (bookMove) {
+            console.log(
+              '[DEBUG] CHECK_AND_TRIGGER_AI: Using opening book move:',
+              bookMove
+            )
+            ;(window as any).__LAST_AI_MOVE__ = bookMove
+            ;(window as any).__AI_MOVE_FROM_BOOK__ = true
+            const ok = playMoveFromUci(bookMove)
+            if (ok) {
+              // When using opening book move, do not start engine analysis/pondering.
+              nextTick(() => {
+                checkAndTriggerAi()
+              })
+              return
+            }
+            // If not ok (illegal or none), fall back to engine below
+          }
+        }
+      } catch (e) {
+        console.error(
+          '[DEBUG] CHECK_AND_TRIGGER_AI: Opening book failed, falling back to engine.',
+          e
+        )
+      }
 
-  function annotationClass(a: NonNullable<HistoryEntry['annotation']>) {
-    switch (a) {
-      case '!!': return 'annot-brilliant'
-      case '!': return 'annot-good'
-      case '!?': return 'annot-interesting'
-      case '?!': return 'annot-dubious'
-      case '?': return 'annot-mistake'
-      case '??': return 'annot-blunder'
-    }
-  }
+      startAnalysis(
+        analysisSettings.value,
+        engineMovesSinceLastReveal.value,
+        baseFenForEngine.value,
+        currentSearchMoves.value
+      )
+    }
+  }
+  function handleMoveClick(moveIndex: number) {
+    // Disable during match running
+    if (isMatchRunning.value) {
+      return
+    }
+    replayToMove(moveIndex)
+  }
 
-  function goToFirstMove() { if (isMatchRunning.value) return; if (currentMoveIndex.value > 0) { replayToMove(0); stopPlayback(); } }
-  function goToPreviousMove() { if (isMatchRunning.value) return; if (currentMoveIndex.value > 0) { replayToMove(currentMoveIndex.value - 1); stopPlayback(); } }
-  function goToNextMove() { if (isMatchRunning.value) return; if (currentMoveIndex.value < history.value.length) { replayToMove(currentMoveIndex.value + 1); stopPlayback(); } }
-  function goToLastMove() { if (isMatchRunning.value) return; if (currentMoveIndex.value < history.value.length) { replayToMove(history.value.length); stopPlayback(); } }
+  // Set annotation on last move (currentMoveIndex - 1)
+  function setAnnotation(a: '!!' | '!' | '!?' | '?!' | '?' | '??' | undefined) {
+    if (isMatchRunning.value) return
+    const idx = currentMoveIndex.value - 1
+    if (
+      idx >= 0 &&
+      idx < history.value.length &&
+      history.value[idx].type === 'move'
+    ) {
+      updateMoveAnnotation(idx, a)
+    }
+  }
 
-  function togglePlayPause() {
-    if (isMatchRunning.value) return
-    if (isPlaying.value) stopPlayback()
-    else startPlayback()
-  }
+  function annotationClass(a: NonNullable<HistoryEntry['annotation']>) {
+    switch (a) {
+      case '!!':
+        return 'annot-brilliant'
+      case '!':
+        return 'annot-good'
+      case '!?':
+        return 'annot-interesting'
+      case '?!':
+        return 'annot-dubious'
+      case '?':
+        return 'annot-mistake'
+      case '??':
+        return 'annot-blunder'
+    }
+  }
 
-  function startPlayback() {
-    if (isMatchRunning.value || isPlaying.value) return
-    isPlaying.value = true
-    playInterval.value = setInterval(() => {
-      if (currentMoveIndex.value < history.value.length) replayToMove(currentMoveIndex.value + 1)
-      else stopPlayback()
-    }, playSpeed.value)
-  }
+  /* ---------- Notation Navigation Functions ---------- */
 
-  function stopPlayback() {
-    if (playInterval.value) {
-      clearInterval(playInterval.value)
-      playInterval.value = null
-    }
-    isPlaying.value = false
-  }
-  
-  const handleHumanVsAiModeConfirm = async (settings: any) => {
-    const { toggleHumanVsAiMode, setAiSide, toggleShowEngineAnalysis } = useHumanVsAiSettings()
-    toggleHumanVsAiMode()
-    ;(window as any).__HUMAN_VS_AI_MODE__ = true
-    setAiSide(settings.aiSide)
-    if (settings.showEngineAnalysis !== showEngineAnalysis.value) toggleShowEngineAnalysis()
-    if (flipMode.value !== 'random') flipMode.value = 'random'
-  }
+  // Navigate to the first move (opening position)
+  function goToFirstMove() {
+    // Disable during match running
+    if (isMatchRunning.value) {
+      return
+    }
+    if (currentMoveIndex.value > 0) {
+      replayToMove(0)
+      stopPlayback()
+    }
+  }
 
-  const handleOpeningBookMove = (uciMove: string) => { if (playMoveFromUci) playMoveFromUci(uciMove) }
+  // Navigate to the previous move
+  function goToPreviousMove() {
+    // Disable during match running
+    if (isMatchRunning.value) {
+      return
+    }
+    if (currentMoveIndex.value > 0) {
+      replayToMove(currentMoveIndex.value - 1)
+      stopPlayback()
+    }
+  }
 
-  function getChineseNotationForMove(moveIndex: number): string {
-    if (moveIndex < 0 || moveIndex >= history.value.length) return ''
-    const entry = history.value[moveIndex]
-    if (entry.type !== 'move') return ''
-    try {
-      const fenBeforeMove = moveIndex === 0 ? initialFen.value : history.value[moveIndex - 1].fen
-      const uciMove = isHumanVsAiMode.value ? entry.data.slice(0, 4) : entry.data
-      const chineseMoves = uciToChineseMoves(fenBeforeMove, uciMove)
-      return chineseMoves[0] || ''
-    } catch (error) { return '' }
-  }
+  // Navigate to the next move
+  function goToNextMove() {
+    // Disable during match running
+    if (isMatchRunning.value) {
+      return
+    }
+    if (currentMoveIndex.value < history.value.length) {
+      replayToMove(currentMoveIndex.value + 1)
+      stopPlayback()
+    }
+  }
 
-  // --- Logic Luck Index (Đã tối ưu hóa) ---
-  const hasPositionEdit = computed(() => {
-    const end = currentMoveIndex.value; const h = history.value.slice(0, end);
-    return h.some((e: any) => e.type === 'adjust' && typeof e.data === 'string' && e.data.startsWith('position_edit:'))
-  })
-  const isStandardStart = computed(() => (initialFen.value || '').trim() === START_FEN.trim())
-  const shouldShowLuckIndex = computed(() => isStandardStart.value && !hasPositionEdit.value && showLuckIndex.value)
-  
-  const revealSequence = computed(() => {
-    if (!shouldShowLuckIndex.value) return ''; const seqChars: string[] = []; const limit = currentMoveIndex.value
-    for (let i = 0; i < limit; i++) {
-      const entry = history.value[i]; if (!entry || entry.type !== 'move') continue; const uci = (entry.data || '').trim();
-      if (uci.length <= 4) continue; const flipInfo = uci.substring(4); const moverIsRed = i % 2 === 0
-      for (const ch of flipInfo) {
-        const isLetter = ch.toLowerCase() !== ch.toUpperCase(); if (!isLetter) continue;
-        const isUpper = ch === ch.toUpperCase(); const isRevealed = (moverIsRed && isUpper) || (!moverIsRed && !isUpper)
-        if (isRevealed) seqChars.push(ch)
-      }
-    }
-    return seqChars.join('')
-  })
+  // Navigate to the last move
+  function goToLastMove() {
+    // Disable during match running
+    if (isMatchRunning.value) {
+      return
+    }
+    if (currentMoveIndex.value < history.value.length) {
+      replayToMove(history.value.length)
+      stopPlayback()
+    }
+  }
 
-  function sequenceToFeatures(sequence: string): number[] {
-    const features: number[] = []; const counts = new Array(12).fill(0); const timings = new Array(12).fill(0)
-    for (let i = 0; i < sequence.length; i++) {
-      const piece = sequence[i]; const idx = PIECE_TO_INDEX[piece]; if (idx == null) continue;
-      counts[idx] += 1; if (timings[idx] === 0) timings[idx] = i + 1;
-    }
-    features.push(...counts, ...timings, sequence.length); return features
-  }
+  // Toggle play/pause functionality
+  function togglePlayPause() {
+    // Disable during match running
+    if (isMatchRunning.value) {
+      return
+    }
+    if (isPlaying.value) {
+      stopPlayback()
+    } else {
+      startPlayback()
+    }
+  }
 
-  function sigmoid(z: number): number { return 1 / (1 + Math.exp(-z)) }
+  // Start automatic playback
+  function startPlayback() {
+    // Disable during match running
+    if (isMatchRunning.value) {
+      return
+    }
+    if (isPlaying.value) return
 
-  const luckWinRate = computed(() => {
-    if (!shouldShowLuckIndex.value) return 0.5; const seq = revealSequence.value; const feats = sequenceToFeatures(seq)
-    if (feats.length !== FEATURE_DIM) return 0.5; const scaled = new Array(FEATURE_DIM)
-    for (let i = 0; i < FEATURE_DIM; i++) {
-      const scale = (SCALER_SCALES as readonly number[])[i]; const mean = (SCALER_MEANS as readonly number[])[i]
-      scaled[i] = scale !== 0 ? (feats[i] - mean) / scale : feats[i] - mean
-    }
-    let z = MODEL_INTERCEPT; for (let i = 0; i < FEATURE_DIM; i++) { z += scaled[i] * (MODEL_WEIGHTS as readonly number[])[i] }
-    return sigmoid(z)
-  })
+    isPlaying.value = true
+    playInterval.value = setInterval(() => {
+      if (currentMoveIndex.value < history.value.length) {
+        replayToMove(currentMoveIndex.value + 1)
+      } else {
+        stopPlayback()
+      }
+    }, playSpeed.value)
+  }
 
-  const luckIndex = computed(() => {
-    const v = Math.round((luckWinRate.value - 0.5) * 200); return Math.max(-100, Math.min(100, v))
-  })
+  // Stop automatic playback
+  function stopPlayback() {
+    if (playInterval.value) {
+      clearInterval(playInterval.value)
+      playInterval.value = null
+    }
+    isPlaying.value = false
+  }
 
-  const luckClass = computed(() => {
-    if (luckIndex.value > 5) return 'luck-positive'; if (luckIndex.value < -5) return 'luck-negative'; return 'luck-neutral'
-  })
+  // Handle analysis button click - start analysis or stop analysis based on current state
+  function handleAnalysisButtonClick() {
+    if (isThinking.value || isPondering.value) {
+      // If engine is thinking or pondering, stop the analysis
+      handleStopAnalysis()
+    } else {
+      // If engine is not thinking, start manual analysis
+      manualStartAnalysis()
+    }
+  }
 
-  const axisTicks = computed(() => [
-    { pos: 0, label: '-100' }, { pos: 25, label: '-50' }, { pos: 50, label: '0' }, { pos: 75, label: '50' }, { pos: 100, label: '100' }
-  ])
-  const markerStyle = computed(() => ({ left: `calc(${(luckIndex.value + 100) / 2}% )` }))
-  
-  
-  function getScoreClass(score: number): string {
-    if (score >= MATE_SCORE_BASE - 999) return 'score-mate-positive'
-    if (score <= -(MATE_SCORE_BASE - 999)) return 'score-mate-negative'
-    if (score > 50) return 'score-positive'
-    if (score < -50) return 'score-negative'
-    return 'score-neutral'
-  }
+  function manualStartAnalysis() {
+    // Manual analysis uses infinite thinking mode without time, depth, or node limits
+    // Disable AI auto-play when manual analysis is active
+    isRedAi.value = false
+    isBlackAi.value = false
+    isManualAnalysis.value = true // Mark as manual analysis
 
-  function formatScore(score: number): string {
-    if (Math.abs(score) >= MATE_SCORE_BASE - 999) {
-      const sign = score > 0 ? '+' : '-'
-      const ply = Math.max(0, MATE_SCORE_BASE - Math.min(MATE_SCORE_BASE - 1, Math.abs(score)))
-      return `${sign}M${ply}`
-    }
-    return score.toString()
-  }
+    // Stop any ongoing ponder when starting manual analysis
+    if (isPondering.value) {
+      console.log(
+        '[DEBUG] MANUAL_START_ANALYSIS: Stopping ponder before manual analysis'
+      )
+      stopPonder({ playBestMoveOnStop: false })
+    }
 
-  function formatTime(timeMs: number): string {
-    if (timeMs < 1000) return `${timeMs}ms`
-    return `${(timeMs / 1000).toFixed(1)}s`
-  }
+    console.log('[DEBUG] MANUAL_START_ANALYSIS: Triggered.')
 
-  // --- Lifecycle & Init ---
-  onMounted(async () => {
-    try {
-      await configManager.loadConfig()
-      const matchSettings = configManager.getMatchSettings()
-      isMatchMode.value = matchSettings.isMatchMode || false
-      ;(window as any).__MATCH_MODE__ = isMatchMode.value
-      window.dispatchEvent(new CustomEvent('match-mode-changed', { detail: { isMatchMode: isMatchMode.value, isStartup: true } }))
-    } catch (error) { console.error(error) }
-  })
+    const infiniteAnalysisSettings = {
+      movetime: 0, // 0 means infinite thinking
+      maxThinkTime: 0, // 0 means no time limit
+      maxDepth: 0, // 0 means no depth limit
+      maxNodes: 0, // 0 means no node limit
+      analysisMode: 'infinite',
+    }
+    // Record analysis-time context
+    // lastAnalysisFen.value = baseFenForEngine.value
+    // lastAnalysisPrefixMoves.value = [...engineMovesSinceLastReveal.value]
+
+    startAnalysis(
+      infiniteAnalysisSettings,
+      engineMovesSinceLastReveal.value,
+      baseFenForEngine.value,
+      currentSearchMoves.value
+    )
+  }
+
+  // Handle stop analysis and reset manual analysis state
+  function handleStopAnalysis() {
+    // If pondering is active, check if it's a ponder hit scenario
+    if (isPondering.value) {
+      // If ponderhit is true, stop ponder with playBestMoveOnStop = true
+      // This allows the engine to finish its current thinking and play the best move
+      if (ponderhit.value) {
+        console.log(
+          '[DEBUG] HANDLE_STOP_ANALYSIS: Ponder hit detected. Stopping ponder with playBestMoveOnStop = true.'
+        )
+        stopPonder({ playBestMoveOnStop: true })
+      } else {
+        // Regular ponder stop - just stop without playing best move
+        console.log(
+          '[DEBUG] HANDLE_STOP_ANALYSIS: Ponder mode detected. Stopping ponder.'
+        )
+        stopPonder({ playBestMoveOnStop: false })
+      }
+      return
+    }
+
+    // If we are in auto-analysis mode, the stop button should act as a "Move Now" command.
+    if (isRedAi.value || isBlackAi.value) {
+      console.log(
+        '[DEBUG] HANDLE_STOP_ANALYSIS: Auto-analysis mode. Stopping with playBestMoveOnStop = true.'
+      )
+      stopAnalysis({ playBestMoveOnStop: true })
+    } else {
+      // If in manual analysis mode, the stop button just cancels the analysis.
+      console.log(
+        '[DEBUG] HANDLE_STOP_ANALYSIS: Manual analysis mode. Stopping with playBestMoveOnStop = false.'
+      )
+      stopAnalysis({ playBestMoveOnStop: false })
+    }
+    isManualAnalysis.value = false // Reset manual analysis state regardless
+  }
+
+  // Undo the last move
+  function handleUndoMove() {
+    // Disable during match running
+    if (isMatchRunning.value) {
+      return
+    }
+    undoLastMove()
+  }
+
+  // Function to load engines into the dropdown
+  const refreshManagedEngines = async () => {
+    await configManager.loadConfig()
+    managedEngines.value = configManager.getEngines()
+    // Pre-select the last used engine, but only if one isn't already selected.
+    // This prevents the selection from resetting when the manager dialog closes.
+    if (!selectedEngineId.value) {
+      selectedEngineId.value = configManager.getLastSelectedEngineId()
+    }
+    // Clear selected engine if the engine list is empty
+    if (managedEngines.value.length === 0) {
+      selectedEngineId.value = null
+    } else if (selectedEngineId.value) {
+      // Check if the selected engine still exists in the list
+      const engineExists = managedEngines.value.some(
+        e => e.id === selectedEngineId.value
+      )
+      if (!engineExists) {
+        console.log(
+          `[DEBUG] AnalysisSidebar: Selected engine (${selectedEngineId.value}) not found in engine list, clearing selection`
+        )
+        selectedEngineId.value = null
+      }
+    }
+  }
+
+  // Function to load the selected engine from the manager
+  const loadSelectedEngine = async () => {
+    if (!selectedEngineId.value) {
+      alert(t('analysis.selectEngine'))
+      return
+    }
+    const engineToLoad = managedEngines.value.find(
+      e => e.id === selectedEngineId.value
+    )
+    if (engineToLoad) {
+      if (isMatchMode.value) {
+        // In match mode, use JAI engine
+        console.log('[DEBUG] AnalysisSidebar: Loading engine in JAI mode')
+        jaiEngine.loadEngine(engineToLoad)
+      } else {
+        // In normal mode, use UCI engine
+        console.log('[DEBUG] AnalysisSidebar: Loading engine in UCI mode')
+        await loadEngine(engineToLoad)
+      }
+    } else {
+      console.log(
+        `[DEBUG] AnalysisSidebar: Selected engine (${selectedEngineId.value}) not found in engine list`
+      )
+      alert(t('errors.selectedEngineNotFound'))
+      // Clear the invalid selection
+      selectedEngineId.value = null
+      // Clear the last selected engine ID from config
+      configManager.clearLastSelectedEngineId()
+    }
+  }
+
+  // Auto-unload current engine when selection changes to avoid mismatch
+  watch(selectedEngineId, async (newId, oldId) => {
+    if (!oldId || newId === oldId) return
+
+    try {
+      if (isMatchMode.value) {
+        // Stop match if running, then unload JAI engine
+        if (jaiEngine?.isMatchRunning?.value) {
+          await jaiEngine.stopMatch()
+        }
+        if (jaiEngine?.isEngineLoaded?.value) {
+          await jaiEngine.unloadEngine()
+          console.log(
+            '[DEBUG] AnalysisSidebar: Auto-unloaded JAI engine due to selection change'
+          )
+        }
+      } else {
+        // Unload UCI engine if loaded
+        if (isEngineLoaded.value) {
+          await unloadEngine()
+          console.log(
+            '[DEBUG] AnalysisSidebar: Auto-unloaded UCI engine due to selection change'
+          )
+        }
+      }
+    } catch (error) {
+      console.error(
+        '[DEBUG] AnalysisSidebar: Failed to auto-unload engine on selection change:',
+        error
+      )
+    }
+  })
+
+  // Function to unload the current engine
+  const handleUnloadEngine = async () => {
+    if (isMatchMode.value) {
+      // In match mode, check JAI engine state
+      if (!jaiEngine?.isEngineLoaded?.value) {
+        alert(t('analysis.noEngineLoaded'))
+        return
+      }
+
+      try {
+        await jaiEngine.unloadEngine()
+        console.log('[DEBUG] AnalysisSidebar: JAI engine unloaded successfully')
+      } catch (error) {
+        console.error(
+          '[DEBUG] AnalysisSidebar: Failed to unload JAI engine:',
+          error
+        )
+        alert(t('errors.engineUnloadFailed'))
+      }
+    } else {
+      // In normal mode, check UCI engine state
+      if (!isEngineLoaded.value) {
+        alert(t('analysis.noEngineLoaded'))
+        return
+      }
+
+      try {
+        await unloadEngine()
+        console.log('[DEBUG] AnalysisSidebar: UCI engine unloaded successfully')
+      } catch (error) {
+        console.error(
+          '[DEBUG] AnalysisSidebar: Failed to unload UCI engine:',
+          error
+        )
+        alert(t('errors.engineUnloadFailed'))
+      }
+    }
+  }
+
+  // Open the about dialog
+  function openAboutDialog() {
+    aboutDialogRef.value?.openDialog()
+  }
+
+  /* ---------- JAI Match Mode Functions ---------- */
+  const toggleMatchMode = async () => {
+    isMatchMode.value = !isMatchMode.value
+
+    // Save match mode state to configuration
+    try {
+      await configManager.updateMatchSettings({
+        isMatchMode: isMatchMode.value,
+      })
+      console.log(
+        '[DEBUG] AnalysisSidebar: Saved match mode state:',
+        isMatchMode.value
+      )
+    } catch (error) {
+      console.error('Failed to save match mode settings:', error)
+    }
+
+    // Set global match mode state for useChessGame to access
+    ;(window as any).__MATCH_MODE__ = isMatchMode.value
+
+    // Trigger custom event for engine state management
+    window.dispatchEvent(
+      new CustomEvent('match-mode-changed', {
+        detail: { isMatchMode: isMatchMode.value, isStartup: false },
+      })
+    )
+
+    if (isMatchMode.value) {
+      // Initialize JAI engine when entering match mode
+      // Use the same engine manager but different protocol
+      initializeJaiEngine()
+    } else {
+      // Clean up JAI engine when exiting match mode
+      cleanupJaiEngine()
+      ;(window as any).__MATCH_MODE__ = false
+    }
+  }
+
+  const initializeJaiEngine = () => {
+    // For now, use the same engine but with JAI protocol
+    // This can be expanded to support dedicated JAI engines
+    console.log('[DEBUG] Initializing JAI engine mode')
+    // JAI engine state is managed by the JAI engine composable
+  }
+
+  const cleanupJaiEngine = () => {
+    console.log('[DEBUG] Cleaning up JAI engine mode')
+    // Unload JAI engine if loaded
+    if (jaiEngine?.isEngineLoaded?.value) {
+      jaiEngine.unloadEngine()
+    }
+    showJaiOptionsDialog.value = false
+  }
+
+  // Human vs AI mode handlers
+  const handleHumanVsAiModeConfirm = async (settings: {
+    aiSide: 'red' | 'black'
+    showEngineAnalysis: boolean
+  }) => {
+    // Import the settings management functions
+    const { toggleHumanVsAiMode, setAiSide, toggleShowEngineAnalysis } =
+      useHumanVsAiSettings()
+
+    // Enable human vs AI mode
+    toggleHumanVsAiMode()
+
+    // Set global flag for human vs AI mode
+    ;(window as any).__HUMAN_VS_AI_MODE__ = true
+
+    // Set AI side
+    setAiSide(settings.aiSide)
+
+    // Set engine analysis visibility
+    if (settings.showEngineAnalysis !== showEngineAnalysis.value) {
+      toggleShowEngineAnalysis()
+    }
+
+    // No need to set ponder mode - it uses unified setting
+
+    // Force random flip mode for human vs AI mode
+    if (flipMode.value !== 'random') {
+      flipMode.value = 'random'
+    }
+
+    // Set AI player based on selected side
+    if (settings.aiSide === 'red') {
+      if (!isRedAi.value) toggleRedAi()
+      if (isBlackAi.value) toggleBlackAi()
+    } else {
+      if (isRedAi.value) toggleRedAi()
+      if (!isBlackAi.value) toggleBlackAi()
+    }
+
+    console.log('[DEBUG] Human vs AI mode enabled:', {
+      aiSide: settings.aiSide,
+      showEngineAnalysis: settings.showEngineAnalysis,
+    })
+  }
+
+  const exitHumanVsAiMode = async () => {
+    const { toggleHumanVsAiMode } = useHumanVsAiSettings()
+
+    // Disable human vs AI mode
+    toggleHumanVsAiMode()
+
+    // Clear global flag for human vs AI mode
+    ;(window as any).__HUMAN_VS_AI_MODE__ = false
+
+    // Turn off both AI players
+    if (isRedAi.value) toggleRedAi()
+    if (isBlackAi.value) toggleBlackAi()
+
+    console.log('[DEBUG] Human vs AI mode disabled')
+  }
+
+  const handleMatchButtonClick = () => {
+    if (isMatchRunning.value) {
+      stopMatch()
+    } else {
+      startMatch()
+    }
+  }
+
+  const startMatch = () => {
+    if (!jaiEngine?.isEngineLoaded?.value) return
+    console.log('[DEBUG] Starting JAI match')
+    jaiEngine.startMatch()
+  }
+
+  const stopMatch = () => {
+    if (!jaiEngine?.isMatchRunning?.value) return
+    console.log('[DEBUG] Stopping JAI match')
+    jaiEngine.stopMatch()
+  }
+
+  /* ---------- Comment Management Functions ---------- */
+  // Get comment text for a specific move index
+  function getCommentText(moveIndex: number): string {
+    if (moveIndex === 0) {
+      return gameState.openingComment?.value || ''
+    }
+    const historyIndex = moveIndex - 1
+    if (historyIndex >= 0 && historyIndex < history.value.length) {
+      return history.value[historyIndex].comment || ''
+    }
+    return ''
+  }
+
+  // Set ref for v-textarea components by move index
+  function setCommentTextareaRef(index: number, el: any) {
+    if (index == null) return
+    if (el) {
+      commentTextareaRefs.value[index] = el
+    }
+  }
+
+  function getTextareaElement(index: number): HTMLTextAreaElement | null {
+    const comp = commentTextareaRefs.value[index]
+    if (!comp || !comp.$el) return null
+    const ta = comp.$el.querySelector('textarea') as HTMLTextAreaElement | null
+    return ta || null
+  }
+
+  // Markdown formatting helpers
+  function surroundSelection(index: number, before: string, after: string) {
+    const ta = getTextareaElement(index)
+    const text = editingCommentText.value || ''
+    if (!ta) {
+      editingCommentText.value = `${before}${text}${after}`
+      return
+    }
+    const start = ta.selectionStart ?? 0
+    const end = ta.selectionEnd ?? 0
+    const selected = text.slice(start, end)
+    const newText =
+      text.slice(0, start) + before + selected + after + text.slice(end)
+    editingCommentText.value = newText
+    nextTick(() => {
+      const pos = start + before.length + selected.length + after.length
+      ta.focus()
+      ta.selectionStart = ta.selectionEnd = pos
+    })
+  }
+
+  function applyHeading(index: number, level: 1 | 2 | 3 | 4) {
+    const ta = getTextareaElement(index)
+    const text = editingCommentText.value || ''
+    const start = ta?.selectionStart ?? 0
+    const end = ta?.selectionEnd ?? 0
+    const sel = text.slice(start, end)
+    const target =
+      sel.length > 0
+        ? sel
+        : (() => {
+            // no selection -> current line
+            const lineStart = text.lastIndexOf('\n', start - 1) + 1
+            const lineEnd = text.indexOf('\n', start)
+            return text.slice(lineStart, lineEnd === -1 ? text.length : lineEnd)
+          })()
+    const processed = target
+      .split('\n')
+      .map(l => l.replace(/^\s{0,3}#{1,6}\s+/, ''))
+      .map(l => `${'#'.repeat(level)} ${l}`)
+      .join('\n')
+    if (sel.length > 0) {
+      const newText = text.slice(0, start) + processed + text.slice(end)
+      editingCommentText.value = newText
+      nextTick(() => {
+        if (ta) {
+          const pos = start + processed.length
+          ta.focus()
+          ta.selectionStart = ta.selectionEnd = pos
+        }
+      })
+    } else {
+      // replace current line
+      const lineStart = text.lastIndexOf('\n', start - 1) + 1
+      const lineEnd = text.indexOf('\n', start)
+      const endPos = lineEnd === -1 ? text.length : lineEnd
+      const newText = text.slice(0, lineStart) + processed + text.slice(endPos)
+      editingCommentText.value = newText
+      nextTick(() => {
+        if (ta) {
+          const pos = lineStart + processed.length
+          ta.focus()
+          ta.selectionStart = ta.selectionEnd = pos
+        }
+      })
+    }
+  }
+
+  function stripMarkdownText(input: string): string {
+    let out = input
+    // Remove headers
+    out = out.replace(/^\s{0,3}#{1,6}\s+/gm, '')
+    // Bold/italic/strike
+    out = out.replace(/\*\*([^*]+)\*\*/g, '$1')
+    out = out.replace(/__([^_]+)__/g, '$1')
+    out = out.replace(/\*([^*]+)\*/g, '$1')
+    out = out.replace(/_([^_]+)_/g, '$1')
+    out = out.replace(/~~([^~]+)~~/g, '$1')
+    // Underline HTML
+    out = out.replace(/<u>(.*?)<\/u>/g, '$1')
+    // Links and images
+    out = out.replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+    out = out.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
+    // Inline code
+    out = out.replace(/`([^`]+)`/g, '$1')
+    return out
+  }
+
+  function clearFormatting(index: number) {
+    const ta = getTextareaElement(index)
+    const text = editingCommentText.value || ''
+    if (!ta) {
+      editingCommentText.value = stripMarkdownText(text)
+      return
+    }
+    const start = ta.selectionStart ?? 0
+    const end = ta.selectionEnd ?? 0
+    if (start === end) {
+      editingCommentText.value = stripMarkdownText(text)
+    } else {
+      const before = text.slice(0, start)
+      const selected = text.slice(start, end)
+      const after = text.slice(end)
+      editingCommentText.value = before + stripMarkdownText(selected) + after
+      nextTick(() => {
+        ta.focus()
+        ta.selectionStart = start
+        ta.selectionEnd = start + stripMarkdownText(selected).length
+      })
+    }
+  }
+
+  function insertLink(index: number) {
+    const ta = getTextareaElement(index)
+    const url = window.prompt('URL') || ''
+    if (!url) return
+    const text = editingCommentText.value || ''
+    const start = ta?.selectionStart ?? 0
+    const end = ta?.selectionEnd ?? 0
+    const selected = text.slice(start, end) || 'link'
+    const md = `[${selected}](${url})`
+    const newText = text.slice(0, start) + md + text.slice(end)
+    editingCommentText.value = newText
+    nextTick(() => {
+      if (ta) {
+        const pos = start + md.length
+        ta.focus()
+        ta.selectionStart = ta.selectionEnd = pos
+      }
+    })
+  }
+
+  function renderMarkdown(text: string): string {
+    if (!text) return ''
+    const raw = marked.parse(text, { breaks: true }) as string
+    const sanitized = DOMPurify.sanitize(raw)
+    return sanitized.replace(
+      /<a\s+/g,
+      '<a target="_blank" rel="noopener noreferrer" '
+    )
+  }
+
+  function getCommentHtml(moveIndex: number): string {
+    const txt = getCommentText(moveIndex)
+    if (!txt) return ''
+    return renderMarkdown(txt)
+  }
+
+  function getCommentHtmlWithFallback(moveIndex: number): string {
+    const html = getCommentHtml(moveIndex)
+    if (html) return html
+    return DOMPurify.sanitize(String(t('analysis.noComment')))
+  }
+
+  // Start editing a comment
+  function editComment(moveIndex: number) {
+    editingCommentIndex.value = moveIndex
+    editingCommentText.value = getCommentText(moveIndex)
+  }
+
+  // Save the current comment
+  function saveComment() {
+    if (editingCommentIndex.value !== null) {
+      if (editingCommentIndex.value === 0) {
+        // Save opening comment
+        if (typeof gameState.updateOpeningComment === 'function') {
+          gameState.updateOpeningComment(editingCommentText.value)
+        }
+      } else {
+        const historyIndex = editingCommentIndex.value - 1
+        if (historyIndex >= 0 && historyIndex < history.value.length) {
+          // Update the comment in the history
+          gameState.updateMoveComment(historyIndex, editingCommentText.value)
+        }
+      }
+    }
+
+    editingCommentIndex.value = null
+    editingCommentText.value = ''
+  }
+
+  // Cancel editing
+  function cancelEdit() {
+    editingCommentIndex.value = null
+    editingCommentText.value = ''
+  }
+
+  // Load settings when the component is mounted
+  onMounted(async () => {
+    // Load managed engines for the dropdown
+    refreshManagedEngines()
+
+    // Clear last selected engine ID if the engine list is empty
+    if (managedEngines.value.length === 0) {
+      console.log(
+        `[DEBUG] AnalysisSidebar: Engine list is empty on mount, clearing last selected engine ID`
+      )
+      configManager.clearLastSelectedEngineId()
+    }
+
+    loadAnalysisSettings()
+    watchConfigChanges()
+
+    // Load match mode state from configuration
+    try {
+      await configManager.loadConfig()
+      const matchSettings = configManager.getMatchSettings()
+      isMatchMode.value = matchSettings.isMatchMode || false
+      console.log(
+        '[DEBUG] AnalysisSidebar: Loaded match mode state:',
+        isMatchMode.value
+      )
+
+      // Set global match mode state for useChessGame to access
+      ;(window as any).__MATCH_MODE__ = isMatchMode.value
+
+      // Trigger custom event for engine state management on startup
+      window.dispatchEvent(
+        new CustomEvent('match-mode-changed', {
+          detail: { isMatchMode: isMatchMode.value, isStartup: true },
+        })
+      )
+    } catch (error) {
+      console.error('Failed to load match mode settings:', error)
+    }
+
+    // Debug: Check history entries on mount
+    debugHistoryEntries()
+
+    // Listen for force stop AI event. This is used to stop analysis in various scenarios.
+    const handleForceStopAi = (event: CustomEvent) => {
+      console.log(
+        `[DEBUG] HANDLE_FORCE_STOP_AI: Caught event. Reason: ${event.detail?.reason}`
+      )
+      // For a manual move, we only stop the thinking process.
+      // We don't turn off the AI toggles, allowing the AI to potentially start thinking for the next turn.
+      if (event.detail?.reason === 'manual-move') {
+        // If the engine is pondering, we MUST NOT send a 'stop' command here.
+        // The 'handlePonderAfterMove' function will correctly handle whether it's a
+        // ponder hit (sending 'ponderhit') or a miss (sending 'stop').
+        // Stopping it here creates a race condition.
+        if (isPondering.value) {
+          console.log(
+            '[DEBUG] HANDLE_FORCE_STOP_AI: Pondering detected, yielding to ponder logic.'
+          )
+          return
+        }
+        if (isThinking.value) {
+          // This is a "cancel" operation.
+          stopAnalysis({ playBestMoveOnStop: false })
+        }
+        return // Early return to avoid turning off AI states
+      }
+
+      // For undo and replay operations, preserve manual analysis state
+      // so that analysis can be restarted for the new position
+      const preserveManualAnalysis =
+        event.detail?.reason === 'undo-move' ||
+        event.detail?.reason === 'replay-move'
+      const wasManualAnalysis = isManualAnalysis.value
+
+      // For all other reasons (new game, replay, fen input etc.), perform a full stop.
+      // The engine's state (isThinking) will be reset when it acknowledges the stop.
+      if (isThinking.value) {
+        // This is also a "cancel" operation.
+        stopAnalysis({ playBestMoveOnStop: false })
+      }
+
+      // Reset AI toggles immediately.
+      isRedAi.value = false
+      isBlackAi.value = false
+
+      // Preserve manual analysis state for undo/replay operations
+      if (preserveManualAnalysis && wasManualAnalysis) {
+        console.log(
+          '[DEBUG] FORCE_STOP_AI: Preserving manual analysis state for undo/replay'
+        )
+        // Keep isManualAnalysis.value = true so it will be restarted when engine is ready
+      } else {
+        isManualAnalysis.value = false
+      }
+
+      // Stop any ongoing ponder
+      if (isPondering.value) {
+        console.log('[DEBUG] FORCE_STOP_AI: Stopping ponder')
+        stopPonder({ playBestMoveOnStop: false })
+      }
+
+      if (engineState.bestMove) {
+        engineState.bestMove.value = ''
+      }
+    }
+
+    // This listener is crucial. It waits for the engine to confirm it has stopped,
+    // then it checks if a new analysis should begin.
+    const onEngineReady = () => {
+      console.log(
+        '[DEBUG] ON_ENGINE_READY: Event received. Checking what to do next.'
+      )
+
+      // If a flip prompt is active, do nothing yet.
+      // The analysis will be re-triggered (if needed) by other watchers after the user makes a selection.
+      if (pendingFlip.value) {
+        console.log(
+          '[DEBUG] ON_ENGINE_READY: A flip is pending. Deferring analysis decision.'
+        )
+        return
+      }
+
+      // If we were in manual analysis mode, restart it for the new position.
+      if (isManualAnalysis.value) {
+        console.log(
+          '[DEBUG] ON_ENGINE_READY: Manual analysis mode detected. Restarting analysis.'
+        )
+        manualStartAnalysis()
+      } else {
+        // Otherwise, check if it's an AI's turn to move.
+        console.log(
+          '[DEBUG] ON_ENGINE_READY: Auto analysis mode detected. Checking if AI should move.'
+        )
+        checkAndTriggerAi()
+      }
+    }
+
+    window.addEventListener('force-stop-ai', handleForceStopAi as EventListener)
+    window.addEventListener('engine-stopped-and-ready', onEngineReady)
+
+    // Clean up listeners when the component is unmounted
+    onUnmounted(() => {
+      window.removeEventListener(
+        'force-stop-ai',
+        handleForceStopAi as EventListener
+      )
+      window.removeEventListener('engine-stopped-and-ready', onEngineReady)
+      cleanupConfigWatch()
+
+      // Clean up play interval
+      if (playInterval.value) {
+        clearInterval(playInterval.value)
+        playInterval.value = null
+      }
+    })
+  })
+
+  /* ---------- Watchers ---------- */
+
+  // Watch for the manager dialog to close and refresh the engine list
+  watch(showEngineManager, isShown => {
+    if (!isShown) {
+      refreshManagedEngines()
+      // Clear last selected engine ID if the engine list is empty
+      if (managedEngines.value.length === 0) {
+        console.log(
+          `[DEBUG] AnalysisSidebar: Engine list is empty after manager dialog closed, clearing last selected engine ID`
+        )
+        configManager.clearLastSelectedEngineId()
+      }
+    }
+  })
+
+  watch(
+    [sideToMove, isRedAi, isBlackAi, isEngineLoaded, pendingFlip],
+    () => {
+      nextTick(() => checkAndTriggerAi())
+    },
+    { immediate: true }
+  )
+
+  // Debug: Watch engine thinking state
+  watch(isThinking, thinking => {
+    console.log('[DEBUG] ENGINE_THINKING_STATE: Changed to:', thinking)
+  })
+
+  // This watcher ensures that if a manual move is made while in "manual analysis" mode,
+  // a new analysis is automatically started for the resulting position.
+  // However, we need to be careful not to restart analysis immediately after undo/replay
+  // as the engine might not be ready yet. The onEngineReady handler will take care of that.
+  watch(currentMoveIndex, () => {
+    // Only restart manual analysis if the engine is loaded and not currently stopping
+    if (
+      isManualAnalysis.value &&
+      !isThinking.value &&
+      isEngineLoaded.value &&
+      !isStopping.value
+    ) {
+      console.log(
+        '[DEBUG] CURRENT_MOVE_INDEX_WATCHER: Restarting manual analysis for new position'
+      )
+      manualStartAnalysis()
+    }
+  })
+
+  watch(bestMove, move => {
+    if (!move) return
+
+    console.log(
+      `[DEBUG] BESTMOVE_WATCHER: Triggered with move '${move}'. isCurrentAiTurnNow()=${isCurrentAiTurnNow()}.`
+    )
+    // Only execute best move when it's AI's turn.
+    // The isThinking check was removed because the new isStopping flag in useUciEngine handles stale bestmove commands more reliably.
+    if (isEngineLoaded.value && isCurrentAiTurnNow()) {
+      console.log(`[DEBUG] BESTMOVE_WATCHER: Condition met. Playing move.`)
+      // Set the AI move flag before playing the move
+      ;(window as any).__LAST_AI_MOVE__ = move
+      setTimeout(() => {
+        const ok = playMoveFromUci(move)
+        bestMove.value = ''
+        if (!ok) {
+          // In case of a checkmate, do not search again - use trim() to remove spaces
+          const trimmedMove = move.trim()
+          if (trimmedMove === '(none)' || trimmedMove === 'none') {
+            return
+          }
+          // AI auto-play mode also uses limited analysis settings when re-searching
+          isManualAnalysis.value = false // Ensure it's marked as AI analysis
+          startAnalysis(
+            analysisSettings.value,
+            engineMovesSinceLastReveal.value,
+            baseFenForEngine.value,
+            currentSearchMoves.value
+          )
+        } else {
+          // Handle ponder logic after AI move
+          handlePonderAfterMove(move, true)
+
+          nextTick(() => {
+            checkAndTriggerAi()
+          })
+        }
+      }, 50)
+    }
+  })
+
+  watch(
+    history,
+    () => {
+      nextTick(() => {
+        if (moveListElement.value) {
+          moveListElement.value.scrollTop = moveListElement.value.scrollHeight
+        }
+      })
+
+      // Debug: Check history entries when history changes
+      debugHistoryEntries()
+    },
+    { deep: true }
+  )
+
+  // Watch current engine output for scrolling
+  watch(
+    currentEngineOutput,
+    () => {
+      nextTick(() => {
+        if (engineLogElement.value) {
+          engineLogElement.value.scrollTop = engineLogElement.value.scrollHeight
+        }
+      })
+    },
+    { deep: true }
+  )
+
+  // Watch ponder availability and stop ponder if not available
+  watch(isPonderAvailable, available => {
+    if (!available) {
+      console.log(
+        '[DEBUG] PONDER_WATCH: Stopping ponder due to availability change'
+      )
+
+      // Stop any ongoing ponder
+      if (isPondering.value) {
+        stopPonder({ playBestMoveOnStop: false })
+      }
+    }
+  })
+
+  // Watch engine output and clear log when it reaches the limit
+  watch(
+    currentEngineOutput,
+    newOutput => {
+      if (newOutput.length > engineLogLineLimit.value) {
+        console.log(
+          `[DEBUG] ENGINE_LOG_LIMIT: Clearing log at ${newOutput.length} lines (limit: ${engineLogLineLimit.value})`
+        )
+        // Clear the appropriate engine output array based on current mode
+        if (isMatchMode.value && jaiEngine?.engineOutput?.value) {
+          jaiEngine.engineOutput.value = []
+        } else {
+          engineOutput.value = []
+        }
+      }
+    },
+    { deep: true }
+  )
 </script>
 
 <style lang="scss">
-  /* --- CUSTOM STYLE CHO GIAO DIỆN PHÂN TÍCH GIỐNG ẢNH --- */
-  .custom-analysis-container {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding-bottom: 10px;
-    max-height: 400px; /* Chiều cao tối đa cho cuộn */
-    overflow-y: auto; /* Cho phép cuộn */
-  }
+  .sidebar {
+    width: 420px;
+    height: calc(
+      100vh - 120px
+    ); /* Adjusted to account for toolbar and padding */
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-sizing: border-box;
+    border-left: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+    overflow-y: auto;
+    background-color: rgb(var(--v-theme-surface));
 
-  .analysis-block {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: 6px;
-    border-bottom: 1px dashed rgba(var(--v-border-color), 0.3);
-    cursor: pointer;
-    transition: background 0.2s;
+    // Mobile responsive adjustments
+    @media (max-width: 768px) {
+      width: 100%;
+      max-width: 500px;
+      height: auto;
+      max-height: 60vh;
+      border-left: none;
+      border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+      margin-top: 20px;
+      padding: 10px;
+      gap: 6px;
+    }
+  }
 
-    &:hover {
-        background: rgba(var(--v-theme-on-surface), 0.03);
-    }
-    
-    &.active-pv {
-        background: rgba(76, 175, 80, 0.1); /* Highlight nhẹ khi chọn */
-    }
-  }
+  /* Styles for the engine manager section */
+  .engine-management {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    width: 100%;
 
-  /* Dòng 1: Header (Màu xanh lá đậm) */
-  .analysis-header-line {
-    display: flex;
-    gap: 12px;
-    font-size: 13px;
-    font-weight: 600;
-    color: #2e7d32; /* Green 800 */
-    align-items: center;
-    white-space: nowrap;
-    overflow: hidden;
-  }
-  .analysis-header-line .param {
-      font-family: monospace; /* Dùng font monospace để số/chữ thẳng hàng */
-  }
+    .engine-select {
+      flex-grow: 1;
+    }
 
-  /* Dòng 2: WDL (Màu xanh lá, font nhỏ hơn xíu) */
-  .analysis-wdl-line {
-    display: flex;
-    gap: 10px;
-    font-size: 12px;
-    color: #388e3c; /* Green 700 */
-    font-weight: 500;
-  }
+    .action-btn {
+      flex-shrink: 0;
+    }
+  }
 
-  /* Dòng 3: Grid Moves (Lưới 4 cột) */
-  .analysis-moves-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr); /* 4 cột đều nhau */
-    gap: 2px 8px; /* Khoảng cách hàng 2px, cột 8px */
-    margin-top: 4px;
-  }
+  .full-btn {
+    width: 100%;
+  }
 
-  .move-cell {
-    font-size: 14px;
-    color: #000; /* Chữ đen */
-    font-family:
-      'Noto Sans SC',
-      'Microsoft YaHei',
-      'PingFang SC',
-      'Hiragino Sans GB',
-      'Source Han Sans SC',
-      monospace,
-      sans-serif;
-    white-space: nowrap;
-    letter-spacing: 0.5px;
-  }
+  .button-group {
+    display: flex;
+    gap: 6px;
+    width: 100%;
 
-  /* Text Colors cho Score */
-  .text-green { color: inherit; }
-  .text-mate-win { color: #d32f2f; }
-  .text-mate-loss { color: #1976d2; }
+    // Mobile responsive adjustments
+    @media (max-width: 768px) {
+      gap: 4px;
+    }
+  }
 
-  .no-data {
-    padding: 20px;
-    text-align: center;
-    color: gray;
-    font-style: italic;
-    font-size: 12px;
-  }
+  .match-mode-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
 
-  /* --- CÁC STYLE CŨ --- */
-  .sidebar {
-    width: 420px;
-    height: calc(100vh - 120px);
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    box-sizing: border-box;
-    border-left: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-    overflow-y: auto;
-    background-color: rgb(var(--v-theme-surface));
+    // Mobile responsive adjustments
+    @media (max-width: 768px) {
+      gap: 4px;
+    }
+  }
 
-    @media (max-width: 768px) {
-      width: 100%;
-      max-width: 500px;
-      height: auto;
-      border-left: none;
-      margin-top: 10px;
-    }
-  }
+  .grouped-btn {
+    flex: 1;
 
-  /* ... (Luck Index styles giữ nguyên) ... */
-  .luck-index-panel { display: flex; flex-direction: column; gap: 8px; }
-  .luck-description { font-size: 12px; opacity: 0.7; margin-bottom: 4px; }
-  .luck-row { display: flex; justify-content: space-between; align-items: center; }
-  .luck-value { font-weight: 700; font-size: 18px; }
-  .luck-axis { position: relative; height: 42px; padding: 10px 0 14px 0; margin: 0 4px; }
-  .axis-track { position: absolute; left: 4px; right: 4px; top: 18px; height: 6px; border-radius: 3px; background: linear-gradient(90deg, #2e7d32, #9e9e9e, #d32f2f); opacity: 0.9; }
-  .axis-tick { position: absolute; top: 10px; width: 0; height: 18px; }
-  .axis-tick::before { content: ''; position: absolute; left: -1px; top: 8px; width: 2px; height: 12px; background: rgba(var(--v-border-color), var(--v-border-opacity)); }
-  .tick-label { position: absolute; top: 22px; left: 50%; transform: translateX(-50%); font-size: 10px; opacity: 0.8; white-space: nowrap; }
-  .axis-zero { position: absolute; top: 12px; width: 0; height: 30px; border-left: 2px dashed rgba(var(--v-border-color), var(--v-border-opacity)); }
-  .axis-marker { position: absolute; top: 2px; transform: translateX(-50%); padding: 2px 6px; border-radius: 10px; font-size: 12px; font-weight: 700; background: rgba(var(--v-theme-surface), 0.9); border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); }
-  .luck-legend { display: flex; justify-content: space-between; font-size: 12px; opacity: 0.8; }
-  .luck-positive { color: #d32f2f; }
-  .luck-negative { color: #2e7d32; }
-  .luck-neutral { opacity: 0.85; }
+    // Mobile responsive adjustments
+    @media (max-width: 768px) {
+      font-size: 11px;
+    }
+  }
 
-  /* ... (Notation styles giữ nguyên) ... */
-  .move-list { padding: 5px; height: 150px; overflow-y: auto; border: 1px solid rgba(var(--v-border-color), 0.2); font-size: 13px; }
-  .move-item { display: flex; gap: 8px; padding: 2px 4px; cursor: pointer; &.current-move { background: rgba(var(--v-theme-primary), 0.2); font-weight: bold; } }
-  .move-number { width: 30px; text-align: right; font-weight: bold; }
-  .move-chinese { color: #555; }
-  .section h3 { margin: 0; font-size: 0.9rem; }
-  .notation-header { display: flex; justify-content: space-between; align-items: center; width: 100%; }
-  .notation-controls { display: flex; gap: 2px; align-items: center; }
+  .half-btn {
+    width: 49%;
+
+    // Mobile responsive adjustments
+    @media (max-width: 768px) {
+      width: 48%;
+      font-size: 11px;
+    }
+  }
+  .section {
+    padding-top: 6px;
+    border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  }
+  .section h3,
+  .section-title {
+    margin: 0 0 6px;
+    padding-bottom: 3px;
+    font-size: 0.9rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .analysis-output,
+  .move-list {
+    padding: 10px;
+    border-radius: 5px;
+    height: 150px;
+    overflow-y: auto;
+    font-family: 'Courier New', Courier, monospace;
+    border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+    font-size: 13px;
+
+    // Mobile responsive adjustments
+    @media (max-width: 768px) {
+      height: 120px;
+      font-size: 12px;
+    }
+  }
+
+  /* Make text areas fill available height when panel is undocked/resized */
+  .undocked-panel-content .analysis-output,
+  .undocked-panel-content .move-list,
+  .undocked-panel-content .comments-list,
+  .undocked-panel-content .engine-log {
+    height: 100% !important;
+    max-height: none;
+  }
+
+  .analysis-modern {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .analysis-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+    background: rgba(var(--v-theme-surface), 0.6);
+  }
+
+  .analysis-core {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .score-badge {
+    min-width: 80px;
+    text-align: center;
+    font-size: 28px;
+    font-weight: 800;
+    padding: 6px 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+    background: rgba(var(--v-theme-surface), 0.8);
+  }
+
+  .best-move-box {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .best-move-label {
+    font-size: 12px;
+    color: rgba(var(--v-theme-on-surface), 0.75);
+  }
+
+  .best-move-value {
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .analysis-hud {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px dashed rgba(var(--v-border-color), var(--v-border-opacity));
+    background: rgba(var(--v-theme-surface), 0.5);
+    font-weight: 600;
+  }
+
+  .hud-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    justify-content: center;
+  }
+
+  .hud-icon {
+    font-size: 14px;
+  }
+
+  .wdl-bar {
+    position: relative;
+    display: flex;
+    width: 100%;
+    height: 16px;
+    border-radius: 8px;
+    overflow: visible;
+    border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+    background: rgba(var(--v-theme-surface), 0.5);
+    margin-top: 8px;
+  }
+
+  .wdl-segment {
+    height: 100%;
+  }
+
+  .wdl-segment.win {
+    background: #e53935;
+  }
+
+  .wdl-segment.draw {
+    background: rgba(var(--v-theme-on-surface), 0.35);
+  }
+
+  .wdl-segment.loss {
+    background: #333;
+  }
+
+  .wdl-label {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transform: translateX(-50%);
+    bottom: 100%;
+    gap: 2px;
+    z-index: 2;
+  }
+
+  .wdl-label-text {
+    background: rgba(var(--v-theme-surface), 0.9);
+    color: rgba(var(--v-theme-on-surface), 0.9);
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .wdl-label-line {
+    width: 1px;
+    height: 8px;
+    background: rgba(var(--v-theme-on-surface), 0.55);
+  }
+
+  .analysis-pv-block {
+    border-radius: 8px;
+    border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+    padding: 8px;
+    background: rgba(var(--v-theme-surface), 0.45);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .pv-title {
+    font-weight: 700;
+    font-size: 12px;
+  }
+
+  .pv-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+
+  .pv-toggle-btn {
+    min-width: 28px;
+    height: 28px;
+  }
+
+  .pv-body {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .pv-text {
+    font-size: 12px;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 140px;
+    overflow-y: auto;
+  }
+
+  .extra-info {
+    font-size: 11px;
+    color: rgba(var(--v-theme-on-surface), 0.8);
+    white-space: pre-wrap;
+  }
+
+  .multipv-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .multipv-title {
+    font-weight: 700;
+    font-size: 12px;
+  }
+
+  .multipv-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 140px;
+    overflow-y: auto;
+  }
+
+  .multipv-row {
+    display: grid;
+    grid-template-columns: 48px 70px 1fr 0.6fr;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+    border-radius: 6px;
+    background: rgba(var(--v-theme-surface), 0.5);
+    font-size: 12px;
+    cursor: pointer;
+    transition:
+      background 0.15s ease,
+      border-color 0.15s ease;
+  }
+
+  .multipv-col {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .multipv-row.active {
+    border-color: rgba(var(--v-theme-primary), 0.6);
+    background: rgba(var(--v-theme-primary), 0.08);
+  }
+
+  .multipv-row:hover {
+    border-color: rgba(var(--v-theme-primary), 0.45);
+    background: rgba(var(--v-theme-primary), 0.06);
+  }
+
+  .multipv-idx {
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .multipv-score {
+    font-weight: 700;
+  }
+
+  .multipv-move {
+    font-weight: 600;
+  }
+
+  .multipv-mini {
+    font-size: 11px;
+    color: rgba(var(--v-theme-on-surface), 0.8);
+    text-align: right;
+  }
+
+  .score-positive {
+    color: #c62828;
+    font-weight: bold;
+  }
+
+  .score-negative {
+    color: #2e7d32;
+    font-weight: bold;
+  }
+
+  .score-neutral {
+    color: rgb(var(--v-theme-on-surface));
+  }
+
+  .score-mate-positive {
+    color: #b71c1c;
+    font-weight: bold;
+    background-color: #ffcdd2;
+    padding: 1px 4px;
+    border-radius: 3px;
+  }
+
+  .score-mate-negative {
+    color: #1b5e20;
+    font-weight: bold;
+    background-color: #c8e6c9;
+    padding: 1px 4px;
+    border-radius: 3px;
+  }
+
+  .pv-line {
+    color: #1976d2;
+    font-weight: normal;
+    font-family:
+      'Noto Sans SC',
+      'Microsoft YaHei',
+      'PingFang SC',
+      'Hiragino Sans GB',
+      'Source Han Sans SC',
+      'WenQuanYi Micro Hei',
+      'Heiti SC',
+      system-ui,
+      -apple-system,
+      'Segoe UI',
+      Roboto,
+      Arial,
+      sans-serif;
+  }
+
+  /* ---------- Luck Index Styles ---------- */
+  .luck-index-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .luck-description {
+    color: rgb(var(--v-theme-on-surface));
+    opacity: 0.7;
+    margin-bottom: 4px;
+  }
+  .luck-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .luck-row .label {
+    font-weight: 600;
+    color: rgb(var(--v-theme-on-surface));
+    opacity: 0.8;
+  }
+  .luck-value {
+    font-weight: 700;
+    font-size: 18px;
+  }
+  .luck-positive {
+    color: #d32f2f;
+  }
+  .luck-negative {
+    color: #2e7d32;
+  }
+  .luck-neutral {
+    color: rgb(var(--v-theme-on-surface));
+    opacity: 0.85;
+  }
+  .luck-axis {
+    position: relative;
+    height: 42px;
+    padding: 10px 0 14px 0;
+    margin: 0 4px; /* Add margin to ensure ticks are visible when undocked */
+  }
+  .axis-track {
+    position: absolute;
+    left: 4px; /* Adjust to account for margin */
+    right: 4px; /* Adjust to account for margin */
+    top: 18px;
+    height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(90deg, #2e7d32, #9e9e9e, #d32f2f);
+    opacity: 0.9;
+  }
+  .axis-tick {
+    position: absolute;
+    top: 10px;
+    width: 0;
+    height: 18px;
+  }
+  .axis-tick::before {
+    content: '';
+    position: absolute;
+    left: -1px;
+    top: 8px;
+    width: 2px;
+    height: 12px;
+    background: rgba(var(--v-border-color), var(--v-border-opacity));
+  }
+  .tick-label {
+    position: absolute;
+    top: 22px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    color: rgb(var(--v-theme-on-surface));
+    opacity: 0.8;
+    white-space: nowrap; /* Prevent label wrapping */
+  }
+  .axis-zero {
+    position: absolute;
+    top: 12px;
+    width: 0;
+    height: 30px;
+    border-left: 2px dashed rgba(var(--v-border-color), var(--v-border-opacity));
+  }
+  .axis-marker {
+    position: absolute;
+    top: 2px;
+    transform: translateX(-50%);
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 700;
+    background: rgba(var(--v-theme-surface), 0.9);
+    border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  }
+  .marker-value {
+    font-family: 'Courier New', Courier, monospace;
+  }
+  .luck-legend {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: rgb(var(--v-theme-on-surface));
+    opacity: 0.8;
+  }
+
+  .wdl-info {
+    color: #9c27b0;
+    font-weight: bold;
+  }
+  .move-item {
+    display: flex;
+    gap: 10px;
+    padding: 3px 5px;
+    cursor: pointer;
+    border-radius: 3px;
+  }
+  .move-item:hover {
+    background-color: rgba(var(--v-theme-primary), 0.1);
+  }
+  .move-item.current-move {
+    background-color: rgba(var(--v-theme-primary), 0.2);
+    font-weight: bold;
+  }
+  .move-number {
+    font-weight: bold;
+    width: 40px;
+    text-align: right;
+    white-space: nowrap;
+  }
+  .move-uci {
+    flex: 1;
+  }
+
+  .move-chinese {
+    font-family:
+      'Noto Sans SC',
+      'Microsoft YaHei',
+      'PingFang SC',
+      'Hiragino Sans GB',
+      'Source Han Sans SC',
+      'WenQuanYi Micro Hei',
+      'Heiti SC',
+      system-ui,
+      -apple-system,
+      'Segoe UI',
+      Roboto,
+      Arial,
+      sans-serif;
+    font-size: 0.85rem;
+    color: rgb(var(--v-theme-secondary));
+    font-weight: normal;
+    margin-left: 8px;
+  }
+
+  .move-annot {
+    font-weight: bold;
+    font-size: 0.8rem;
+    margin-left: 4px;
+    padding: 1px 3px;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+
+  .annot-brilliant {
+    color: #0066cc;
+  }
+
+  .annot-good {
+    color: #00bcd4;
+  }
+
+  .annot-interesting {
+    color: #8bc34a;
+  }
+
+  .annot-dubious {
+    color: #ff9800;
+  }
+
+  .annot-mistake {
+    color: #ff5722;
+  }
+
+  .annot-blunder {
+    color: #f44336;
+  }
+
+  .engine-analysis {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-left: 8px;
+    font-size: 11px;
+  }
+
+  .engine-score {
+    font-weight: bold;
+    padding: 1px 3px;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+
+  .engine-time {
+    font-size: 10px;
+    white-space: nowrap;
+  }
+  .move-adjust {
+    font-style: italic;
+    font-size: 12px;
+    width: 100%;
+    text-align: center;
+  }
+  .autoplay-settings {
+    display: flex;
+    justify-content: space-between;
+    gap: 6px;
+
+    // Mobile responsive adjustments
+    @media (max-width: 768px) {
+      gap: 4px;
+    }
+  }
+
+  .pool-manager {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+
+    // Mobile responsive adjustments
+    @media (max-width: 768px) {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+    }
+  }
+  .pool-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1px 4px;
+    border-radius: 4px;
+    border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  }
+  .pool-piece-img {
+    width: 20px;
+    height: 20px;
+  }
+  .pool-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    width: 100%;
+  }
+  .control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .pool-count {
+    font-weight: bold;
+    font-size: 0.9rem;
+    width: 40px;
+    text-align: center;
+  }
+  .switch-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+
+  .compact-switch {
+    flex: 1;
+    margin-top: -6px;
+    margin-bottom: -4px;
+  }
+
+  .compact-switch .v-label {
+    font-size: 0.85rem !important;
+  }
+
+  .custom-switch {
+    margin-top: -6px;
+    margin-bottom: -4px;
+  }
+  .notation-controls {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .notation-btn {
+    flex: 1;
+  }
+
+  .notation-info {
+    background-color: rgb(var(--v-theme-surface));
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-size: 12px;
+    color: rgb(var(--v-theme-on-surface));
+
+    p {
+      margin: 4px 0;
+      line-height: 1.4;
+    }
+  }
+
+  .engine-log {
+    background-color: #2e2e2e;
+    color: #f0f0f0;
+    padding: 10px;
+    border-radius: 5px;
+    height: 150px;
+    overflow-y: scroll;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 12px;
+    white-space: pre-line;
+
+    // Mobile responsive adjustments
+    @media (max-width: 768px) {
+      height: 120px;
+      font-size: 11px;
+    }
+  }
+
+  .notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #333;
+    color: white;
+    padding: 12px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    z-index: 1000;
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: all 0.3s ease;
+
+    &.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .line-sent {
+    color: #87cefa;
+  }
+  .line-sent::before {
+    content: '>> ';
+  }
+  .line-recv {
+    color: #b3b3b3;
+  }
+
+  .about-section {
+    margin-top: auto;
+    padding-top: 8px;
+    border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  }
+
+  /* ---------- Comment Styles ---------- */
+  .comments-list {
+    padding: 10px;
+    border-radius: 5px;
+    height: 200px;
+    overflow-y: auto;
+    border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+    font-size: 13px;
+
+    // Mobile responsive adjustments
+    @media (max-width: 768px) {
+      height: 150px;
+      font-size: 12px;
+    }
+  }
+
+  .comment-item {
+    margin-bottom: 8px;
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+    background-color: rgba(var(--v-theme-surface), 0.8);
+  }
+
+  .comment-item.current-comment {
+    background-color: rgba(var(--v-theme-primary), 0.1);
+    border-color: rgb(var(--v-theme-primary));
+  }
+
+  .comment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+
+  .comment-number {
+    font-weight: bold;
+    font-size: 12px;
+  }
+
+  .comment-text {
+    font-size: 13px;
+    line-height: 1.4;
+    word-wrap: break-word;
+  }
+
+  .comment-edit {
+    margin-top: 4px;
+  }
+
+  .comment-toolbar {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+
+  .comment-text :deep(h1),
+  .comment-text :deep(h2),
+  .comment-text :deep(h3),
+  .comment-text :deep(h4) {
+    margin: 6px 0 4px;
+    line-height: 1.2;
+  }
+  .comment-text :deep(p) {
+    margin: 4px 0;
+  }
+  .comment-text :deep(a) {
+    color: rgb(var(--v-theme-primary));
+    text-decoration: underline;
+  }
+
+  .comment-edit-buttons {
+    display: flex;
+    gap: 4px;
+    margin-top: 4px;
+  }
+
+  .panel-header .section-title {
+    margin: 0;
+    padding-left: 8px;
+    font-size: 0.9rem;
+    flex-grow: 1;
+  }
+
+  /* ---------- Match Mode Styles ---------- */
+  .match-output {
+    padding: 8px;
+    font-family: monospace;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .match-info {
+    border-radius: 6px;
+    padding: 12px;
+    border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  }
+
+  .match-status {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .status-line .label {
+    font-weight: 600;
+    color: rgb(var(--v-theme-on-surface));
+    opacity: 0.8;
+  }
+
+  .status-line .value {
+    font-weight: 500;
+    color: rgb(var(--v-theme-primary));
+  }
+
+  .no-match-info {
+    padding: 20px;
+    text-align: center;
+    color: rgb(var(--v-theme-on-surface));
+    opacity: 0.6;
+    font-style: italic;
+  }
+
+  .analysis-info {
+    margin-top: 12px;
+    padding: 8px;
+    border-radius: 4px;
+    background-color: rgba(var(--v-theme-surface), 0.8);
+    border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  }
+
+  .info-header {
+    font-weight: bold;
+    font-size: 12px;
+    margin-bottom: 6px;
+    color: rgb(var(--v-theme-primary));
+  }
+
+  .analysis-line {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 11px;
+    line-height: 1.3;
+    white-space: pre-line;
+  }
+
+  /* ---------- Notation Navigation Styles ---------- */
+  .notation-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+  }
+
+  .notation-header h3 {
+    margin: 0;
+    font-size: 0.9rem;
+  }
+
+  .notation-controls {
+    display: flex;
+    gap: 2px;
+    align-items: center;
+  }
+
+  .notation-controls .v-btn {
+    min-width: 28px;
+    height: 28px;
+  }
+
+  /* Disable clicks during match running */
+  .disabled-clicks .move-item {
+    pointer-events: none;
+    opacity: 0.6;
+  }
 </style>
