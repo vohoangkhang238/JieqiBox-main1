@@ -129,17 +129,56 @@
 
         <v-divider vertical class="mx-2 my-1"></v-divider>
 
-        <div v-if="!isMatchRunning" class="d-flex align-center">
-          <v-btn @click="toggleBlackAi" variant="text" icon size="small" density="compact" class="mx-1" :disabled="!isEngineLoaded" :title="isBlackAi ? 'Tắt AI Đen' : 'Bật AI Đen'">
-            <img src="@/assets/robotblack.png" alt="Black AI" style="width: 24px; height: 24px; object-fit: contain;" :style="{ opacity: isBlackAi ? 1 : 0.4 }" />
+        <div v-if="!isMatchRunning" class="d-flex align-center" style="gap: 20px;">
+          <v-btn 
+            @click="toggleBlackAi" 
+            variant="text" 
+            icon 
+            size="small" 
+            density="compact" 
+            :disabled="!engineLoaded" 
+            :title="isBlackAi ? 'Tắt AI Đen' : 'Bật AI Đen'"
+          >
+            <img 
+              src="@/assets/robotblack.png" 
+              alt="Black AI" 
+              style="width: 24px; height: 24px; object-fit: contain;" 
+              :style="{ opacity: isBlackAi ? 1 : 0.4 }" 
+            />
           </v-btn>
 
-          <v-btn @click="toggleRedAi" variant="text" icon size="small" density="compact" class="mx-1" :disabled="!isEngineLoaded" :title="isRedAi ? 'Tắt AI Đỏ' : 'Bật AI Đỏ'">
-            <img src="@/assets/robotred.png" alt="Red AI" style="width: 24px; height: 24px; object-fit: contain;" :style="{ opacity: isRedAi ? 1 : 0.4 }" />
+          <v-btn 
+            @click="toggleRedAi" 
+            variant="text" 
+            icon 
+            size="small" 
+            density="compact" 
+            :disabled="!engineLoaded" 
+            :title="isRedAi ? 'Tắt AI Đỏ' : 'Bật AI Đỏ'"
+          >
+            <img 
+              src="@/assets/robotred.png" 
+              alt="Red AI" 
+              style="width: 24px; height: 24px; object-fit: contain;" 
+              :style="{ opacity: isRedAi ? 1 : 0.4 }" 
+            />
           </v-btn>
 
-          <v-btn @click="handleAnalysisButtonClick" variant="text" icon size="small" density="compact" class="mx-1" :disabled="!isEngineLoaded" :title="isManualAnalysis ? 'Dừng phân tích' : 'Bắt đầu phân tích'">
-            <img src="@/assets/analyze_icon.png" alt="Analyze" style="width: 24px; height: 24px; object-fit: contain;" :style="{ opacity: isManualAnalysis ? 1 : 0.4 }" />
+          <v-btn 
+            @click="handleAnalysisButtonClick" 
+            variant="text" 
+            icon 
+            size="small" 
+            density="compact" 
+            :disabled="!engineLoaded" 
+            :title="isManualAnalysis ? 'Dừng phân tích' : 'Bắt đầu phân tích'"
+          >
+            <img 
+              src="@/assets/analyze_icon.png" 
+              alt="Analyze" 
+              style="width: 24px; height: 24px; object-fit: contain;" 
+              :style="{ opacity: isManualAnalysis ? 1 : 0.4 }" 
+            />
           </v-btn>
 
           <v-btn 
@@ -149,7 +188,6 @@
             @click="handleVariation" 
             :disabled="!isVariationAvailable" 
             :title="$t('toolbar.variation')"
-            class="mx-1"
           >
             <img 
               src="@/assets/goim.png" 
@@ -205,10 +243,14 @@
     clearUserArrows 
   } = gameState
 
+  // --- SỬA LỖI REACTIVITY: Truy cập trực tiếp engineState ---
   const { 
-    isEngineLoaded, isThinking, isStopping, startAnalysis, stopAnalysis, 
-    currentSearchMoves, bestMove, isPondering, stopPonder 
+    isThinking, isStopping, startAnalysis, stopAnalysis, 
+    currentSearchMoves, bestMove, isPondering, stopPonder, loadEngine 
   } = engineState
+  
+  // Tạo computed property để đảm bảo luôn lấy giá trị mới nhất
+  const engineLoaded = computed(() => engineState.isEngineLoaded.value)
 
   // Dialog states
   const showUciOptionsDialog = ref(false)
@@ -356,7 +398,7 @@
       stopAnalysis({ playBestMoveOnStop: false })
       return
     }
-    const shouldRunAi = isEngineLoaded.value && isCurrentAiTurnNow() && !isThinking.value && !pendingFlip.value && !isMatchRunning.value && !isManualAnalysis.value
+    const shouldRunAi = engineLoaded.value && isCurrentAiTurnNow() && !isThinking.value && !pendingFlip.value && !isMatchRunning.value && !isManualAnalysis.value
     if (shouldRunAi) {
       try {
         const enableBook = gameState?.openingBook?.config?.enableInGame
@@ -379,15 +421,15 @@
   }
 
   // Watchers
-  watch([sideToMove, isRedAi, isBlackAi, isEngineLoaded, pendingFlip], () => { nextTick(() => checkAndTriggerAi()) })
+  watch([sideToMove, isRedAi, isBlackAi, engineLoaded, pendingFlip], () => { nextTick(() => checkAndTriggerAi()) })
   watch(currentMoveIndex, () => {
-    if (isManualAnalysis.value && !isThinking.value && isEngineLoaded.value && !isStopping.value && !isCurrentAiTurnNow()) {
+    if (isManualAnalysis.value && !isThinking.value && engineLoaded.value && !isStopping.value && !isCurrentAiTurnNow()) {
       manualStartAnalysis()
     }
   })
   watch(bestMove, move => {
     if (!move) return
-    if (isEngineLoaded.value && isCurrentAiTurnNow() && !isMatchRunning.value && !isManualAnalysis.value) {
+    if (engineLoaded.value && isCurrentAiTurnNow() && !isMatchRunning.value && !isManualAnalysis.value) {
       ;(window as any).__LAST_AI_MOVE__ = move
       setTimeout(() => {
         const ok = playMoveFromUci(move)
@@ -503,17 +545,31 @@
     }
   }
   
+  // --- CẢI THIỆN: Auto Load Engine ---
   const autoLoadEngine = async () => {
     await refreshManagedEngines()
     if (managedEngines.value.length > 0) {
       const lastId = configManager.getLastSelectedEngineId()
-      const engineToLoad = lastId ? managedEngines.value.find(e => e.id === lastId) : managedEngines.value[0]
+      // Nếu có lastId thì lấy, không thì lấy engine đầu tiên
+      const engineToLoad = lastId 
+        ? managedEngines.value.find(e => e.id === lastId) 
+        : managedEngines.value[0]
+      
       if (engineToLoad) {
         selectedEngineId.value = engineToLoad.id
+        
+        // Kiểm tra xem đang ở chế độ nào để load đúng engine
         if (isMatchMode.value) {
-           if (!jaiEngine.isEngineLoaded.value) jaiEngine.loadEngine(engineToLoad)
+           if (!jaiEngine.isEngineLoaded.value) {
+             console.log("Auto-loading Match Engine:", engineToLoad.name)
+             jaiEngine.loadEngine(engineToLoad)
+           }
         } else {
-           if (!isEngineLoaded.value) loadEngine(engineToLoad)
+           // Ở chế độ thường, kiểm tra engineState.isEngineLoaded
+           if (!engineState.isEngineLoaded.value) {
+             console.log("Auto-loading Analysis Engine:", engineToLoad.name)
+             loadEngine(engineToLoad)
+           }
         }
       }
     }
