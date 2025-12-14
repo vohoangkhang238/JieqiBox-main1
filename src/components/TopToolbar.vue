@@ -213,7 +213,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, inject, computed, onUnmounted, onMounted, watch, nextTick } from 'vue'
+  import { ref, inject, computed, onUnmounted, onMounted, watch, nextTick, unref } from 'vue'
   import { useI18n } from 'vue-i18n'
   import UciOptionsDialog from './UciOptionsDialog.vue'
   import TimeDialog from './TimeDialog.vue'
@@ -243,14 +243,13 @@
     clearUserArrows 
   } = gameState
 
-  // --- SỬA LỖI REACTIVITY: Truy cập trực tiếp engineState ---
   const { 
     isThinking, isStopping, startAnalysis, stopAnalysis, 
     currentSearchMoves, bestMove, isPondering, stopPonder, loadEngine 
   } = engineState
   
-  // Tạo computed property để đảm bảo luôn lấy giá trị mới nhất
-  const engineLoaded = computed(() => engineState.isEngineLoaded.value)
+  // FIX: Dùng unref để đảm bảo lấy đúng giá trị boolean
+  const engineLoaded = computed(() => unref(engineState.isEngineLoaded))
 
   // Dialog states
   const showUciOptionsDialog = ref(false)
@@ -336,15 +335,23 @@
   }
 
   function toggleRedAi() {
+    // FIX: Đảm bảo dừng phân tích nếu nó đang chạy và AI bị tắt
     if (isRedAi.value && isThinking.value && sideToMove.value === 'red') stopAnalysis({ playBestMoveOnStop: false })
+    
+    // Nếu AI được bật, tắt Phân tích thủ công
     if (!isRedAi.value) isManualAnalysis.value = false
+    
     isRedAi.value = !isRedAi.value
     nextTick(() => checkAndTriggerAi())
   }
 
   function toggleBlackAi() {
+    // FIX: Đảm bảo dừng phân tích nếu nó đang chạy và AI bị tắt
     if (isBlackAi.value && isThinking.value && sideToMove.value === 'black') stopAnalysis({ playBestMoveOnStop: false })
+    
+    // Nếu AI được bật, tắt Phân tích thủ công
     if (!isBlackAi.value) isManualAnalysis.value = false
+    
     isBlackAi.value = !isBlackAi.value
     nextTick(() => checkAndTriggerAi())
   }
@@ -399,7 +406,10 @@
       return
     }
     const shouldRunAi = engineLoaded.value && isCurrentAiTurnNow() && !isThinking.value && !pendingFlip.value && !isMatchRunning.value && !isManualAnalysis.value
+    
     if (shouldRunAi) {
+      // FIX: Thêm log để theo dõi
+      console.log("checkAndTriggerAi: Starting analysis for next AI move.")
       try {
         const enableBook = gameState?.openingBook?.config?.enableInGame
         const getBookMoveFn = gameState?.getOpeningBookMove
@@ -410,32 +420,42 @@
             ;(window as any).__AI_MOVE_FROM_BOOK__ = true
             const ok = playMoveFromUci(bookMove)
             if (ok) {
+              // Nếu thành công, gọi lại ngay lập tức để AI đối thủ đi tiếp
               nextTick(() => checkAndTriggerAi())
               return
             }
           }
         }
       } catch (e) { console.error(e) }
-      startAnalysis(analysisSettings.value, engineMovesSinceLastReveal.value, baseFenForEngine.value, currentSearchMoves.value)
+      
+      // Khởi động phân tích vô hạn để tìm nước đi
+      const infiniteSettings = { movetime: 0, maxThinkTime: 0, maxDepth: 0, maxNodes: 0, analysisMode: 'infinite' }
+      startAnalysis(infiniteSettings, engineMovesSinceLastReveal.value, baseFenForEngine.value, currentSearchMoves.value)
     }
   }
 
   // Watchers
+  // FIX: Thêm sideToMove vào watcher để trigger ngay khi đến lượt AI
   watch([sideToMove, isRedAi, isBlackAi, engineLoaded, pendingFlip], () => { nextTick(() => checkAndTriggerAi()) })
+  
   watch(currentMoveIndex, () => {
     if (isManualAnalysis.value && !isThinking.value && engineLoaded.value && !isStopping.value && !isCurrentAiTurnNow()) {
       manualStartAnalysis()
     }
   })
+  
   watch(bestMove, move => {
     if (!move) return
+    // Chỉ xử lý nếu đang ở chế độ AI chơi
     if (engineLoaded.value && isCurrentAiTurnNow() && !isMatchRunning.value && !isManualAnalysis.value) {
+      console.log(`AI Move Found: ${move}. Playing move and triggering next AI turn.`)
       ;(window as any).__LAST_AI_MOVE__ = move
       setTimeout(() => {
         const ok = playMoveFromUci(move)
-        bestMove.value = ''
+        bestMove.value = '' // Clear bestMove sau khi đi
         if (ok) {
           if (gameState.handlePonderAfterMove) gameState.handlePonderAfterMove(move, true)
+          // Kích hoạt AI đối thủ ngay sau khi nước đi này được hoàn thành
           nextTick(() => checkAndTriggerAi())
         }
       }, 50)
@@ -545,33 +565,37 @@
     }
   }
   
-  // --- CẢI THIỆN: Auto Load Engine ---
   const autoLoadEngine = async () => {
     await refreshManagedEngines()
+    
+    // Log kiểm tra danh sách engine
+    console.log("TopToolbar: Engines found:", managedEngines.value)
+
     if (managedEngines.value.length > 0) {
       const lastId = configManager.getLastSelectedEngineId()
-      // Nếu có lastId thì lấy, không thì lấy engine đầu tiên
       const engineToLoad = lastId 
         ? managedEngines.value.find(e => e.id === lastId) 
         : managedEngines.value[0]
       
       if (engineToLoad) {
         selectedEngineId.value = engineToLoad.id
-        
-        // Kiểm tra xem đang ở chế độ nào để load đúng engine
-        if (isMatchMode.value) {
-           if (!jaiEngine.isEngineLoaded.value) {
-             console.log("Auto-loading Match Engine:", engineToLoad.name)
-             jaiEngine.loadEngine(engineToLoad)
-           }
+        console.log("TopToolbar: Attempting to load engine:", engineToLoad.name)
+
+        if (isMatchRunning.value) { 
+           if (!jaiEngine.isEngineLoaded.value) jaiEngine.loadEngine(engineToLoad)
         } else {
-           // Ở chế độ thường, kiểm tra engineState.isEngineLoaded
-           if (!engineState.isEngineLoaded.value) {
-             console.log("Auto-loading Analysis Engine:", engineToLoad.name)
-             loadEngine(engineToLoad)
+           if (!engineLoaded.value) {
+             try {
+                await loadEngine(engineToLoad)
+                console.log("TopToolbar: Analysis Engine loaded successfully.")
+             } catch (err) {
+                console.error("TopToolbar: Failed to load Analysis engine:", err)
+             }
            }
         }
       }
+    } else {
+        console.warn("TopToolbar: No engines found in configManager.")
     }
   }
 
@@ -614,7 +638,6 @@
 
   .top-toolbar {
     display: flex;
-    /* Canh trái */
     justify-content: flex-start; 
     align-items: center;
     padding: 4px 16px;
@@ -632,7 +655,6 @@
     display: flex;
     gap: 4px;
     align-items: center;
-    /* Chiếm hết không gian */
     flex-grow: 1; 
 
     @media (max-width: 768px) {
@@ -641,7 +663,6 @@
     }
   }
 
-  /* Ẩn toolbar bên phải nhưng giữ class */
   .toolbar-right {
     display: none; 
   }
