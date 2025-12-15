@@ -77,7 +77,12 @@
             ...rcStyle(displayRow(lastMovePositions.to.row), displayCol(lastMovePositions.to.col)),
             width: '12%'
           }"
-        ></div>
+        >
+          <div class="corner top-left"></div>
+          <div class="corner top-right"></div>
+          <div class="corner bottom-left"></div>
+          <div class="corner bottom-right"></div>
+        </div>
       </div>
 
       <div
@@ -220,7 +225,6 @@
   const isMatchRunning = computed(() => jaiEngine?.isMatchRunning?.value || false)
   const { pieces, selectedPieceId, handleBoardClick, isAnimating, lastMovePositions, registerArrowClearCallback, history, currentMoveIndex, unrevealedPieceCounts, adjustUnrevealedCount, getPieceNameFromChar, validationStatus } = gs
 
-  // COMPUTED SELECTED PIECE
   const selectedPiece = computed(() => { if (!unref(selectedPieceId)) return null; return unref(pieces).find((p: Piece) => p.id === unref(selectedPieceId)) })
 
   const poolErrorMessage = computed(() => {
@@ -438,53 +442,49 @@
 </script>
 
 <style scoped lang="scss">
-  /* HIỆU ỨNG 4 GÓC (BRACKET) CHO QUÂN ĐANG CHỌN */
+  /* 1. HIỆU ỨNG CHỌN QUÂN (SELECTION MARK): XANH DƯƠNG */
   .selection-mark { position: absolute; width: 12%; aspect-ratio: 1; transform: translate(-50%, -50%); pointer-events: none; z-index: 30; }
-  .corner { position: absolute; width: 20%; height: 20%; border-style: solid; border-color: #007bff; border-width: 2px; }
+  /* Màu xanh dương cho selection */
+  .selection-mark .corner { border-color: #007bff; } 
+
+  /* 2. HIỆU ỨNG NƯỚC ĐI ĐẾN (TO): XANH LÁ/CYAN */
+  .highlight.to { position: absolute; width: 12%; aspect-ratio: 1; transform: translate(-50%, -50%); pointer-events: none; z-index: 25; }
+  /* Màu cyan cho destination */
+  .highlight.to .corner { border-color: #4ecdc4; }
+
+  /* CHIA SẺ STYLE CORNER (4 GÓC) */
+  .corner { position: absolute; width: 20%; height: 20%; border-style: solid; border-width: 2px; }
   .top-left { top: 0; left: 0; border-right: none; border-bottom: none; }
   .top-right { top: 0; right: 0; border-left: none; border-bottom: none; }
   .bottom-left { bottom: 0; left: 0; border-right: none; border-top: none; }
   .bottom-right { bottom: 0; right: 0; border-left: none; border-top: none; }
 
-  /* HIỆU ỨNG CHẤM NHỎ (SMALL DOT) CHO NƯỚC ĐI HỢP LỆ */
+  /* 3. HIỆU ỨNG NƯỚC ĐI TỪ (FROM): CHẤM TRÒN NHỎ */
+  .highlight.from {
+    position: absolute;
+    /* Width được set inline là 2.5% */
+    aspect-ratio: 1;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(255, 107, 107, 0.8);
+    box-shadow: 0 0 4px rgba(255, 107, 107, 0.5);
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  /* 4. GỢI Ý NƯỚC ĐI (VALID MOVE): CHẤM TRÒN NHỎ XANH */
   .valid-move-dot {
     position: absolute;
-    /* Width đã được override trong template thành 2.5% */
     width: 2.5%; 
     aspect-ratio: 1;
     border-radius: 50%;
     transform: translate(-50%, -50%);
-    background: #4caf50; /* Xanh lá đậm */
+    background: #4caf50; 
     border: 1px solid #2e7d32;
     box-shadow: 0 0 4px rgba(0,0,0,0.3);
     user-select: none;
     z-index: 15;
     pointer-events: none;
-  }
-
-  /* HIỆU ỨNG LAST MOVE (TÙY CHỈNH THEO TRẠNG THÁI) */
-  .highlight {
-    position: absolute; 
-    /* width sẽ được override inline trong template */
-    aspect-ratio: 1; 
-    transform: translate(-50%, -50%);
-    pointer-events: none; 
-    z-index: 10;
-  }
-
-  /* FROM: CHẤM TRÒN ĐỎ (ĐÃ SỬA: BỎ BORDER, THÊM NỀN) */
-  .highlight.from { 
-    background-color: rgba(255, 107, 107, 0.8); 
-    border-radius: 50%;
-    box-shadow: 0 0 4px rgba(255, 107, 107, 0.5);
-    border: none;
-  }
-
-  /* TO: KHUNG VUÔNG XANH (Frame bao quanh quân cờ) */
-  .highlight.to { 
-    border: 2px solid #4ecdc4; 
-    background: transparent; 
-    border-radius: 4px; /* Bo góc nhẹ */
   }
 
   /* --- CÁC STYLE KHÁC GIỮ NGUYÊN --- */
