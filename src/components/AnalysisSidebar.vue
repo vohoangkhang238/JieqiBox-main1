@@ -102,13 +102,11 @@ const configManager = useConfigManager()
 const gameState = inject('game-state') as any
 const engineState = inject('engine-state') as any
 const jaiEngine = inject('jai-engine-state') as any 
-// Giả định các biến này tồn tại trong scope lớn hơn 
 const isMatchMode = ref(false)
 const isHumanVsAiMode = ref(false)
 
 const { 
   history, currentMoveIndex, initialFen, generateFen, replayToMove,
-  // Đã bỏ: toggleBoardFlip, isBoardFlipped, undoLastMove
 } = gameState
 
 const { 
@@ -179,12 +177,6 @@ const handleEngineChange = async () => {
   }
 }
 
-/*
-  Các hàm đã bị loại bỏ vì không còn nút điều khiển:
-  function handleAnalysisButtonClick() { ... }
-  function handleUndoMove() { ... }
-*/
-
 // --- Logic Parse Log (Giống ảnh) ---
 
 // Helper parse dòng UCI
@@ -243,9 +235,8 @@ const parsedLogList = computed(() => {
   const rawLines = engineState.engineOutput.value
     .filter((l: any) => l.kind === 'recv' && l.text.startsWith('info depth'))
     .map((l: any) => l.text)
-    .reverse() // Mới nhất lên đầu
-
-  // Chỉ lấy tối đa 20 dòng để hiển thị
+    .reverse() // MỚI NHẤT LÊN ĐẦU
+  
   const displayLines = rawLines.slice(0, 20)
   
   const currentFen = generateFen()
@@ -283,7 +274,8 @@ onMounted(async () => {
 watch(parsedLogList, () => {
   nextTick(() => {
     const container = document.querySelector('.pikafish-log-container');
-    if (container) {
+    // Chỉ cuộn nếu người dùng chưa cuộn thủ công
+    if (container && container.scrollHeight - container.clientHeight <= container.scrollTop + 50) {
       container.scrollTop = container.scrollHeight;
     }
   })
@@ -432,8 +424,6 @@ watch(parsedLogList, () => {
 }
 
 /* 3. CÁC NÚT VÀ NOTATION */
-
-/* Đã loại bỏ .button-group, .grouped-btn */
 
 .mt-2 {
     margin-top: 8px !important;
