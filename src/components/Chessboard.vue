@@ -31,8 +31,6 @@
       <div
         class="pieces"
         @click="boardClick"
-        @mousedown.right="handleRightMouseDown"
-        @mouseup.right="handleRightMouseUp"
         @contextmenu.prevent
       >
         <img
@@ -60,7 +58,6 @@
       </div>
 
       <div class="last-move-highlights" v-if="lastMovePositions">
-        
         <div
           class="highlight from"
           :class="getAnnotationClass(lastMovePositions)"
@@ -69,7 +66,6 @@
             width: '2.5%' 
           }"
         ></div>
-
         <div
           class="highlight to"
           :class="getAnnotationClass(lastMovePositions)"
@@ -287,35 +283,16 @@
     return { row: Math.max(0, Math.min(ROWS - 1, Math.round(rowFloat))), col: Math.max(0, Math.min(COLS - 1, Math.round(colFloat))) }
   }
 
+  /* * ĐÃ VÔ HIỆU HÓA HÀM XỬ LÝ CHUỘT PHẢI ĐỂ KHÔNG VẼ HÌNH TRÒN 
+   * (Các hàm này vẫn giữ lại để không gây lỗi logic nếu có tham chiếu, nhưng không được gọi từ template)
+   */
   const handleRightMouseDown = (e: MouseEvent) => {
-    e.preventDefault(); if (isMatchRunning.value) return
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-    const xp = ((e.clientX - rect.left) / rect.width) * 100, yp = ((e.clientY - rect.top) / rect.height) * 100
-    const { row, col } = snapPercentToRC(xp, yp); const snapped = percentFromRC(row, col)
-    drawingStart.value = { x: snapped.x, y: snapped.y }; drawingStartRC.value = { row, col }; isDrawing.value = true
+    e.preventDefault(); 
+    // Disabled
   }
 
   const handleRightMouseUp = (e: MouseEvent) => {
-    if (!isDrawing.value || !drawingStart.value) return
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-    const xp = ((e.clientX - rect.left) / rect.width) * 100, yp = ((e.clientY - rect.top) / rect.height) * 100
-    const { row, col } = snapPercentToRC(xp, yp); const endCenter = percentFromRC(row, col)
-    const svgX = drawingStart.value.x * 0.9, svgY = drawingStart.value.y
-    const endSvgX = endCenter.x * 0.9, endSvgY = endCenter.y
-
-    if (drawingStartRC.value && (row !== drawingStartRC.value.row || col !== drawingStartRC.value.col)) {
-      const fromRow = drawingStartRC.value.row, fromCol = drawingStartRC.value.col
-      const existingIdx = userArrows.value.findIndex(a => a.fromRow === fromRow && a.fromCol === fromCol && a.toRow === row && a.toCol === col)
-      if (existingIdx >= 0) userArrows.value.splice(existingIdx, 1)
-      else userArrows.value.push({ x1: svgX, y1: svgY, x2: endSvgX, y2: endSvgY, fromRow, fromCol, toRow: row, toCol: col })
-    } else {
-      const cellW = GX / (COLS - 1), cellH = GY / (ROWS - 1), radiusSvg = Math.max(3, Math.min(8, Math.min(0.9 * cellW, cellH) * 0.5))
-      const cRow = drawingStartRC.value?.row ?? 0, cCol = drawingStartRC.value?.col ?? 0
-      const existingIdx = userCircles.value.findIndex(c => c.row === cRow && c.col === cCol)
-      if (existingIdx >= 0) userCircles.value.splice(existingIdx, 1)
-      else userCircles.value.push({ x: svgX, y: svgY, radius: radiusSvg, row: cRow, col: cCol })
-    }
-    isDrawing.value = false; drawingStart.value = null; drawingStartRC.value = null
+    // Disabled
   }
 
   const clearUserDrawings = () => { userCircles.value = []; userArrows.value = [] }
@@ -447,13 +424,12 @@
   /* Màu xanh dương cho selection */
   .selection-mark .corner { border-color: #007bff; } 
 
-  /* 2. HIỆU ỨNG NƯỚC ĐI ĐẾN (TO): XANH LÁ/CYAN */
+  /* 2. HIỆU ỨNG NƯỚC ĐI ĐẾN (TO): 4 GÓC XANH LÁ/CYAN */
   .highlight.to { position: absolute; width: 12%; aspect-ratio: 1; transform: translate(-50%, -50%); pointer-events: none; z-index: 25; }
   /* Màu cyan cho destination */
   .highlight.to .corner { border-color: #4ecdc4; }
 
-  /* CHIA SẺ STYLE CORNER (4 GÓC - ĐẬM HƠN & BO GÓC) */
-  /* Tăng độ dày border lên 3px, thêm border-radius cho các góc ngoài */
+  /* CHIA SẺ STYLE CORNER (4 GÓC - ĐẬM & BO GÓC) */
   .corner { position: absolute; width: 25%; height: 25%; border-style: solid; border-width: 3px; }
   .top-left { top: 0; left: 0; border-right: none; border-bottom: none; border-top-left-radius: 6px; }
   .top-right { top: 0; right: 0; border-left: none; border-bottom: none; border-top-right-radius: 6px; }
