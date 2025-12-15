@@ -4,20 +4,13 @@
       <div class="panel-content section">
         <div class="panel-header">
           <slot name="header"></slot>
-          <v-btn
-            icon="mdi-arrow-expand"
-            size="x-small"
-            variant="text"
-            @click="handleUndock"
-            :title="$t('analysis.undockPanel')"
-          />
-        </div>
+          
+          </div>
         <slot></slot>
       </div>
     </template>
   </div>
 
-  <!-- Teleport the draggable component to body when undocked -->
   <Teleport to="body" v-if="!isDocked">
     <Vue3DraggableResizable
       :initW="panelState.width.value"
@@ -38,14 +31,8 @@
       <div class="undocked-panel-wrapper">
         <div class="panel-header drag-handle">
           <slot name="header"></slot>
-          <v-btn
-            icon="mdi-dock-window"
-            size="x-small"
-            variant="text"
-            @click="handleDock"
-            :title="$t('analysis.dockPanel')"
-          />
-        </div>
+          
+          </div>
         <div class="undocked-panel-content">
           <slot></slot>
         </div>
@@ -151,7 +138,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    cursor: arrow; /* Arrow cursor for docked state */
+    /* cursor: arrow;  Bỏ cursor arrow vì không còn nút bấm */
   }
 
   /* Move cursor only for undocked panel header */
