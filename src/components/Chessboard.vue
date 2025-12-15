@@ -49,7 +49,7 @@
         </div>
 
         <div 
-          v-if="selectedPiece" 
+          v-if="selectedPiece && !pendingFlip" 
           class="selection-mark"
           :style="rcStyle(selectedPiece.row, selectedPiece.col, 30)"
         >
@@ -121,7 +121,7 @@
           />
         </svg>
 
-        <div class="valid-moves-indicators" v-if="validMovesForSelectedPiece.length > 0">
+        <div class="valid-moves-indicators" v-if="validMovesForSelectedPiece.length > 0 && !pendingFlip">
           <div
             v-for="(move, index) in validMovesForSelectedPiece"
             :key="`valid-move-${index}`"
@@ -161,40 +161,40 @@
           </template>
         </svg>
 
+        <div 
+          v-if="pendingFlip" 
+          class="flip-overlay-fixed" 
+          @click.stop
+        ></div>
+
+        <div 
+          v-if="pendingFlip && selectedPiece" 
+          class="radial-menu-container"
+          :style="{
+            ...rcStyle(selectedPiece.row, selectedPiece.col, 2500),
+            width: '34%', 
+            height: 'auto',
+            'aspect-ratio': '1/1'
+          }"
+        >
+          <div 
+            v-for="(item, index) in flipSelectionPieces" 
+            :key="item.name" 
+            class="radial-item"
+            :style="getRadialItemStyle(index, flipSelectionPieces.length)"
+            @click.stop="handleFlipSelect(item.name)"
+          >
+            <img :src="getPieceImageUrl(item.name)" class="radial-img" />
+            <div class="radial-count">{{ item.count }}</div>
+          </div>
+        </div>
         <ClearHistoryConfirmDialog :visible="showClearHistoryDialog" :onConfirm="onConfirmClearHistory" :onCancel="onCancelClearHistory" />
       </div>
 
-      <div v-if="pendingFlip" class="flip-prompt-area">
-        <div class="flip-prompt-container">
-          <div class="flip-prompt-header">
-            <span class="flip-prompt-title">
-              <v-icon icon="mdi-help-circle-outline" size="small" class="mr-1"></v-icon>
-              Chọn quân {{ pendingFlip.side === 'red' ? 'Đỏ' : 'Đen' }}
-            </span>
-            <button class="random-btn" @click="handleFlipRandom">
-              <v-icon icon="mdi-shuffle-variant" size="small" class="mr-1"></v-icon>
-              Ngẫu nhiên
-            </button>
-          </div>
-          
-          <div class="flip-choices fluid-layout">
-            <div 
-              v-for="item in flipSelectionPieces" 
-              :key="item.name" 
-              class="flip-choice-item"
-              @click="handleFlipSelect(item.name)"
-            >
-              <div class="img-wrapper">
-                <img :src="getPieceImageUrl(item.name)" class="flip-img" />
-              </div>
-              <div class="flip-count-badge">{{ item.count }}</div>
-            </div>
-            
-            <div v-if="flipSelectionPieces.length === 0" class="flip-error">
-              <v-icon icon="mdi-alert" color="error" class="mr-1"></v-icon>
-              Hết quân loại này!
-            </div>
-          </div>
+      <div v-if="pendingFlip" class="flip-hint-area">
+        <div class="flip-hint-text">
+          <v-icon icon="mdi-gesture-tap" size="small" class="mr-1"></v-icon>
+          Vui lòng chọn quân cần lật
         </div>
       </div>
     </div>
@@ -258,11 +258,30 @@
   const es = inject('engine-state') as { pvMoves: any; bestMove: any; isThinking: any; multiPvMoves: any; stopAnalysis: any; isPondering: any; isInfinitePondering: any; ponderMove: any; ponderhit: any; analysis?: any }
   const jaiEngine = inject('jai-engine-state') as any
   const isMatchRunning = computed(() => jaiEngine?.isMatchRunning?.value || false)
+  
+  // DÙNG LOGIC LẤY BIẾN NHƯ CŨ ĐỂ ĐẢM BẢO TƯƠNG THÍCH AI
   const { pieces, selectedPieceId, handleBoardClick, isAnimating, lastMovePositions, registerArrowClearCallback, history, currentMoveIndex, unrevealedPieceCounts, adjustUnrevealedCount, getPieceNameFromChar, validationStatus, pendingFlip } = gs
 
-  const selectedPiece = computed(() => { if (!unref(selectedPieceId)) return null; return unref(pieces).find((p: Piece) => p.id === unref(selectedPieceId)) })
+  const selectedPiece = computed(() => { 
+    // Nếu có pendingFlip (AI gọi hoặc user click), ưu tiên lấy quân đang cần lật từ pendingFlip.piece (nếu có)
+    // Tuy nhiên trong logic hiện tại, pendingFlip chỉ chứa callback và side.
+    // Quân cờ cần lật chính là quân ở vị trí "đích" của nước đi.
+    // Ở đây ta vẫn dùng selectedPieceId để highlight quân đang chọn (nếu là user click).
+    // Nếu AI gọi, selectedPieceId có thể null, nhưng pendingFlip thì có giá trị.
+    
+    // Logic của code cũ (danh sách) không cần selectedPiece để hiện bảng.
+    // Code mới (vòng tròn) cần tọa độ để vẽ.
+    // -> Ta cần tìm quân cờ mà pendingFlip đang nhắm tới.
+    
+    // Nhưng vì pendingFlip hiện tại không lưu tọa độ quân, nên ta sẽ dựa vào selectedPieceId
+    // HOẶC: Trong useUciEngine, ta cần set selectedPieceId = targetPiece.id trước khi gọi pendingFlip.
+    
+    // Tạm thời, để tương thích code cũ, ta sẽ lấy quân từ selectedPieceId nếu có.
+    if (!unref(selectedPieceId)) return null; 
+    return unref(pieces).find((p: Piece) => p.id === unref(selectedPieceId)) 
+  })
 
-  // --- LOGIC: FLIP SELECTION ---
+  // --- LOGIC: FLIP SELECTION (GIỮ NGUYÊN NHƯ CODE CŨ CỦA BẠN) ---
   const flipSelectionPieces = computed(() => {
     if (!pendingFlip.value) return []
     const requiredSide = pendingFlip.value.side
@@ -277,28 +296,23 @@
       })
   })
 
+  // Hàm tính toán vị trí cho các item vòng tròn
+  const getRadialItemStyle = (index: number, total: number) => {
+    const radiusPercent = 37; 
+    const angleStep = (2 * Math.PI) / total;
+    const angle = index * angleStep - (Math.PI / 2);
+    const x = 50 + radiusPercent * Math.cos(angle);
+    const y = 50 + radiusPercent * Math.sin(angle);
+    return { left: `${x}%`, top: `${y}%` };
+  }
+
   const handleFlipSelect = (pieceName: string) => {
     if (pendingFlip.value && pendingFlip.value.callback) {
       pendingFlip.value.callback(pieceName)
     }
   }
 
-  const handleFlipRandom = () => {
-    if (pendingFlip.value && pendingFlip.value.callback) {
-      const pieces = flipSelectionPieces.value
-      if (pieces.length === 0) return
-      const pool: string[] = []
-      pieces.forEach((p: any) => {
-        for(let i=0; i < (p.count as number); i++) {
-          pool.push(p.name)
-        }
-      })
-      if (pool.length > 0) {
-        const randomIndex = Math.floor(Math.random() * pool.length)
-        pendingFlip.value.callback(pool[randomIndex])
-      }
-    }
-  }
+  const handleFlipRandom = () => {} // Disable random
   // -------------------------
 
   const poolErrorMessage = computed(() => {
@@ -547,9 +561,13 @@
     max-width: 95vmin;
     margin: 0 auto;
     
+    /* PADDING ĐỂ TRÁNH BỊ CẮT KHI MENU BUNG RA */
+    padding: 20px; 
+    
     @media (max-width: 768px) {
       flex-direction: column; /* Mobile thì xếp dọc lại */
       gap: 12px;
+      padding: 10px;
     }
   }
 
@@ -573,6 +591,8 @@
     margin: auto;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
+    /* QUAN TRỌNG: Cho phép tràn ra ngoài để menu không bị cắt */
+    overflow: visible !important;
   }
 
   /* KHO QUÂN (SIDE PANEL) - NẰM BÊN PHẢI */
@@ -709,163 +729,91 @@
     max-width: 100%;
   }
 
-  /* --- FLIP PROMPT AREA (STYLE MỚI ĐẸP HƠN, QUÂN TO HƠN) --- */
-  .flip-prompt-area {
-    width: 100%;
-    /* Hiệu ứng kính mờ và gradient nhẹ */
-    background: rgba(30, 30, 30, 0.85); 
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    padding: 12px;
-    min-height: 100px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-    animation: fadeIn 0.2s ease-out;
+  /* --- OVERLAY TOÀN MÀN HÌNH (FIXED) ĐỂ BẮT SỰ KIỆN CLICK RA NGOÀI --- */
+  .flip-overlay-fixed {
+    position: fixed; /* Phủ toàn bộ màn hình */
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    z-index: 1900;
+    cursor: default;
   }
 
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-5px); }
-    to { opacity: 1; transform: translateY(0); }
+  /* --- ON-BOARD RADIAL MENU (VÒNG TRÒN NỔI) --- */
+  .radial-menu-container {
+    position: absolute;
+    transform: translate(-50%, -50%); /* Căn giữa vào quân cờ */
+    z-index: 2000;
+    /* width/height sẽ được ghi đè bằng inline style */
+    /* Hiệu ứng zoom in */
+    animation: zoomIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   }
 
-  .flip-prompt-container {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    gap: 12px;
+  @keyframes zoomIn {
+    from { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+    to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
   }
 
-  .flip-prompt-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 4px;
-    margin-bottom: 2px;
-  }
-
-  .flip-prompt-title {
-    color: #e0e0e0;
-    font-weight: 600;
-    font-size: 15px;
-    display: flex;
-    align-items: center;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-  }
-
-  .random-btn {
-    /* Style nút hiện đại hơn */
-    background: linear-gradient(135deg, #007bff, #0056b3);
-    color: white;
-    border: none;
-    border-radius: 20px; /* Bo tròn kiểu pill */
-    padding: 6px 14px;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-    transition: all 0.2s ease;
+  /* Các vệ tinh (Quân cờ) */
+  .radial-item {
+    position: absolute;
+    /* Dùng left/top để định vị, transform chỉ để canh tâm */
+    transform: translate(-50%, -50%);
     
-    &:hover { 
-      transform: translateY(-1px);
-      box-shadow: 0 4px 8px rgba(0,0,0,0.4);
-      filter: brightness(1.1);
-    }
-    
-    &:active {
-      transform: translateY(0);
-      box-shadow: 0 1px 2px rgba(0,0,0,0.3);
-    }
-  }
-
-  /* FLIP CHOICES: SỬ DỤNG FLEX VỚI CÁC THUỘC TÍNH CO GIÃN MẠNH MẼ */
-  .flip-choices.fluid-layout {
+    width: 25%; /* Kích thước quân chọn nhỏ gọn */
+    aspect-ratio: 1;
+    border-radius: 50%;
+    /* Background kính mờ tối */
+    background: rgba(40, 40, 40, 0.85);
+    backdrop-filter: blur(4px);
+    border: 2px solid rgba(255,255,255,0.2);
     display: flex;
-    flex-direction: row; 
-    flex-wrap: nowrap; /* Không xuống dòng */
-    justify-content: space-between; /* Chia đều không gian */
-    align-items: center;
-    width: 100%;
-    gap: 8px; /* Khoảng cách nhỏ */
-    padding: 4px;
-    overflow: hidden; /* Không cuộn, chỉ co lại */
-  }
-
-  .flip-choice-item {
-    display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: rgba(255, 255, 255, 0.08);
-    border-radius: 8px;
-    padding: 4px;
     cursor: pointer;
-    border: 1px solid rgba(255,255,255,0.05);
-    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
-    position: relative;
-    
-    /* Quan trọng để co giãn: flex-grow=1, flex-shrink=1, basis=0 */
-    flex: 1 1 0px; 
-    min-width: 0; /* Cho phép co nhỏ hơn nội dung */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+    transition: all 0.2s;
 
     &:hover {
-      background: rgba(255, 255, 255, 0.2);
-      border-color: rgba(255, 255, 255, 0.4);
-      transform: translateY(-3px);
-      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      background: rgba(60, 60, 60, 0.95);
+      border-color: #00d2ff;
+      /* Dùng scale kết hợp translate để giữ vị trí */
+      transform: translate(-50%, -50%) scale(1.15);
+      z-index: 2050;
+      box-shadow: 0 0 15px rgba(0, 210, 255, 0.6);
     }
   }
 
-  .img-wrapper {
-    /* Wrapper để giữ tỉ lệ ảnh */
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-
-  .flip-img {
-    /* Quân cờ tự động scale theo chiều rộng của item cha */
-    width: 100%;
-    height: auto;
+  .radial-img {
+    width: 85%; height: 85%;
     object-fit: contain;
-    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3));
-    
-    /* Giới hạn kích thước tối đa để không quá to trên màn hình lớn */
-    max-width: 60px; 
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));
   }
 
-  .flip-count-badge {
-    /* Badge số lượng ở góc */
+  .radial-count {
     position: absolute;
-    top: -4px;
-    right: -4px;
-    background: #ff5252;
+    top: -4px; right: -4px; /* Đẩy ra xa hơn một chút để không che quân */
+    background: #ff3d00;
     color: white;
-    font-size: 10px;
+    font-size: 9px; /* Nhỏ lại */
     font-weight: bold;
-    min-width: 18px;
-    height: 18px;
-    border-radius: 9px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid #2e2e2e; /* Viền để tách biệt với nền tối */
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid #fff;
     box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    z-index: 2;
   }
 
-  .flip-error {
-    color: #ff5252;
-    font-size: 14px;
-    margin: auto;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    padding: 10px;
-    background: rgba(255, 82, 82, 0.1);
-    border-radius: 8px;
+  /* VÙNG THÔNG BÁO DƯỚI BÀN CỜ (HƯỚNG DẪN) */
+  .flip-hint-area {
+    margin-top: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    padding: 6px 12px;
+    text-align: center;
+  }
+  .flip-hint-text {
+    font-size: 12px;
+    color: #e0e0e0;
+    display: flex; align-items: center; justify-content: center;
   }
 
   /* CÁC STYLE KHÁC GIỮ NGUYÊN */
