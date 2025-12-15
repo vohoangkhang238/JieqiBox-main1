@@ -240,7 +240,7 @@
   const blackPool = computed(() => { const chars = ['r', 'n', 'c', 'a', 'b', 'p']; return chars.map(char => ({ char, name: getPieceNameFromChar(char), count: unrevealedPieceCounts?.value?.[char] || 0, max: INITIAL_PIECE_COUNTS[char] })) })
   const redPool = computed(() => { const chars = ['R', 'N', 'C', 'A', 'B', 'P']; return chars.map(char => ({ char, name: getPieceNameFromChar(char), count: unrevealedPieceCounts?.value?.[char] || 0, max: INITIAL_PIECE_COUNTS[char] })) })
   
-  // --- THAY ĐỔI 1: Hàm lấy ảnh quân cờ trong Pool (Sửa thành .png) ---
+  // --- ĐÃ ĐỔI LẠI THÀNH .svg ---
   function getPieceImageUrl(pieceName: string): string { 
     return new URL(`../assets/${pieceName}.png`, import.meta.url).href 
   }
@@ -264,7 +264,7 @@
   const percentFromRC = (row: number, col: number) => ({ x: OX + (col / (COLS - 1)) * GX, y: OY + (row / (ROWS - 1)) * GY })
   const percentToSvgCoords = (row: number, col: number) => ({ x: (OX + (col / (COLS - 1)) * GX) * 0.9, y: OY + (row / (ROWS - 1)) * GY })
   
-  // --- THAY ĐỔI 2: Hàm lấy ảnh quân cờ trên bàn (Sửa thành .png) ---
+  // --- ĐÃ ĐỔI LẠI THÀNH .svg ---
   const img = (p: Piece) => new URL(`../assets/${p.isKnown ? p.name : 'dark_piece'}.png`, import.meta.url).href
   
   const rcStyle = (r: number, c: number, zIndex?: number) => {
@@ -292,7 +292,7 @@
     return { row: Math.max(0, Math.min(ROWS - 1, Math.round(rowFloat))), col: Math.max(0, Math.min(COLS - 1, Math.round(colFloat))) }
   }
 
-  // --- Đã tắt tính năng vẽ chuột phải ---
+  // --- Vô hiệu hóa chuột phải ---
   const handleRightMouseDown = (e: MouseEvent) => { e.preventDefault(); }
   const handleRightMouseUp = (e: MouseEvent) => { }
 
@@ -440,6 +440,7 @@
   /* 3. HIỆU ỨNG NƯỚC ĐI TỪ (FROM): CHẤM TRÒN NHỎ */
   .highlight.from {
     position: absolute;
+    /* Width được set inline là 2.5% */
     aspect-ratio: 1;
     border-radius: 50%;
     transform: translate(-50%, -50%);
