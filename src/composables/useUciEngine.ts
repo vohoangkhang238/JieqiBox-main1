@@ -109,7 +109,7 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
   
   // State Options & Config
   const uciOptionsText = ref('')
-  const overriddenOptions = ref<Record<string, string>>({}) // Lưu các giá trị đã thay đổi
+  const overriddenOptions = ref<Record<string, string>>({}) 
   
   const currentEnginePath = ref('')
   const currentSearchMoves = ref<string[]>([])
@@ -142,7 +142,7 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
 
   let unlisten: (() => void) | null = null
 
-  // 3. Computed UCI Options (Kết hợp mặc định và giá trị đã sửa)
+  // 3. Computed UCI Options
   const uciOptions = computed<UciOption[]>(() => {
     const opts = parseUciOptions(uciOptionsText.value)
     return opts.map(o => {
@@ -156,7 +156,7 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
     })
   })
 
-  // 4. Hàm Set Option (Có lưu lại trạng thái)
+  // 4. Hàm Set Option
   const setOption = (name: string, value: any) => {
     const command = `setoption name ${name} value ${value}`
     send(command)
@@ -240,8 +240,9 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
         analysis.value = analysisLines.filter(Boolean).join('\n')
       }
 
+      // --- XỬ LÝ BESTMOVE (ĐÃ FIX: FORCE SELECT PIECE CHO AI) ---
       if (ln.startsWith('bestmove')) {
-        const parts = ln.split(' ')
+        const parts = ln.split(/\s+/)
         const mv = parts[1] ?? ''
         let ponderMoveFromEngine = ''
         const ponderIndex = parts.indexOf('ponder')
@@ -257,7 +258,7 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
             ignoreNextBestMove.value = false
             bestMove.value = ''
           } else if (playOnStop.value) {
-            bestMove.value = mv
+            bestMove.value = mv 
           } else {
             bestMove.value = ''
           }
@@ -267,10 +268,11 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
           nextTick(() => {
             window.dispatchEvent(new CustomEvent('engine-stopped-and-ready'))
           })
-          return
+          
+          if (!bestMove.value) return 
         }
 
-        if (!isThinking.value && !isPondering.value) return
+        if (!isThinking.value && !isPondering.value && !playOnStop.value && !isStopping.value) return
 
         if (isPondering.value) {
           isPondering.value = false
@@ -308,6 +310,83 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
               ? t('uci.bestMove', { move: mv })
               : t('uci.noMoves')
           }
+
+          // === LOGIC CHẶN AI ĐI QUÂN ÚP & HIỆN VÒNG TRÒN ===
+          if (mv) {
+            const from = { 
+              col: mv.charCodeAt(0) - 'a'.charCodeAt(0), 
+              row: 9 - parseInt(mv[1]) 
+            }
+            const to = { 
+              col: mv.charCodeAt(2) - 'a'.charCodeAt(0), 
+              row: 9 - parseInt(mv[3]) 
+            }
+
+            // Lấy dữ liệu quân cờ hiện tại
+            const pieces = gameState.pieces.value
+            
+            // Tìm quân nguồn và đích
+            const movingPiece = pieces.find((p: any) => p.row === from.row && p.col === from.col)
+            const targetPiece = pieces.find((p: any) => p.row === to.row && p.col === to.col)
+
+            console.log(`[AI MOVE] ${mv}`, { movingPiece, targetPiece });
+
+            const doFinalMove = () => {
+              gameState.move(from, to)
+              // Sau khi đi xong, bỏ chọn để mất vòng tròn (nếu có lỗi hiển thị)
+              gameState.selectedPieceId.value = null 
+            }
+
+            // 1. Kiểm tra quân đích (Ăn quân úp)
+            const checkTarget = () => {
+              if (targetPiece && !targetPiece.isKnown) {
+                console.log("🛑 [AI] Ăn quân úp -> Force Select Target")
+                
+                // --- FIX QUAN TRỌNG: Gán selectedPieceId để UI biết vẽ vòng tròn ở đâu ---
+                gameState.selectedPieceId.value = targetPiece.id; 
+
+                const side = targetPiece.name.startsWith('red') ? 'red' : 'black'
+                
+                gameState.pendingFlip.value = {
+                  side: side,
+                  callback: (selectedName: string) => {
+                    targetPiece.name = selectedName
+                    targetPiece.isKnown = true
+                    gameState.adjustUnrevealedCount(gameState.getCharFromPieceName(selectedName), -1)
+                    gameState.pendingFlip.value = null
+                    
+                    doFinalMove()
+                  }
+                }
+              } else {
+                doFinalMove()
+              }
+            }
+
+            // 2. Kiểm tra quân nguồn (Đi quân úp)
+            if (movingPiece && !movingPiece.isKnown) {
+              console.log("🛑 [AI] Đi quân úp -> Force Select Source")
+              
+              // --- FIX QUAN TRỌNG: Gán selectedPieceId bằng quân nguồn ---
+              gameState.selectedPieceId.value = movingPiece.id;
+
+              const side = movingPiece.name.startsWith('red') ? 'red' : 'black'
+              
+              gameState.pendingFlip.value = {
+                side: side,
+                callback: (selectedName: string) => {
+                  movingPiece.name = selectedName
+                  movingPiece.isKnown = true
+                  gameState.adjustUnrevealedCount(gameState.getCharFromPieceName(selectedName), -1)
+                  gameState.pendingFlip.value = null
+                  
+                  checkTarget()
+                }
+              }
+            } else {
+              checkTarget()
+            }
+          }
         }
 
         bestMove.value = mv
@@ -323,11 +402,11 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
         analysisLines.length = 0
         isInfinitePondering.value = false
       }
+      
       if (ln === 'uciok' && !(window as any).__UCI_TERMINAL_ACTIVE__)
         send('isready')
       if (ln === 'readyok') analysis.value = t('uci.engineReady')
 
-      // Capture raw UCI options
       if (ln.startsWith('option name ')) {
         uciOptionsText.value += ln + '\n'
       }
@@ -362,7 +441,7 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
     currentEngine.value = null
     engineOutput.value = []
     uciOptionsText.value = ''
-    overriddenOptions.value = {} // Reset các cài đặt tạm khi load engine mới
+    overriddenOptions.value = {}
 
     playSoundLoop('loading')
 
