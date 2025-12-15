@@ -12,7 +12,7 @@
       </div>
 
       <div class="engine-info-box engine-name">
-        <select v-model="selectedEngineId" @change="handleEngineChange" class="pika-select">
+        <select v-model="selectedEngineId" @change="handleEngineChange" class="pika-select" :disabled="!isEngineLoaded">
           <option v-for="eng in managedEngines" :key="eng.id" :value="eng.id">
             {{ eng.name }}
           </option>
@@ -22,22 +22,26 @@
       <div class="engine-info-box threads">
         <input 
           type="number" 
-          v-model="tempThreads" 
+          v-model.lazy="actualThreads" 
           min="1" 
           max="128" 
           class="pika-input" 
           title="Threads (Số luồng)" 
+          :disabled="!isEngineLoaded"
         />
       </div>
 
       <div class="engine-info-box hash">
-        <select v-model="tempHash" class="pika-select-small" title="Hash Size">
+        <select v-model="actualHash" class="pika-select-small" title="Hash Size" :disabled="!isEngineLoaded">
           <option value="16">16 MB</option>
           <option value="64">64 MB</option>
           <option value="128">128 MB</option>
           <option value="256">256 MB</option>
           <option value="512">512 MB</option>
           <option value="1024">1024 MB</option>
+          <option value="2048">2048 MB</option>
+          <option value="4096">4096 MB</option>
+          <option value="8192">8192 MB</option>
         </select>
       </div>
 
@@ -115,30 +119,57 @@ const {
   history, currentMoveIndex, initialFen, generateFen, replayToMove,
 } = gameState
 
-// ĐÃ SỬA: Bỏ 'uciOptions' và 'setOption' để tránh lỗi undefined
+// Đã có uciOptions và setOption từ Bước 1
 const { 
   engineOutput, isEngineLoaded, isEngineLoading, isThinking, 
-  loadEngine, unloadEngine, startAnalysis, stopAnalysis, isPondering
+  loadEngine, unloadEngine, startAnalysis, stopAnalysis, isPondering,
+  uciOptions, setOption 
 } = engineState
 
 // --- Engine/UI State ---
 const showEngineManager = ref(false)
 const managedEngines = ref<any[]>([])
 const selectedEngineId = ref<string | null>(null)
-const tempThreads = ref(16) // Biến tạm để hiển thị UI
-const tempHash = ref(1024)  // Biến tạm để hiển thị UI
 const moveListElement = ref<HTMLElement | null>(null)
 
 // Computed
 const isEngineActive = computed(() => isEngineLoaded.value || isThinking.value)
 const isMatchRunning = computed(() => jaiEngine?.isMatchRunning?.value || false)
 
-// --- Logic Checkbox ---
+// --- COMPUTED: KẾT NỐI THẬT VỚI ENGINE ---
+
+// 1. Threads (Số luồng)
+const actualThreads = computed({
+  get: () => {
+    // Tìm option 'Threads' trong danh sách options của engine
+    const opt = uciOptions.value.find((o: any) => o.name?.toLowerCase() === 'threads')
+    return opt ? parseInt(opt.value) : 1
+  },
+  set: (val) => {
+    if (isEngineLoaded.value) {
+      setOption('Threads', val)
+    }
+  }
+})
+
+// 2. Hash (Bộ nhớ)
+const actualHash = computed({
+  get: () => {
+    const opt = uciOptions.value.find((o: any) => o.name?.toLowerCase() === 'hash')
+    return opt ? parseInt(opt.value) : 16
+  },
+  set: (val) => {
+    if (isEngineLoaded.value) {
+      setOption('Hash', val)
+    }
+  }
+})
+
+// --- Logic Checkbox Bật/Tắt ---
 const toggleEngineState = async (e: Event) => {
   const isChecked = (e.target as HTMLInputElement).checked
   
   if (isChecked) {
-    // BẬT
     if (!selectedEngineId.value) {
       if (managedEngines.value.length > 0) selectedEngineId.value = managedEngines.value[0].id
       else return alert('Vui lòng thêm engine trước')
@@ -156,7 +187,6 @@ const toggleEngineState = async (e: Event) => {
       )
     }
   } else {
-    // TẮT
     if (isThinking.value) stopAnalysis({ playBestMoveOnStop: false })
     if (isEngineLoaded.value) await unloadEngine()
   }
@@ -265,7 +295,7 @@ watch(parsedLogList, () => {
 </script>
 
 <style lang="scss">
-/* Style Reset */
+/* Reset & Base */
 .sidebar {
     width: 420px;
     height: calc(100vh - 120px); 
