@@ -43,6 +43,7 @@
             :class="{
               animated: isAnimating && showAnimations,
               inCheck: p.id === checkedKingId,
+              // Giữ quân sáng, không làm mờ
             }"
             :style="rcStyle(p.row, p.col, p.zIndex)"
           />
@@ -173,8 +174,10 @@
           class="radial-menu-container"
           :style="{
             ...rcStyle(selectedPiece.row, selectedPiece.col, 2500),
-            width: '0px', 
-            height: '0px'
+            /* Sử dụng width thực tế để làm mốc tính toán cho con */
+            width: '45%', 
+            height: 'auto',
+            'aspect-ratio': '1/1'
           }"
         >
           <div 
@@ -277,22 +280,22 @@
       })
   })
 
-  // Hàm tính toán vị trí cho các item vòng tròn (SỬ DỤNG LEFT/TOP)
+  // Hàm tính toán vị trí cho các item vòng tròn
   const getRadialItemStyle = (index: number, total: number) => {
-    // Bán kính vòng tròn (đơn vị PX)
-    const radius = 65; 
+    // Bán kính vòng tròn = 35% của hộp chứa
+    // Hộp chứa = 45% bàn cờ, nên 35% hộp chứa là khoảng cách vừa đủ đẹp
+    const radiusPercent = 35; 
     
-    // Chia đều góc (360 độ / tổng số item)
-    // Bắt đầu từ góc trên cùng (-90 độ hoặc -PI/2 radian)
+    // Chia đều góc
     const angleStep = (2 * Math.PI) / total;
     const angle = index * angleStep - (Math.PI / 2);
 
-    const x = Math.round(radius * Math.cos(angle));
-    const y = Math.round(radius * Math.sin(angle));
+    const x = 50 + radiusPercent * Math.cos(angle);
+    const y = 50 + radiusPercent * Math.sin(angle);
 
     return {
-      left: `${x}px`,
-      top: `${y}px`
+      left: `${x}%`,
+      top: `${y}%`
     };
   }
 
@@ -566,9 +569,13 @@
     max-width: 95vmin;
     margin: 0 auto;
     
+    /* PADDING ĐỂ TRÁNH BỊ CẮT KHI MENU BUNG RA */
+    padding: 20px; 
+    
     @media (max-width: 768px) {
       flex-direction: column; /* Mobile thì xếp dọc lại */
       gap: 12px;
+      padding: 10px;
     }
   }
 
@@ -592,6 +599,8 @@
     margin: auto;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
+    /* QUAN TRỌNG: Cho phép tràn ra ngoài để menu không bị cắt */
+    overflow: visible !important;
   }
 
   /* KHO QUÂN (SIDE PANEL) - NẰM BÊN PHẢI */
@@ -741,7 +750,7 @@
     position: absolute;
     transform: translate(-50%, -50%); /* Căn giữa vào quân cờ */
     z-index: 2000;
-    width: 0; height: 0; /* Container ảo */
+    /* width/height sẽ được ghi đè bằng inline style */
     /* Hiệu ứng zoom in */
     animation: zoomIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   }
@@ -754,8 +763,11 @@
   /* Các vệ tinh (Quân cờ) */
   .radial-item {
     position: absolute;
-    top: 0; left: 0; 
-    width: 44px; height: 44px;
+    /* Dùng left/top để định vị, transform chỉ để canh tâm */
+    transform: translate(-50%, -50%);
+    
+    width: 28%; /* % theo hộp chứa, tức là ~ 12% bàn cờ */
+    aspect-ratio: 1;
     border-radius: 50%;
     /* Background kính mờ tối */
     background: rgba(40, 40, 40, 0.85);
@@ -767,17 +779,12 @@
     cursor: pointer;
     box-shadow: 0 4px 8px rgba(0,0,0,0.4);
     transition: all 0.2s;
-    /* Căn chỉnh để tâm của item trùng với điểm tính toán */
-    margin-top: -22px; 
-    margin-left: -22px;
-
-    /* Dùng translate để căn giữa, scale để phóng to khi hover */
-    transform: translate(-50%, -50%);
 
     &:hover {
       background: rgba(60, 60, 60, 0.95);
       border-color: #00d2ff;
-      transform: translate(-50%, -50%) scale(1.15); /* Giữ translate, thêm scale */
+      /* Dùng scale kết hợp translate để giữ vị trí */
+      transform: translate(-50%, -50%) scale(1.15);
       z-index: 2050;
       box-shadow: 0 0 15px rgba(0, 210, 255, 0.6);
     }
@@ -791,7 +798,7 @@
 
   .radial-count {
     position: absolute;
-    top: -2px; right: -2px;
+    top: 0; right: 0;
     background: #ff3d00;
     color: white;
     font-size: 10px;
