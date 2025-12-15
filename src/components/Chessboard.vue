@@ -117,7 +117,7 @@
           class="valid-move-dot"
           :style="{ 
             ...rcStyle(move.row, move.col), 
-            width: '2.5%' /* Ép kích thước nhỏ lại */
+            width: '2.5%' /* Ép nhỏ lại */
           }"
         ></div>
       </div>
@@ -453,15 +453,17 @@
     pointer-events: none;
   }
 
-  /* HIỆU ỨNG LAST MOVE (KHUNG VUÔNG) - Bỏ border-radius để thành vuông vức */
+  /* HIỆU ỨNG LAST MOVE (KHUNG VIỀN RỖNG) - KHÔNG CÓ BACKGROUND */
   .highlight {
     position: absolute; width: 12%; aspect-ratio: 1; 
-    border-radius: 0; /* Vuông góc */
+    border-radius: 4px; /* Bo góc nhẹ */
     transform: translate(-50%, -50%);
     pointer-events: none; z-index: 10;
+    box-sizing: border-box; /* Đảm bảo viền nằm trong khung */
   }
-  .highlight.from { border: 2px solid #ff6b6b; background: rgba(255, 107, 107, 0.15); }
-  .highlight.to { border: 2px solid #4ecdc4; background: rgba(78, 205, 196, 0.15); }
+  /* Chỉ có border, background transparent */
+  .highlight.from { border: 2px solid #ff6b6b; background: transparent; }
+  .highlight.to { border: 2px solid #4ecdc4; background: transparent; }
 
   /* --- CÁC STYLE KHÁC GIỮ NGUYÊN --- */
   .chessboard-wrapper { display: flex; flex-direction: row; align-items: flex-start; justify-content: center; gap: 1.5%; width: 100%; max-width: 95vmin; margin: 0 auto; &.has-chart { flex-wrap: wrap; } @media (max-width: 768px) { flex-direction: column; gap: 12px; } }
