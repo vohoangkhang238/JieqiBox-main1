@@ -452,12 +452,13 @@
   /* Màu cyan cho destination */
   .highlight.to .corner { border-color: #4ecdc4; }
 
-  /* CHIA SẺ STYLE CORNER (4 GÓC) */
-  .corner { position: absolute; width: 20%; height: 20%; border-style: solid; border-width: 2px; }
-  .top-left { top: 0; left: 0; border-right: none; border-bottom: none; }
-  .top-right { top: 0; right: 0; border-left: none; border-bottom: none; }
-  .bottom-left { bottom: 0; left: 0; border-right: none; border-top: none; }
-  .bottom-right { bottom: 0; right: 0; border-left: none; border-top: none; }
+  /* CHIA SẺ STYLE CORNER (4 GÓC - ĐẬM HƠN & BO GÓC) */
+  /* Tăng độ dày border lên 3px, thêm border-radius cho các góc ngoài */
+  .corner { position: absolute; width: 25%; height: 25%; border-style: solid; border-width: 3px; }
+  .top-left { top: 0; left: 0; border-right: none; border-bottom: none; border-top-left-radius: 6px; }
+  .top-right { top: 0; right: 0; border-left: none; border-bottom: none; border-top-right-radius: 6px; }
+  .bottom-left { bottom: 0; left: 0; border-right: none; border-top: none; border-bottom-left-radius: 6px; }
+  .bottom-right { bottom: 0; right: 0; border-left: none; border-top: none; border-bottom-right-radius: 6px; }
 
   /* 3. HIỆU ỨNG NƯỚC ĐI TỪ (FROM): CHẤM TRÒN NHỎ */
   .highlight.from {
