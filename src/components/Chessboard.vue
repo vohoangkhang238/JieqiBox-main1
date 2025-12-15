@@ -43,13 +43,15 @@
             :class="{
               animated: isAnimating && showAnimations,
               inCheck: p.id === checkedKingId,
+              // Ẩn quân đang được chọn để lật, vì popup sẽ đè lên nó
+              'being-flipped': pendingFlip && selectedPiece && p.id === selectedPiece.id
             }"
             :style="rcStyle(p.row, p.col, p.zIndex)"
           />
         </div>
 
         <div 
-          v-if="selectedPiece" 
+          v-if="selectedPiece && !pendingFlip" 
           class="selection-mark"
           :style="rcStyle(selectedPiece.row, selectedPiece.col, 30)"
         >
@@ -121,7 +123,7 @@
           />
         </svg>
 
-        <div class="valid-moves-indicators" v-if="validMovesForSelectedPiece.length > 0">
+        <div class="valid-moves-indicators" v-if="validMovesForSelectedPiece.length > 0 && !pendingFlip">
           <div
             v-for="(move, index) in validMovesForSelectedPiece"
             :key="`valid-move-${index}`"
@@ -161,41 +163,39 @@
           </template>
         </svg>
 
-        <ClearHistoryConfirmDialog :visible="showClearHistoryDialog" :onConfirm="onConfirmClearHistory" :onCancel="onCancelClearHistory" />
-      </div>
-
-      <div v-if="pendingFlip" class="flip-prompt-area">
-        <div class="flip-prompt-container">
-          <div class="flip-prompt-header">
-            <span class="flip-prompt-title">
-              <v-icon icon="mdi-cursor-default-click-outline" size="small" class="mr-1"></v-icon>
-              Lật quân {{ pendingFlip.side === 'red' ? 'Đỏ' : 'Đen' }}
-            </span>
-            <button class="random-btn" @click="handleFlipRandom">
-              <v-icon icon="mdi-shuffle-variant" size="small" class="mr-1"></v-icon>
-              Ngẫu nhiên
-            </button>
-          </div>
-          
-          <div class="flip-choices responsive-row">
-            <div 
-              v-for="item in flipSelectionPieces" 
-              :key="item.name" 
-              class="flip-choice-item"
-              @click="handleFlipSelect(item.name)"
-            >
-              <div class="img-wrapper">
-                <img :src="getPieceImageUrl(item.name)" class="flip-img" />
-              </div>
-              <div class="flip-count-badge">{{ item.count }}</div>
+        <div 
+          v-if="pendingFlip && selectedPiece" 
+          class="on-board-flip-popup"
+          :style="rcStyle(selectedPiece.row, selectedPiece.col, 2000)"
+        >
+          <div class="popup-content">
+            <div class="popup-header">
+              <span class="popup-title">
+                Lật {{ pendingFlip.side === 'red' ? 'Đỏ' : 'Đen' }}
+              </span>
+              <button class="popup-random-btn" @click="handleFlipRandom" title="Chọn ngẫu nhiên">
+                <v-icon icon="mdi-shuffle" size="x-small"></v-icon>
+              </button>
             </div>
             
-            <div v-if="flipSelectionPieces.length === 0" class="flip-error">
-              <v-icon icon="mdi-alert" color="error" class="mr-1"></v-icon>
-              Hết quân!
+            <div class="popup-choices">
+              <div 
+                v-for="item in flipSelectionPieces" 
+                :key="item.name" 
+                class="popup-choice-item"
+                @click="handleFlipSelect(item.name)"
+              >
+                <img :src="getPieceImageUrl(item.name)" class="popup-img" />
+                <div class="popup-count-badge">{{ item.count }}</div>
+              </div>
+              
+              <div v-if="flipSelectionPieces.length === 0" class="popup-error">
+                Hết quân!
+              </div>
             </div>
           </div>
         </div>
+        <ClearHistoryConfirmDialog :visible="showClearHistoryDialog" :onConfirm="onConfirmClearHistory" :onCancel="onCancelClearHistory" />
       </div>
     </div>
 
@@ -535,11 +535,10 @@
     pointer-events: none;
   }
 
-  /* --- LAYOUT CHÍNH: HÀNG NGANG (ROW) --- */
-  /* Bàn cờ bên trái, Kho quân bên phải */
+  /* --- LAYOUT CHÍNH --- */
   .chessboard-wrapper {
     display: flex;
-    flex-direction: row; /* Xếp ngang */
+    flex-direction: row;
     align-items: flex-start;
     justify-content: center;
     gap: 20px;
@@ -548,18 +547,16 @@
     margin: 0 auto;
     
     @media (max-width: 768px) {
-      flex-direction: column; /* Mobile thì xếp dọc lại */
+      flex-direction: column;
       gap: 12px;
     }
   }
 
-  /* CỘT CHÍNH (CHỨA BÀN CỜ + FLIP PROMPT) */
   .main-column {
     display: flex;
-    flex-direction: column; /* Bàn cờ trên, Flip Prompt dưới */
+    flex-direction: column;
     flex: 0 0 auto;
-    width: 80%; /* Bàn cờ chiếm phần lớn */
-    gap: 12px;
+    width: 80%;
     
     @media (max-width: 768px) {
       width: 100%;
@@ -575,10 +572,10 @@
     -webkit-tap-highlight-color: transparent;
   }
 
-  /* KHO QUÂN (SIDE PANEL) - NẰM BÊN PHẢI */
+  /* KHO QUÂN (SIDE PANEL) */
   .side-panel {
     display: flex;
-    flex-direction: column; /* Hai phe Đỏ/Đen xếp dọc */
+    flex-direction: column;
     justify-content: space-between;
     align-items: center;
     background: rgba(0, 0, 0, 0.2);
@@ -586,261 +583,151 @@
     padding: 8px;
     gap: 10px;
     min-width: 70px;
-    flex: 1; /* Chiếm phần còn lại */
-    align-self: stretch; /* Cao bằng bàn cờ */
+    flex: 1;
+    align-self: stretch;
     
     @media (max-width: 768px) {
       width: 100%;
-      flex-direction: row; /* Mobile: kho quân nằm ngang bên dưới */
+      flex-direction: row;
       min-height: auto;
       align-self: auto;
     }
   }
 
-  /* CÁC STYLE CHO KHO QUÂN */
   .pool-section {
-    display: flex;
-    flex-direction: column; /* Các quân xếp dọc */
-    gap: 4px;
-    width: 100%;
-    align-items: center;
-    
-    @media (max-width: 768px) {
-      flex-direction: row; /* Mobile: xếp ngang */
-      flex-wrap: wrap;
-      justify-content: center;
-    }
+    display: flex; flex-direction: column; gap: 4px; width: 100%; align-items: center;
+    @media (max-width: 768px) { flex-direction: row; flex-wrap: wrap; justify-content: center; }
   }
 
   .pool-row {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
-    padding: 4px;
-    position: relative;
-    gap: 2px;
-    width: 100%;
-    
-    @media (max-width: 768px) {
-      width: auto;
-      min-width: 45px;
-    }
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255, 255, 255, 0.1); border-radius: 4px; padding: 4px;
+    position: relative; gap: 2px; width: 100%;
+    @media (max-width: 768px) { width: auto; min-width: 45px; }
   }
 
-  .pool-img {
-    width: 32px;
-    height: 32px;
-    object-fit: contain;
-  }
-
-  .pool-controls {
-    display: flex;
-    align-items: center;
-    flex-direction: row;
-    gap: 2px;
-  }
-
-  .pool-num {
-    font-size: 1.1rem;
-    font-weight: bold;
-    color: #fff;
-    line-height: 1;
-    margin-right: 2px;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-  }
-
+  .pool-img { width: 32px; height: 32px; object-fit: contain; }
+  .pool-controls { display: flex; align-items: center; flex-direction: row; gap: 2px; }
+  .pool-num { font-size: 1.1rem; font-weight: bold; color: #fff; line-height: 1; margin-right: 2px; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
   .red-num { color: #ff5252; }
   .black-num { color: #000000; text-shadow: 0 0 1px #fff; }
-
   .pool-btns {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-    
-    @media (max-width: 768px) {
-      display: none; /* Ẩn nút trên mobile */
-    }
+    display: flex; flex-direction: column; gap: 1px;
+    @media (max-width: 768px) { display: none; }
   }
 
   .tiny-btn {
-    width: 14px;
-    height: 12px;
-    line-height: 10px;
-    font-size: 10px;
-    font-weight: bold;
-    background: #555;
-    color: #fff;
-    border: 1px solid rgba(255,255,255,0.2);
-    border-radius: 2px;
-    cursor: pointer;
-    padding: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    width: 14px; height: 12px; line-height: 10px; font-size: 10px; font-weight: bold;
+    background: #555; color: #fff; border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 2px; cursor: pointer; padding: 0; display: flex;
+    align-items: center; justify-content: center;
     &:hover:not(:disabled) { background: #777; }
     &:disabled { opacity: 0.3; cursor: default; border-color: transparent; }
   }
 
-  .pool-divider {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-  }
-
+  .pool-divider { flex: 1; display: flex; align-items: center; justify-content: center; width: 100%; }
   .pool-error {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-    background: #ffffff;
-    border: 1px solid #d32f2f;
-    border-radius: 4px;
-    padding: 4px;
-    color: #d32f2f;
-    font-weight: bold;
-    font-size: 10px;
-    text-align: center;
-    word-break: break-word;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    max-width: 100%;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    background: #ffffff; border: 1px solid #d32f2f; border-radius: 4px; padding: 4px;
+    color: #d32f2f; font-weight: bold; font-size: 10px; text-align: center;
+    word-break: break-word; box-shadow: 0 2px 4px rgba(0,0,0,0.2); max-width: 100%;
   }
 
-  /* --- FLIP PROMPT AREA (STYLE MỚI - RESPONSIVE & CO GIÃN) --- */
-  .flip-prompt-area {
-    width: 100%;
-    /* Hiệu ứng kính mờ và gradient nhẹ */
-    background: rgba(30, 30, 30, 0.85); 
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+  /* --- ON-BOARD FLIP POPUP (CỬA SỔ NỔI TRÊN BÀN CỜ) --- */
+  .on-board-flip-popup {
+    position: absolute;
+    transform: translate(-50%, -50%); /* Căn giữa vào điểm tọa độ */
+    z-index: 2000; /* Đảm bảo nổi lên trên cùng */
+    animation: popIn 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+
+  @keyframes popIn {
+    from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+    to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  }
+
+  .popup-content {
+    background: rgba(30, 30, 30, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 12px;
-    padding: 8px 12px;
-    min-height: 80px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-    animation: fadeIn 0.2s ease-out;
-  }
-
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-5px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .flip-prompt-container {
+    padding: 8px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
     display: flex;
     flex-direction: column;
-    width: 100%;
-    gap: 8px;
+    gap: 6px;
+    min-width: 160px;
   }
 
-  .flip-prompt-header {
+  .popup-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0 4px;
-    margin-bottom: 2px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   }
 
-  .flip-prompt-title {
-    color: #e0e0e0;
-    font-weight: 600;
-    font-size: 14px;
-    display: flex;
-    align-items: center;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-  }
-
-  .random-btn {
-    /* Style nút hiện đại hơn */
-    background: linear-gradient(135deg, #007bff, #0056b3);
-    color: white;
-    border: none;
-    border-radius: 20px; /* Bo tròn kiểu pill */
-    padding: 6px 14px;
+  .popup-title {
     font-size: 13px;
     font-weight: 600;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-    transition: all 0.2s ease;
-    
-    &:hover { 
-      transform: translateY(-1px);
-      box-shadow: 0 4px 8px rgba(0,0,0,0.4);
-      filter: brightness(1.1);
-    }
-    
-    &:active {
-      transform: translateY(0);
-      box-shadow: 0 1px 2px rgba(0,0,0,0.3);
-    }
+    color: #e0e0e0;
   }
 
-  /* FLIP CHOICES: SỬ DỤNG FLEX VỚI CÁC THUỘC TÍNH CO GIÃN MẠNH MẼ */
-  .flip-choices.responsive-row {
+  .popup-random-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: #fff;
+    border-radius: 4px;
+    width: 24px;
+    height: 24px;
     display: flex;
-    flex-direction: row; 
-    flex-wrap: nowrap; /* Không xuống dòng */
-    justify-content: space-between; /* Chia đều không gian */
-    align-items: center;
-    width: 100%;
-    gap: 8px; /* Khoảng cách nhỏ */
-    padding: 4px;
-    overflow: hidden; /* Không cuộn, chỉ co lại */
-  }
-
-  .flip-choice-item {
-    display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: rgba(255, 255, 255, 0.08);
-    border-radius: 8px;
-    padding: 6px;
     cursor: pointer;
-    border: 1px solid rgba(255,255,255,0.05);
-    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+    transition: background 0.2s;
+    
+    &:hover { background: rgba(255, 255, 255, 0.2); }
+  }
+
+  /* Grid lựa chọn quân */
+  .popup-choices {
+    display: flex;
+    flex-wrap: wrap; /* Cho phép xuống dòng nếu quá nhiều */
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .popup-choice-item {
     position: relative;
+    width: 48px;
+    height: 48px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
     
-    /* Quan trọng để co giãn: flex-grow=1, flex-shrink=1, basis=0 */
-    flex: 1 1 0px; 
-    min-width: 0; /* Cho phép co nhỏ hơn nội dung */
-
     &:hover {
-      background: rgba(255, 255, 255, 0.2);
-      border-color: rgba(255, 255, 255, 0.4);
-      transform: translateY(-3px);
-      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.3);
+      transform: scale(1.05);
     }
   }
 
-  .img-wrapper {
-    /* Wrapper để giữ tỉ lệ ảnh */
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-
-  .flip-img {
-    /* Quân cờ tự động scale theo chiều rộng của item cha */
-    width: 100%;
-    height: auto;
+  .popup-img {
+    width: 85%;
+    height: 85%;
     object-fit: contain;
-    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3));
-    
-    /* Giới hạn kích thước tối đa để không quá to trên màn hình lớn */
-    max-width: 64px; 
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));
   }
 
-  .flip-count-badge {
-    /* Badge số lượng ở góc */
+  .popup-count-badge {
     position: absolute;
-    top: -4px;
-    right: -4px;
+    top: -5px;
+    right: -5px;
     background: #ff5252;
     color: white;
     font-size: 10px;
@@ -851,21 +738,20 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 2px solid #2e2e2e; /* Viền để tách biệt với nền tối */
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    z-index: 2;
+    border: 2px solid #2e2e2e;
   }
 
-  .flip-error {
+  .popup-error {
     color: #ff5252;
-    font-size: 14px;
-    margin: auto;
+    font-size: 12px;
     font-weight: bold;
-    display: flex;
-    align-items: center;
-    padding: 10px;
-    background: rgba(255, 82, 82, 0.1);
-    border-radius: 8px;
+    padding: 4px;
+  }
+
+  /* Ẩn quân cờ đang được lật đi để popup đè lên */
+  .piece.being-flipped {
+    opacity: 0;
+    pointer-events: none;
   }
 
   /* CÁC STYLE KHÁC GIỮ NGUYÊN */
