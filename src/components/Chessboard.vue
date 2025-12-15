@@ -173,20 +173,23 @@
             </span>
             <button class="random-btn" @click="handleFlipRandom">
               <v-icon icon="mdi-shuffle-variant" size="small" class="mr-1"></v-icon>
-              Chọn Ngẫu nhiên
+              Ngẫu nhiên
             </button>
           </div>
           
-          <div class="flip-choices horizontal-scroll">
+          <div class="flip-choices fluid-layout">
             <div 
               v-for="item in flipSelectionPieces" 
               :key="item.name" 
               class="flip-choice-item"
               @click="handleFlipSelect(item.name)"
             >
-              <img :src="getPieceImageUrl(item.name)" class="flip-img" />
+              <div class="img-wrapper">
+                <img :src="getPieceImageUrl(item.name)" class="flip-img" />
+              </div>
               <div class="flip-count-badge">{{ item.count }}</div>
             </div>
+            
             <div v-if="flipSelectionPieces.length === 0" class="flip-error">
               <v-icon icon="mdi-alert" color="error" class="mr-1"></v-icon>
               Hết quân loại này!
@@ -776,17 +779,17 @@
     }
   }
 
-  /* CLASS QUAN TRỌNG ĐỂ XẾP NGANG */
-  .flip-choices.horizontal-scroll {
+  /* FLIP CHOICES: SỬ DỤNG FLEX VỚI CÁC THUỘC TÍNH CO GIÃN MẠNH MẼ */
+  .flip-choices.fluid-layout {
     display: flex;
-    flex-direction: row; /* Hàng ngang */
+    flex-direction: row; 
     flex-wrap: nowrap; /* Không xuống dòng */
-    overflow-x: auto; /* Cuộn ngang nếu quá dài */
-    justify-content: flex-start; /* Bắt đầu từ trái */
-    gap: 12px;
+    justify-content: space-between; /* Chia đều không gian */
+    align-items: center;
+    width: 100%;
+    gap: 8px; /* Khoảng cách nhỏ */
     padding: 4px;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255,255,255,0.2) transparent;
+    overflow: hidden; /* Không cuộn, chỉ co lại */
   }
 
   .flip-choice-item {
@@ -794,16 +797,17 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    /* Style thẻ bài */
     background: rgba(255, 255, 255, 0.08);
     border-radius: 8px;
-    padding: 8px;
+    padding: 4px;
     cursor: pointer;
     border: 1px solid rgba(255,255,255,0.05);
     transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
     position: relative;
-    min-width: 60px; /* Thẻ rộng hơn */
-    flex-shrink: 0; /* Không co lại khi thiếu chỗ */
+    
+    /* Quan trọng để co giãn: flex-grow=1, flex-shrink=1, basis=0 */
+    flex: 1 1 0px; 
+    min-width: 0; /* Cho phép co nhỏ hơn nội dung */
 
     &:hover {
       background: rgba(255, 255, 255, 0.2);
@@ -813,31 +817,43 @@
     }
   }
 
+  .img-wrapper {
+    /* Wrapper để giữ tỉ lệ ảnh */
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
   .flip-img {
-    /* QUÂN CỜ TO HƠN THEO YÊU CẦU */
-    width: 48px;
-    height: 48px;
+    /* Quân cờ tự động scale theo chiều rộng của item cha */
+    width: 100%;
+    height: auto;
     object-fit: contain;
     filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3));
+    
+    /* Giới hạn kích thước tối đa để không quá to trên màn hình lớn */
+    max-width: 60px; 
   }
 
   .flip-count-badge {
     /* Badge số lượng ở góc */
     position: absolute;
-    top: -6px;
-    right: -6px;
+    top: -4px;
+    right: -4px;
     background: #ff5252;
     color: white;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: bold;
-    min-width: 20px;
-    height: 20px;
-    border-radius: 10px;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 9px;
     display: flex;
     align-items: center;
     justify-content: center;
     border: 2px solid #2e2e2e; /* Viền để tách biệt với nền tối */
     box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    z-index: 2;
   }
 
   .flip-error {
