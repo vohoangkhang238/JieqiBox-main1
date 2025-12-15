@@ -51,7 +51,7 @@
       <div 
         v-if="selectedPiece" 
         class="selection-mark"
-        :style="rcStyle(selectedPiece.row, selectedPiece.col, 30)"
+        :style="rcStyle(selectedPiece.row, selectedPiece.col, 100)"
       >
         <div class="corner top-left"></div>
         <div class="corner top-right"></div>
@@ -384,7 +384,7 @@
     validationStatus,
   } = gs
 
-  // --- MỚI: Computed xác định quân đang chọn để vẽ khung ---
+  // --- LOGIC MỚI: TÌM QUÂN ĐANG CHỌN ĐỂ VẼ KHUNG ---
   const selectedPiece = computed(() => {
     if (!unref(selectedPieceId)) return null
     return unref(pieces).find((p: Piece) => p.id === unref(selectedPieceId))
@@ -1126,7 +1126,7 @@
 </script>
 
 <style scoped lang="scss">
-  /* --- MỚI: HIỆU ỨNG 4 GÓC (BRACKET) --- */
+  /* --- HIỆU ỨNG 4 GÓC (BRACKET) --- */
   .selection-mark {
     position: absolute;
     width: 12%; 
@@ -1141,7 +1141,7 @@
     width: 20%; 
     height: 20%;
     border-style: solid;
-    border-color: #007bff; /* Màu xanh dương chuyên nghiệp */
+    border-color: #007bff; /* Màu xanh dương */
     border-width: 2px;
   }
 
@@ -1423,14 +1423,6 @@
     &.animated {
       transition: all 0.2s ease;
     }
-
-    /* BỎ STYLE SELECTED CŨ */
-    /*
-    &.selected {
-      transform: translate(-50%, -50%) scale(1.1);
-      filter: drop-shadow(0 0 8px #f00);
-    }
-    */
 
     &.inCheck {
       transform: translate(-50%, -50%) scale(1.13);
