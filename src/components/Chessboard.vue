@@ -43,8 +43,7 @@
             :class="{
               animated: isAnimating && showAnimations,
               inCheck: p.id === checkedKingId,
-              // Làm mờ quân gốc khi đang lật
-              'dimmed-piece': pendingFlip && selectedPiece && p.id === selectedPiece.id
+              // Đã bỏ 'dimmed-piece' để quân luôn sáng rõ
             }"
             :style="rcStyle(p.row, p.col, p.zIndex)"
           />
@@ -175,7 +174,7 @@
           class="radial-menu-container"
           :style="{
             ...rcStyle(selectedPiece.row, selectedPiece.col, 2500),
-            width: '0px',  /* QUAN TRỌNG: Ép về 0 để tâm trùng với tọa độ */
+            width: '0px', 
             height: '0px'
           }"
         >
@@ -742,7 +741,7 @@
     position: absolute;
     transform: translate(-50%, -50%); /* Căn giữa vào quân cờ */
     z-index: 2000;
-    /* width/height sẽ được ghi đè bằng inline style */
+    width: 0; height: 0; /* Container ảo, các item sẽ bung ra từ đây */
     /* Hiệu ứng zoom in */
     animation: zoomIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   }
@@ -800,12 +799,6 @@
     display: flex; align-items: center; justify-content: center;
     border: 1px solid #fff;
     box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-  }
-
-  /* Ẩn/Làm mờ quân đang chọn */
-  .piece.dimmed-piece {
-    opacity: 0.3;
-    filter: grayscale(100%);
   }
 
   /* VÙNG THÔNG BÁO DƯỚI BÀN CỜ (HƯỚNG DẪN) */
