@@ -223,7 +223,8 @@
 
   const { 
     isThinking, isStopping, startAnalysis, stopAnalysis, 
-    currentSearchMoves, bestMove, isPondering, stopPonder, loadEngine 
+    currentSearchMoves, bestMove, isPondering, stopPonder, loadEngine,
+    ponderMove, startPonder, handlePonderHit, isPonderMoveMatch
   } = engineState
   
   const engineLoaded = computed(() => engineState.isEngineLoaded.value)
@@ -251,7 +252,6 @@
     analysisMode: 'movetime', advancedScript: '',
   })
 
-  // Time Options 0.1s -> 100s
   const timeOptions = [
     0.1, 
     ...Array.from({length: 100}, (_, i) => i + 1)
@@ -280,6 +280,15 @@
   const managedEngines = ref<any[]>([])
   const selectedEngineId = ref<string | null>(null)
 
+  // Computed: Ponder khả dụng khi chỉ có 1 bên là AI
+  const isPonderAvailable = computed(() => {
+    return (
+      engineLoaded.value &&
+      enablePonder.value &&
+      ((isRedAi.value && !isBlackAi.value) || (!isRedAi.value && isBlackAi.value))
+    )
+  })
+
   // --- Handlers ---
   const handleCopyFen = async () => {
     try {
@@ -299,7 +308,15 @@
   }
 
   function toggleFlipMode() { flipMode.value = flipMode.value === 'free' ? 'random' : 'free' }
-  function togglePonder() { enablePonder.value = !enablePonder.value }
+  
+  function togglePonder() { 
+    enablePonder.value = !enablePonder.value 
+    // Nếu tắt Ponder khi đang Ponder thì dừng ngay
+    if (!enablePonder.value && isPondering.value) {
+      stopPonder({ playBestMoveOnStop: false })
+    }
+  }
+  
   function toggleDarkMode() { darkMode.value = !darkMode.value }
   function handleUndoMove() { if (!isMatchRunning.value) undoLastMove() }
 
@@ -319,19 +336,18 @@
   }
 
   function handleStopAnalysis() {
-    stopAnalysis({ playBestMoveOnStop: false })
+    if (isPondering.value) stopPonder({ playBestMoveOnStop: false })
+    else stopAnalysis({ playBestMoveOnStop: false })
+    
     isManualAnalysis.value = false
     ;(window as any).__MANUAL_ANALYSIS__ = false
   }
 
   function toggleRedAi() {
-    // Nếu AI đang nghĩ và đến lượt nó, stop để nó đi nước ngay (Move Now) hoặc hủy
     if (isRedAi.value && isThinking.value && sideToMove.value === 'red') {
        stopAnalysis({ playBestMoveOnStop: false }) 
     }
-    // Tắt manual analysis nếu có
     if (!isRedAi.value) isManualAnalysis.value = false
-    
     isRedAi.value = !isRedAi.value
     nextTick(() => checkAndTriggerAi())
   }
@@ -341,7 +357,6 @@
        stopAnalysis({ playBestMoveOnStop: false })
     }
     if (!isBlackAi.value) isManualAnalysis.value = false
-    
     isBlackAi.value = !isBlackAi.value
     nextTick(() => checkAndTriggerAi())
   }
@@ -389,11 +404,40 @@
     return moves
   })
 
+  // Hàm start Ponder
+  const startPonderAfterAiMove = () => {
+    if (!isPonderAvailable.value) return
+    const pMove = ponderMove.value
+    if (!pMove) return
+    
+    startPonder(baseFenForEngine.value, engineMovesSinceLastReveal.value, pMove, analysisSettings.value)
+  }
+
   async function checkAndTriggerAi() {
     if (isStopping.value) return
     
-    // Nếu đang nghĩ mà KHÔNG phải lượt AI và KHÔNG phải phân tích thủ công -> Stop
-    // (Đây là trường hợp AI vừa đi xong, đến lượt người)
+    // --- SỬA LỖI PONDER: Chỉ check Ponder Hit khi đến lượt AI (Người vừa đi xong) ---
+    if (isPondering.value) {
+        // Nếu hiện tại là lượt của AI (tức là Người vừa đi nước cuối)
+        // Thì mới kiểm tra xem nước Người đi có trúng Ponder không
+        if (isCurrentAiTurnNow()) {
+            const lastMoveEntry = history.value[currentMoveIndex.value - 1]
+            const lastMove = lastMoveEntry ? lastMoveEntry.data : ''
+            
+            if (isPonderMoveMatch(lastMove)) {
+                handlePonderHit()
+                return // Engine chuyển sang Thinking, không cần startAnalysis mới
+            } else {
+                stopPonder({ playBestMoveOnStop: false })
+            }
+        } else {
+            // Nếu không phải lượt AI (tức là AI vừa đi xong và đang Ponder cho nước tiếp theo của Người)
+            // THÌ KHÔNG ĐƯỢC DỪNG PONDER.
+            return
+        }
+    }
+    
+    // Logic AI bình thường
     if (isThinking.value && !isCurrentAiTurnNow() && !isManualAnalysis.value) {
       stopAnalysis({ playBestMoveOnStop: false })
       return
@@ -425,13 +469,13 @@
 
   watch([sideToMove, isRedAi, isBlackAi, engineLoaded, pendingFlip], () => { nextTick(() => checkAndTriggerAi()) })
   
-  // Auto restart manual analysis if position changes
   watch(currentMoveIndex, () => {
     if (isManualAnalysis.value && !isThinking.value && engineLoaded.value && !isStopping.value && !isCurrentAiTurnNow()) {
       manualStartAnalysis()
     }
   })
 
+  // Watch BestMove để kích hoạt Ponder sau khi AI đi
   watch(bestMove, move => {
     if (!move) return
     if (engineLoaded.value && isCurrentAiTurnNow() && !isMatchRunning.value && !isManualAnalysis.value) {
@@ -440,7 +484,11 @@
         const ok = playMoveFromUci(move)
         bestMove.value = ''
         if (ok) {
-          if (gameState.handlePonderAfterMove) gameState.handlePonderAfterMove(move, true)
+          // AI đi xong -> Start Ponder
+          nextTick(() => {
+             startPonderAfterAiMove()
+          })
+          
           nextTick(() => checkAndTriggerAi())
         }
       }, 50)
@@ -493,15 +541,10 @@
     if (engineState.clearSearchMoves) engineState.clearSearchMoves()
   }
 
-  // --- SỬA LỖI QUAN TRỌNG TẠI ĐÂY ---
   const handleForceStopAi = (event: Event) => {
-    // Ép kiểu event để lấy detail
     const customEvent = event as CustomEvent
     const reason = customEvent.detail?.reason
 
-    console.log(`[DEBUG] handleForceStopAi: reason=${reason}`)
-
-    // 1. Nếu là nước đi thủ công (manual-move), chỉ dừng suy nghĩ, KHÔNG tắt AI
     if (reason === 'manual-move') {
       if (isThinking.value) {
         stopAnalysis({ playBestMoveOnStop: false })
@@ -509,16 +552,13 @@
       return 
     }
 
-    // 2. Các trường hợp khác: Reset toàn bộ
     resetVariationState()
     
-    // Bảo tồn Manual Analysis khi Undo/Replay
     const preserveManualAnalysis = reason === 'undo-move' || reason === 'replay-move'
     const wasManualAnalysis = isManualAnalysis.value
 
-    if (isThinking.value) {
-      stopAnalysis({ playBestMoveOnStop: false })
-    }
+    if (isThinking.value) stopAnalysis({ playBestMoveOnStop: false })
+    if (isPondering.value) stopPonder({ playBestMoveOnStop: false })
 
     isRedAi.value = false
     isBlackAi.value = false
@@ -536,8 +576,8 @@
   const setupNewGame = () => {
     if (isMatchRunning.value) return
     if (engineState.stopAnalysis) engineState.stopAnalysis()
+    if (isPondering.value) stopPonder({ playBestMoveOnStop: false })
     
-    // Reset manual
     resetVariationState()
     isRedAi.value = false
     isBlackAi.value = false
@@ -556,7 +596,6 @@
     if (isMatchRunning.value) return
     if (engineState.stopAnalysis) engineState.stopAnalysis()
     
-    // Reset khi mở file mới
     resetVariationState()
     isRedAi.value = false
     isBlackAi.value = false
@@ -587,7 +626,7 @@
 
   const handlePositionChanged = () => {
     if (engineState.stopAnalysis) engineState.stopAnalysis()
-    // Reset
+    if (isPondering.value) stopPonder({ playBestMoveOnStop: false })
     resetVariationState()
     isRedAi.value = false
     isBlackAi.value = false
