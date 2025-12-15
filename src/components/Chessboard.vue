@@ -162,38 +162,34 @@
       <ClearHistoryConfirmDialog :visible="showClearHistoryDialog" :onConfirm="onConfirmClearHistory" :onCancel="onCancelClearHistory" />
     </div>
 
-    <div class="side-panel">
+    <div class="bottom-panel">
       <template v-if="pendingFlip">
         <div class="flip-prompt-container">
-          <div class="flip-header">
-            <span class="flip-title">
-              Chọn quân {{ pendingFlip.side === 'red' ? 'Đỏ' : 'Đen' }}
-            </span>
-            <button class="random-btn" @click="handleRandomFlip">
-              <v-icon icon="mdi-shuffle" size="x-small" class="mr-1"></v-icon>
-              Ngẫu nhiên
+          <div class="flip-prompt-header">
+            <span>Chọn quân {{ pendingFlip.side === 'red' ? 'Đỏ' : 'Đen' }}</span>
+            <button class="random-btn" @click="handleFlipRandom">
+              <v-icon icon="mdi-shuffle" size="small"></v-icon> Ngẫu nhiên
             </button>
           </div>
-          
           <div class="flip-choices">
             <div 
-              v-for="item in flipOptions" 
+              v-for="item in flipSelectionPieces" 
               :key="item.name" 
-              class="flip-item"
+              class="flip-choice-item"
               @click="handleFlipSelect(item.name)"
             >
               <img :src="getPieceImageUrl(item.name)" class="flip-img" />
-              <div class="flip-count-badge">{{ item.count }}</div>
+              <span class="flip-count">{{ item.count }}</span>
             </div>
-            <div v-if="flipOptions.length === 0" class="flip-empty">
-              Không có quân phù hợp!
+            <div v-if="flipSelectionPieces.length === 0" class="flip-error">
+              Hết quân loại này!
             </div>
           </div>
         </div>
       </template>
 
       <template v-else>
-        <div class="pool-section top-pool">
+        <div class="pool-section">
           <div v-for="item in (isRedOnTop ? redPool : blackPool)" :key="item.char" class="pool-row">
             <img :src="getPieceImageUrl(item.name)" class="pool-img" />
             <div class="pool-controls">
@@ -206,14 +202,14 @@
           </div>
         </div>
         
-        <div class="pool-divider">
-          <div v-if="poolErrorMessage" class="pool-error">
+        <div v-if="poolErrorMessage" class="pool-error-wrapper">
+          <div class="pool-error">
             <v-icon icon="mdi-alert-circle" size="x-small" color="error"></v-icon>
             <span>{{ poolErrorMessage }}</span>
           </div>
         </div>
 
-        <div class="pool-section bottom-pool">
+        <div class="pool-section">
           <div v-for="item in (isRedOnTop ? blackPool : redPool)" :key="item.char" class="pool-row">
             <img :src="getPieceImageUrl(item.name)" class="pool-img" />
             <div class="pool-controls">
@@ -252,17 +248,14 @@
   const es = inject('engine-state') as { pvMoves: any; bestMove: any; isThinking: any; multiPvMoves: any; stopAnalysis: any; isPondering: any; isInfinitePondering: any; ponderMove: any; ponderhit: any; analysis?: any }
   const jaiEngine = inject('jai-engine-state') as any
   const isMatchRunning = computed(() => jaiEngine?.isMatchRunning?.value || false)
-  
-  // Inject thêm pendingFlip từ game-state
   const { pieces, selectedPieceId, handleBoardClick, isAnimating, lastMovePositions, registerArrowClearCallback, history, currentMoveIndex, unrevealedPieceCounts, adjustUnrevealedCount, getPieceNameFromChar, validationStatus, pendingFlip } = gs
 
   const selectedPiece = computed(() => { if (!unref(selectedPieceId)) return null; return unref(pieces).find((p: Piece) => p.id === unref(selectedPieceId)) })
 
-  // --- LOGIC MỚI: Xử lý chọn quân khi lật (Flip Logic) ---
-  const flipOptions = computed(() => {
+  // --- LOGIC CHO PHẦN FLIP SELECTION (CHỌN QUÂN LẬT) ---
+  const flipSelectionPieces = computed(() => {
     if (!pendingFlip.value) return []
     const requiredSide = pendingFlip.value.side
-
     return Object.entries(unrevealedPieceCounts.value)
       .map(([char, count]) => {
         const name = getPieceNameFromChar(char)
@@ -280,16 +273,15 @@
     }
   }
 
-  const handleRandomFlip = () => {
+  const handleFlipRandom = () => {
     if (pendingFlip.value && pendingFlip.value.callback) {
-      const options = flipOptions.value
-      if (options.length === 0) return
+      const pieces = flipSelectionPieces.value
+      if (pieces.length === 0) return
       
-      // Tạo pool để random đúng xác suất
       const pool: string[] = []
-      options.forEach((item: any) => {
-        for(let i=0; i < (item.count as number); i++) {
-          pool.push(item.name)
+      pieces.forEach((p: any) => {
+        for(let i=0; i < (p.count as number); i++) {
+          pool.push(p.name)
         }
       })
       
@@ -299,7 +291,7 @@
       }
     }
   }
-  // -----------------------------------------------------
+  // ---------------------------------------------------
 
   const poolErrorMessage = computed(() => {
     if (!validationStatus.value) return null
@@ -535,7 +527,146 @@
     pointer-events: none;
   }
 
-  /* --- CÁC STYLE CHO GIAO DIỆN LẬT QUÂN (FLIP UI) --- */
+  /* --- SỬA LAYOUT CHÍNH: XẾP DỌC ĐỂ KHO QUÂN XUỐNG DƯỚI --- */
+  .chessboard-wrapper {
+    display: flex;
+    flex-direction: column; /* Quan trọng: Xếp theo cột */
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    width: 100%;
+    max-width: 95vmin;
+    margin: 0 auto;
+  }
+
+  .chessboard-container {
+    position: relative;
+    width: 100%; /* Chiếm hết bề ngang container */
+    aspect-ratio: 9/10;
+    margin: auto;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    flex: none; /* Bỏ flex cứng */
+  }
+
+  /* KHO QUÂN / PANEL DƯỚI */
+  .bottom-panel {
+    width: 100%; /* Chiếm hết bề ngang dưới bàn cờ */
+    display: flex;
+    flex-direction: row; /* Hai phe xếp ngang hàng */
+    justify-content: center;
+    align-items: flex-start;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    padding: 8px;
+    gap: 20px;
+    min-height: 80px; /* Đảm bảo đủ chiều cao */
+  }
+
+  /* KHO QUÂN */
+  .pool-section {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
+    flex: 1;
+    justify-content: center;
+  }
+
+  .pool-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    padding: 4px;
+    position: relative;
+    gap: 4px;
+    min-width: 45px;
+  }
+
+  .pool-img {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+  }
+
+  .pool-controls {
+    display: flex;
+    align-items: center;
+    flex-direction: row;
+    justify-content: center;
+    gap: 2px;
+  }
+
+  .pool-num {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #fff;
+    text-align: right;
+    line-height: 1;
+    margin-right: 2px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  }
+
+  .red-num { color: #ff5252; }
+  .black-num { color: #000000; text-shadow: 0 0 1px #fff; }
+
+  .pool-btns {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .tiny-btn {
+    width: 14px;
+    height: 12px;
+    line-height: 10px;
+    font-size: 10px;
+    font-weight: bold;
+    background: #555;
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 2px;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    &:hover:not(:disabled) { background: #777; }
+    &:disabled { opacity: 0.3; cursor: default; border-color: transparent; }
+  }
+
+  .pool-error-wrapper {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: auto;
+    height: auto;
+    margin-bottom: 8px;
+    z-index: 100;
+  }
+
+  .pool-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    background: #ffffff;
+    border: 1px solid #d32f2f;
+    border-radius: 4px;
+    padding: 6px 8px;
+    color: #d32f2f;
+    font-weight: bold;
+    font-size: 12px;
+    text-align: center;
+    word-break: break-word;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    white-space: nowrap;
+  }
+
+  /* FLIP PROMPT UI */
   .flip-prompt-container {
     display: flex;
     flex-direction: column;
@@ -544,15 +675,12 @@
     gap: 4px;
   }
 
-  .flip-header {
+  .flip-prompt-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 0 4px;
     margin-bottom: 2px;
-  }
-
-  .flip-title {
     color: #fff;
     font-weight: bold;
     font-size: 13px;
@@ -569,6 +697,7 @@
     cursor: pointer;
     display: flex;
     align-items: center;
+    gap: 4px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.2);
     &:hover { background: #0056b3; }
   }
@@ -581,9 +710,11 @@
     flex: 1;
     overflow-y: auto;
     padding: 2px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.3) transparent;
   }
 
-  .flip-item {
+  .flip-choice-item {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -609,7 +740,7 @@
     object-fit: contain;
   }
 
-  .flip-count-badge {
+  .flip-count {
     font-size: 11px;
     font-weight: bold;
     color: #fff;
@@ -617,44 +748,35 @@
     text-shadow: 0 1px 2px rgba(0,0,0,0.8);
   }
 
-  .flip-empty {
+  .flip-error {
     color: #ff5252;
     font-size: 12px;
     margin: auto;
     font-weight: bold;
   }
 
-  /* --- CÁC STYLE KHÁC GIỮ NGUYÊN --- */
-  .chessboard-wrapper { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; width: 100%; max-width: 95vmin; margin: 0 auto; &.has-chart { } @media (max-width: 768px) { gap: 12px; } }
-  .chessboard-container { position: relative; width: 100%; aspect-ratio: 9/10; margin: auto; user-select: none; -webkit-tap-highlight-color: transparent; }
-  
-  .side-panel { 
-    width: 100%; 
-    display: flex; 
-    flex-direction: row; 
-    justify-content: center; 
-    align-items: flex-start;
-    background: rgba(0, 0, 0, 0.2); 
-    border-radius: 6px; 
-    padding: 8px; 
-    gap: 20px; 
-    min-height: 85px; /* Chiều cao vừa đủ cho cả 2 chế độ */
+  /* Responsive Mobile */
+  @media (max-width: 768px) {
+    .bottom-panel {
+      padding: 6px;
+      gap: 10px;
+    }
+    .pool-section {
+      gap: 4px;
+    }
+    .pool-img {
+      width: 28px;
+      height: 28px;
+    }
+    .pool-controls {
+      flex-direction: column-reverse;
+    }
+    .pool-btns {
+      display: none; /* Ẩn nút +/- trên mobile cho gọn */
+    }
   }
 
-  .pool-section { display: flex; flex-direction: row; flex-wrap: wrap; gap: 6px; flex: 1; justify-content: center; }
-  .pool-row { display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.1); border-radius: 4px; padding: 4px; position: relative; gap: 4px; min-width: 45px; }
-  .pool-img { width: 32px; height: 32px; object-fit: contain; }
-  .pool-controls { display: flex; align-items: center; flex-direction: row; justify-content: center; gap: 2px; }
-  .pool-num { font-size: 1.2rem; font-weight: bold; color: #fff; text-align: right; line-height: 1; margin-right: 2px; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
-  .red-num { color: #ff5252; } .black-num { color: #000000; text-shadow: 0 0 1px #fff; }
-  .pool-btns { display: flex; flex-direction: column; gap: 1px; }
-  .tiny-btn { width: 14px; height: 12px; line-height: 10px; font-size: 10px; font-weight: bold; background: #555; color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 2px; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; &:hover:not(:disabled) { background: #777; } &:disabled { opacity: 0.3; cursor: default; border-color: transparent; } }
-  .pool-divider { display: none; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); width: auto; height: auto; }
-  .pool-error { display: flex; flex-direction: column; align-items: center; gap: 4px; background: #ffffff; border: 1px solid #d32f2f; border-radius: 4px; padding: 6px 8px; color: #d32f2f; font-weight: bold; font-size: 12px; text-align: center; word-break: break-word; box-shadow: 0 2px 4px rgba(0,0,0,0.2); white-space: nowrap; margin-bottom: 8px; }
-
-  @media (max-width: 768px) { .side-panel { padding: 6px; gap: 10px; } .pool-section { gap: 4px; } .pool-img { width: 28px; height: 28px; } .pool-controls { flex-direction: column-reverse; } .pool-btns { display: none; } }
-
-  /* ... Các style khác giữ nguyên ... */
+  /* CÁC STYLE PHỤ KHÁC GIỮ NGUYÊN */
   .eval-bar { position: absolute; top: 0; bottom: 0; left: -12px; width: 8px; border-radius: 4px; overflow: hidden; background: #ddd; box-shadow: 0 0 2px rgba(0, 0, 0, 0.2); z-index: 5; pointer-events: none; @media (max-width: 768px) { left: -10px; width: 6px; } }
   .eval-top { width: 100%; background: #e53935; transition: height 0.15s ease; pointer-events: none; }
   .eval-bottom { width: 100%; background: #333; transition: height 0.15s ease; pointer-events: none; }
