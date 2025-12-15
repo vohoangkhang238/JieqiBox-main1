@@ -119,7 +119,7 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
         analysisLines[mpvIndex] = ln; analysis.value = analysisLines.filter(Boolean).join('\n')
       }
 
-      // --- XỬ LÝ BESTMOVE (LOGIC QUAN TRỌNG) ---
+      // --- XỬ LÝ BESTMOVE (ĐÃ FIX: GỬI KÈM TỌA ĐỘ KHI ĂN QUÂN) ---
       if (ln.startsWith('bestmove')) {
         const parts = ln.split(/\s+/); const mv = parts[1] ?? ''
         let ponderMoveFromEngine = ''; const ponderIndex = parts.indexOf('ponder')
@@ -163,7 +163,10 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
             const movingPiece = pieces.find((p: any) => p.row === from.row && p.col === from.col)
             const targetPiece = pieces.find((p: any) => p.row === to.row && p.col === to.col)
 
-            const doFinalMove = () => { gameState.move(from, to); gameState.selectedPieceId.value = null }
+            const doFinalMove = () => { 
+                gameState.move(from, to)
+                gameState.selectedPieceId.value = null // Xóa highlight sau khi đi
+            }
 
             nextTick(() => {
                 // 1. AI CẦM QUÂN ÚP ĐI
@@ -171,33 +174,40 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
                     const side = movingPiece.name.startsWith('red') ? 'red' : 'black'
                     gameState.pendingFlip.value = {
                         side: side,
-                        // --- GỬI KÈM TOẠ ĐỘ QUÂN CẦN LẬT ---
+                        // !!! QUAN TRỌNG: Gửi tọa độ để UI biết vẽ ở đâu !!!
                         row: movingPiece.row,
                         col: movingPiece.col,
                         callback: (selectedName: string) => {
                             movingPiece.name = selectedName; movingPiece.isKnown = true
                             gameState.adjustUnrevealedCount(gameState.getCharFromPieceName(selectedName), -1)
                             gameState.pendingFlip.value = null
-                            setTimeout(() => { if (targetPiece && !targetPiece.isKnown) handleTargetFlip(side); else doFinalMove() }, 50)
+                            setTimeout(() => { 
+                                // Nếu ăn quân úp thì xử lý tiếp, ko thì đi
+                                if (targetPiece && !targetPiece.isKnown) handleTargetFlip(side); 
+                                else doFinalMove() 
+                            }, 50)
                         }
                     }
+                    // Force UI Highlight
+                    gameState.selectedPieceId.value = movingPiece.id
                     return
                 }
-                // 2. AI ĂN QUÂN ÚP
+                
+                // 2. AI ĂN QUÂN ÚP (Khi quân nguồn đã ngửa)
                 if (targetPiece && !targetPiece.isKnown) {
                     const attackerColor = movingPiece.name.startsWith('red') ? 'red' : 'black'
                     handleTargetFlip(attackerColor)
                     return
                 }
+                
                 doFinalMove()
             })
 
             const handleTargetFlip = (attackerColor: string) => {
-                // Quân bị ăn ngược màu với quân tấn công
                 const targetSide = attackerColor === 'red' ? 'black' : 'red'
                 gameState.pendingFlip.value = {
                     side: targetSide,
-                    // --- GỬI KÈM TOẠ ĐỘ QUÂN BỊ ĂN ---
+                    // !!! QUAN TRỌNG: Gửi tọa độ quân BỊ ĂN !!!
                     row: targetPiece.row,
                     col: targetPiece.col,
                     callback: (selectedName: string) => {
@@ -207,6 +217,8 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
                         doFinalMove()
                     }
                 }
+                // Force UI Highlight quân bị ăn
+                gameState.selectedPieceId.value = targetPiece.id
             }
           }
         }
@@ -221,14 +233,9 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
     pendingOutputLines = []; lastProcessedTime = currentTime; outputThrottleTimer = null
   }
 
-  const queueOutputLine = (line: string) => {
-    pendingOutputLines.push(line); if (!outputThrottleTimer) outputThrottleTimer = setTimeout(processPendingOutput, getThrottleDelay())
-  }
-  const resetThrottling = () => {
-    if (outputThrottleTimer) { clearTimeout(outputThrottleTimer); outputThrottleTimer = null }
-    pendingOutputLines = []; lastProcessedTime = 0
-  }
-  // ... (Phần còn lại giữ nguyên như cũ, chỉ rút gọn để đỡ dài dòng)
+  // (Phần còn lại giống hệt code cũ, rút gọn để vừa khung chat)
+  const queueOutputLine = (line: string) => { pendingOutputLines.push(line); if (!outputThrottleTimer) outputThrottleTimer = setTimeout(processPendingOutput, getThrottleDelay()) }
+  const resetThrottling = () => { if (outputThrottleTimer) { clearTimeout(outputThrottleTimer); outputThrottleTimer = null } pendingOutputLines = []; lastProcessedTime = 0 }
   const loadEngine = async (engine: ManagedEngine) => {
     if (isEngineLoading.value) return; isEngineLoading.value = true; isEngineLoaded.value = false; currentEngine.value = null; engineOutput.value = []; uciOptionsText.value = ''; overriddenOptions.value = {}
     playSoundLoop('loading'); if (isThinking.value) stopAnalysis({ playBestMoveOnStop: false }); if (isPondering.value) stopPonder({ playBestMoveOnStop: false })
@@ -236,39 +243,23 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
     try {
       await invoke('spawn_engine', { path: engine.path, args: engine.args.split(' ').filter(Boolean) }); send('uci')
       const uciOkPromise = new Promise<void>((resolve, reject) => {
-        const tId = setTimeout(() => reject(new Error('timeout')), validationTimeout.value)
-        listen<string>('engine-output', e => { if (e.payload.trim() === 'uciok') { clearTimeout(tId); resolve() } }).then(u => uciOkPromise.finally(u))
+        const tId = setTimeout(() => reject(new Error('timeout')), validationTimeout.value); listen<string>('engine-output', e => { if (e.payload.trim() === 'uciok') { clearTimeout(tId); resolve() } }).then(u => uciOkPromise.finally(u))
       })
-      await uciOkPromise; stopSoundLoop(); currentEngine.value = engine; analysis.value = t('uci.engineReady')
-      const cm = useConfigManager(); await cm.saveLastSelectedEngineId(engine.id)
+      await uciOkPromise; stopSoundLoop(); currentEngine.value = engine; analysis.value = t('uci.engineReady'); const cm = useConfigManager(); await cm.saveLastSelectedEngineId(engine.id)
       setTimeout(async () => { await applySavedSettings(); try { await sendUciNewGame() } catch (e) { console.error(e) } isEngineLoaded.value = true }, 100)
     } catch (e: any) { stopSoundLoop(); alert(e); isEngineLoaded.value = false; await invoke('kill_engine') } finally { isEngineLoading.value = false }
   }
-  const autoLoadLastEngine = async () => {
-    if ((window as any).__MATCH_MODE__) return
-    const cm = useConfigManager(); await cm.loadConfig(); const id = cm.getLastSelectedEngineId()
-    if (id) { const e = cm.getEngines().find(en => en.id === id); if (e) await loadEngine(e); else await cm.clearLastSelectedEngineId() }
-  }
-  const send = (cmd: string) => {
-    engineOutput.value.push({ text: cmd, kind: 'sent' }); if (cmd.startsWith('setoption name MultiPV')) { analysisLines.length = 0; multiPvMoves.value = []; analysis.value = '' }
-    invoke('send_to_engine', { command: cmd }).catch(e => console.warn(e))
-  }
-  const sendUciNewGame = async (): Promise<void> => {
-    if (!currentEngine.value) return; send('ucinewgame'); send('isready')
-    return new Promise((resolve) => setTimeout(resolve, 500)) // Fallback simple logic
-  }
+  const autoLoadLastEngine = async () => { if ((window as any).__MATCH_MODE__) return; const cm = useConfigManager(); await cm.loadConfig(); const id = cm.getLastSelectedEngineId(); if (id) { const e = cm.getEngines().find(en => en.id === id); if (e) await loadEngine(e); else await cm.clearLastSelectedEngineId() } }
+  const send = (cmd: string) => { engineOutput.value.push({ text: cmd, kind: 'sent' }); if (cmd.startsWith('setoption name MultiPV')) { analysisLines.length = 0; multiPvMoves.value = []; analysis.value = '' }; invoke('send_to_engine', { command: cmd }).catch(e => console.warn(e)) }
+  const sendUciNewGame = async (): Promise<void> => { if (!currentEngine.value) return; send('ucinewgame'); send('isready'); return new Promise((resolve) => setTimeout(resolve, 500)) }
   const startAnalysis = (settings: any = {}, moves: string[] = [], baseFen: string | null = null, searchmoves: string[] = []) => {
     if (!isEngineLoaded.value || isThinking.value) return; isThinking.value = true; isStopping.value = false; playOnStop.value = false; isInfinitePondering.value = false; analysisStartTime.value = Date.now(); resetThrottling(); analysisLines.length = 0; multiPvMoves.value = []; analysis.value = ''; currentSearchMoves.value = [...searchmoves]
     const fen = gameState.generateFenForEngine ? gameState.generateFenForEngine(baseFen) : (baseFen ?? generateFen()); analysisBaseFen.value = fen; analysisPrefixMoves.value = [...moves]
-    send(`position fen ${fen}${moves.length ? ' moves ' + moves.join(' ') : ''}`)
-    send(`go movetime ${settings.movetime || 1000}`)
+    send(`position fen ${fen}${moves.length ? ' moves ' + moves.join(' ') : ''}`); send(`go movetime ${settings.movetime || 1000}`)
   }
   const stopAnalysis = (opts: any = {}) => { if (!isEngineLoaded.value) return; isStopping.value = true; playOnStop.value = opts.playBestMoveOnStop; resetThrottling(); send('stop') }
   const clearSearchMoves = () => { currentSearchMoves.value = [] }
-  const startPonder = () => {} // Rút gọn
-  const handlePonderHit = () => {}
-  const stopPonder = () => { if (isPondering.value) send('stop'); isPondering.value = false }
-  const isPonderMoveMatch = () => false
+  const startPonder = () => {}; const handlePonderHit = () => {}; const stopPonder = () => { if (isPondering.value) send('stop'); isPondering.value = false }; const isPonderMoveMatch = () => false
   const unloadEngine = async () => { try { send('quit'); await invoke('kill_engine') } catch {} isEngineLoaded.value = false }
   const applySavedSettings = async () => {} 
 
