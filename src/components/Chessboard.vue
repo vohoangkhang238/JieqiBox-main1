@@ -168,10 +168,14 @@
         ></div>
 
         <div 
-          v-if="pendingFlip && selectedPiece" 
+          v-if="pendingFlip" 
           class="radial-menu-container"
           :style="{
-            ...rcStyle(selectedPiece.row, selectedPiece.col, 2500),
+            ...rcStyle(
+               pendingFlip.row !== undefined ? pendingFlip.row : selectedPiece?.row, 
+               pendingFlip.col !== undefined ? pendingFlip.col : selectedPiece?.col, 
+               2500
+            ),
             width: '34%', 
             height: 'auto',
             'aspect-ratio': '1/1'
@@ -258,30 +262,11 @@
   const es = inject('engine-state') as { pvMoves: any; bestMove: any; isThinking: any; multiPvMoves: any; stopAnalysis: any; isPondering: any; isInfinitePondering: any; ponderMove: any; ponderhit: any; analysis?: any }
   const jaiEngine = inject('jai-engine-state') as any
   const isMatchRunning = computed(() => jaiEngine?.isMatchRunning?.value || false)
-  
-  // DÙNG LOGIC LẤY BIẾN NHƯ CŨ ĐỂ ĐẢM BẢO TƯƠNG THÍCH AI
   const { pieces, selectedPieceId, handleBoardClick, isAnimating, lastMovePositions, registerArrowClearCallback, history, currentMoveIndex, unrevealedPieceCounts, adjustUnrevealedCount, getPieceNameFromChar, validationStatus, pendingFlip } = gs
 
-  const selectedPiece = computed(() => { 
-    // Nếu có pendingFlip (AI gọi hoặc user click), ưu tiên lấy quân đang cần lật từ pendingFlip.piece (nếu có)
-    // Tuy nhiên trong logic hiện tại, pendingFlip chỉ chứa callback và side.
-    // Quân cờ cần lật chính là quân ở vị trí "đích" của nước đi.
-    // Ở đây ta vẫn dùng selectedPieceId để highlight quân đang chọn (nếu là user click).
-    // Nếu AI gọi, selectedPieceId có thể null, nhưng pendingFlip thì có giá trị.
-    
-    // Logic của code cũ (danh sách) không cần selectedPiece để hiện bảng.
-    // Code mới (vòng tròn) cần tọa độ để vẽ.
-    // -> Ta cần tìm quân cờ mà pendingFlip đang nhắm tới.
-    
-    // Nhưng vì pendingFlip hiện tại không lưu tọa độ quân, nên ta sẽ dựa vào selectedPieceId
-    // HOẶC: Trong useUciEngine, ta cần set selectedPieceId = targetPiece.id trước khi gọi pendingFlip.
-    
-    // Tạm thời, để tương thích code cũ, ta sẽ lấy quân từ selectedPieceId nếu có.
-    if (!unref(selectedPieceId)) return null; 
-    return unref(pieces).find((p: Piece) => p.id === unref(selectedPieceId)) 
-  })
+  const selectedPiece = computed(() => { if (!unref(selectedPieceId)) return null; return unref(pieces).find((p: Piece) => p.id === unref(selectedPieceId)) })
 
-  // --- LOGIC: FLIP SELECTION (GIỮ NGUYÊN NHƯ CODE CŨ CỦA BẠN) ---
+  // --- LOGIC: FLIP SELECTION & RADIAL MENU ---
   const flipSelectionPieces = computed(() => {
     if (!pendingFlip.value) return []
     const requiredSide = pendingFlip.value.side
@@ -298,12 +283,19 @@
 
   // Hàm tính toán vị trí cho các item vòng tròn
   const getRadialItemStyle = (index: number, total: number) => {
+    // Radius = 37% của hộp chứa (hộp chứa 34% bàn cờ) -> Đảm bảo ôm sát
     const radiusPercent = 37; 
+    
     const angleStep = (2 * Math.PI) / total;
     const angle = index * angleStep - (Math.PI / 2);
+
     const x = 50 + radiusPercent * Math.cos(angle);
     const y = 50 + radiusPercent * Math.sin(angle);
-    return { left: `${x}%`, top: `${y}%` };
+
+    return {
+      left: `${x}%`,
+      top: `${y}%`
+    };
   }
 
   const handleFlipSelect = (pieceName: string) => {
@@ -312,7 +304,7 @@
     }
   }
 
-  const handleFlipRandom = () => {} // Disable random
+  const handleFlipRandom = () => {} // Đã vô hiệu hóa random
   // -------------------------
 
   const poolErrorMessage = computed(() => {
@@ -758,7 +750,7 @@
     /* Dùng left/top để định vị, transform chỉ để canh tâm */
     transform: translate(-50%, -50%);
     
-    width: 25%; /* Kích thước quân chọn nhỏ gọn */
+    width: 25%; /* Thu nhỏ kích thước quân chọn (trước là 28%) */
     aspect-ratio: 1;
     border-radius: 50%;
     /* Background kính mờ tối */

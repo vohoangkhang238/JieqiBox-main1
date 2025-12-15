@@ -119,7 +119,7 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
         analysisLines[mpvIndex] = ln; analysis.value = analysisLines.filter(Boolean).join('\n')
       }
 
-      // --- XỬ LÝ BESTMOVE (ĐÃ FIX: GỬI KÈM TỌA ĐỘ KHI ĂN QUÂN) ---
+      // --- XỬ LÝ BESTMOVE (Logic đã FIX lỗi treo) ---
       if (ln.startsWith('bestmove')) {
         const parts = ln.split(/\s+/); const mv = parts[1] ?? ''
         let ponderMoveFromEngine = ''; const ponderIndex = parts.indexOf('ponder')
@@ -165,7 +165,7 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
 
             const doFinalMove = () => { 
                 gameState.move(from, to)
-                gameState.selectedPieceId.value = null // Xóa highlight sau khi đi
+                gameState.selectedPieceId.value = null // Xóa highlight
             }
 
             nextTick(() => {
@@ -174,7 +174,7 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
                     const side = movingPiece.name.startsWith('red') ? 'red' : 'black'
                     gameState.pendingFlip.value = {
                         side: side,
-                        // !!! QUAN TRỌNG: Gửi tọa độ để UI biết vẽ ở đâu !!!
+                        // !!! QUAN TRỌNG: Gửi tọa độ để UI vẽ đúng chỗ !!!
                         row: movingPiece.row,
                         col: movingPiece.col,
                         callback: (selectedName: string) => {
@@ -182,18 +182,15 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
                             gameState.adjustUnrevealedCount(gameState.getCharFromPieceName(selectedName), -1)
                             gameState.pendingFlip.value = null
                             setTimeout(() => { 
-                                // Nếu ăn quân úp thì xử lý tiếp, ko thì đi
                                 if (targetPiece && !targetPiece.isKnown) handleTargetFlip(side); 
                                 else doFinalMove() 
                             }, 50)
                         }
                     }
-                    // Force UI Highlight
-                    gameState.selectedPieceId.value = movingPiece.id
                     return
                 }
                 
-                // 2. AI ĂN QUÂN ÚP (Khi quân nguồn đã ngửa)
+                // 2. AI ĂN QUÂN ÚP (Quân nguồn đã ngửa)
                 if (targetPiece && !targetPiece.isKnown) {
                     const attackerColor = movingPiece.name.startsWith('red') ? 'red' : 'black'
                     handleTargetFlip(attackerColor)
@@ -204,7 +201,9 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
             })
 
             const handleTargetFlip = (attackerColor: string) => {
+                // Quân bị ăn luôn ngược màu với quân tấn công
                 const targetSide = attackerColor === 'red' ? 'black' : 'red'
+                
                 gameState.pendingFlip.value = {
                     side: targetSide,
                     // !!! QUAN TRỌNG: Gửi tọa độ quân BỊ ĂN !!!
@@ -217,8 +216,6 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
                         doFinalMove()
                     }
                 }
-                // Force UI Highlight quân bị ăn
-                gameState.selectedPieceId.value = targetPiece.id
             }
           }
         }
@@ -233,7 +230,7 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
     pendingOutputLines = []; lastProcessedTime = currentTime; outputThrottleTimer = null
   }
 
-  // (Phần còn lại giống hệt code cũ, rút gọn để vừa khung chat)
+  // (Phần còn lại rút gọn nhưng giữ nguyên logic)
   const queueOutputLine = (line: string) => { pendingOutputLines.push(line); if (!outputThrottleTimer) outputThrottleTimer = setTimeout(processPendingOutput, getThrottleDelay()) }
   const resetThrottling = () => { if (outputThrottleTimer) { clearTimeout(outputThrottleTimer); outputThrottleTimer = null } pendingOutputLines = []; lastProcessedTime = 0 }
   const loadEngine = async (engine: ManagedEngine) => {
