@@ -58,6 +58,7 @@
       </div>
 
       <div class="last-move-highlights" v-if="lastMovePositions">
+        
         <div
           class="highlight from"
           :class="getAnnotationClass(lastMovePositions)"
@@ -66,6 +67,7 @@
             width: '2.5%' 
           }"
         ></div>
+
         <div
           class="highlight to"
           :class="getAnnotationClass(lastMovePositions)"
@@ -237,7 +239,11 @@
   const INITIAL_PIECE_COUNTS: { [k: string]: number } = { r: 2, n: 2, b: 2, a: 2, c: 2, p: 5, k: 1, R: 2, N: 2, B: 2, A: 2, C: 2, P: 5, K: 1 }
   const blackPool = computed(() => { const chars = ['r', 'n', 'c', 'a', 'b', 'p']; return chars.map(char => ({ char, name: getPieceNameFromChar(char), count: unrevealedPieceCounts?.value?.[char] || 0, max: INITIAL_PIECE_COUNTS[char] })) })
   const redPool = computed(() => { const chars = ['R', 'N', 'C', 'A', 'B', 'P']; return chars.map(char => ({ char, name: getPieceNameFromChar(char), count: unrevealedPieceCounts?.value?.[char] || 0, max: INITIAL_PIECE_COUNTS[char] })) })
-  function getPieceImageUrl(pieceName: string): string { return new URL(`../assets/${pieceName}.svg`, import.meta.url).href }
+  
+  // --- THAY ĐỔI 1: Hàm lấy ảnh quân cờ trong Pool (Sửa thành .png) ---
+  function getPieceImageUrl(pieceName: string): string { 
+    return new URL(`../assets/${pieceName}.png`, import.meta.url).href 
+  }
 
   const userCircles = ref<Array<{ x: number; y: number; radius: number; row: number; col: number }>>([])
   const userArrows = ref<Array<{ x1: number; y1: number; x2: number; y2: number; fromRow: number; fromCol: number; toRow: number; toCol: number }>>([])
@@ -257,7 +263,10 @@
 
   const percentFromRC = (row: number, col: number) => ({ x: OX + (col / (COLS - 1)) * GX, y: OY + (row / (ROWS - 1)) * GY })
   const percentToSvgCoords = (row: number, col: number) => ({ x: (OX + (col / (COLS - 1)) * GX) * 0.9, y: OY + (row / (ROWS - 1)) * GY })
-  const img = (p: Piece) => new URL(`../assets/${p.isKnown ? p.name : 'dark_piece'}.svg`, import.meta.url).href
+  
+  // --- THAY ĐỔI 2: Hàm lấy ảnh quân cờ trên bàn (Sửa thành .png) ---
+  const img = (p: Piece) => new URL(`../assets/${p.isKnown ? p.name : 'dark_piece'}.png`, import.meta.url).href
+  
   const rcStyle = (r: number, c: number, zIndex?: number) => {
     const { x, y } = percentFromRC(r, c)
     return { top: `${y}%`, left: `${x}%`, width: '12%', transform: 'translate(-50%,-50%)', ...(zIndex !== undefined && { zIndex: zIndex }) }
@@ -283,17 +292,9 @@
     return { row: Math.max(0, Math.min(ROWS - 1, Math.round(rowFloat))), col: Math.max(0, Math.min(COLS - 1, Math.round(colFloat))) }
   }
 
-  /* * ĐÃ VÔ HIỆU HÓA HÀM XỬ LÝ CHUỘT PHẢI ĐỂ KHÔNG VẼ HÌNH TRÒN 
-   * (Các hàm này vẫn giữ lại để không gây lỗi logic nếu có tham chiếu, nhưng không được gọi từ template)
-   */
-  const handleRightMouseDown = (e: MouseEvent) => {
-    e.preventDefault(); 
-    // Disabled
-  }
-
-  const handleRightMouseUp = (e: MouseEvent) => {
-    // Disabled
-  }
+  // --- Đã tắt tính năng vẽ chuột phải ---
+  const handleRightMouseDown = (e: MouseEvent) => { e.preventDefault(); }
+  const handleRightMouseUp = (e: MouseEvent) => { }
 
   const clearUserDrawings = () => { userCircles.value = []; userArrows.value = [] }
   if (gs) gs.clearUserArrows = clearUserDrawings
@@ -439,7 +440,6 @@
   /* 3. HIỆU ỨNG NƯỚC ĐI TỪ (FROM): CHẤM TRÒN NHỎ */
   .highlight.from {
     position: absolute;
-    /* Width được set inline là 2.5% */
     aspect-ratio: 1;
     border-radius: 50%;
     transform: translate(-50%, -50%);
