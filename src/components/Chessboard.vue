@@ -173,7 +173,11 @@
         <div 
           v-if="pendingFlip && selectedPiece" 
           class="radial-menu-container"
-          :style="rcStyle(selectedPiece.row, selectedPiece.col, 2500)"
+          :style="{
+            ...rcStyle(selectedPiece.row, selectedPiece.col, 2500),
+            width: '0px',  /* QUAN TRỌNG: Ép về 0 để tâm trùng với tọa độ */
+            height: '0px'
+          }"
         >
           <div 
             v-for="(item, index) in flipSelectionPieces" 
@@ -280,6 +284,7 @@
     // Bán kính vòng tròn (đơn vị PX)
     const radius = 65; 
     
+    // Chia đều góc (360 độ / tổng số item)
     const angleStep = (2 * Math.PI) / total;
     const angle = index * angleStep - (Math.PI / 2);
 
@@ -737,7 +742,7 @@
     position: absolute;
     transform: translate(-50%, -50%); /* Căn giữa vào quân cờ */
     z-index: 2000;
-    width: 0; height: 0; /* Container ảo, các item sẽ bung ra từ đây */
+    /* width/height sẽ được ghi đè bằng inline style */
     /* Hiệu ứng zoom in */
     animation: zoomIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   }
