@@ -43,7 +43,6 @@
             :class="{
               animated: isAnimating && showAnimations,
               inCheck: p.id === checkedKingId,
-              // Đã bỏ 'dimmed-piece' để quân luôn sáng rõ
             }"
             :style="rcStyle(p.row, p.col, p.zIndex)"
           />
@@ -174,8 +173,9 @@
           class="radial-menu-container"
           :style="{
             ...rcStyle(selectedPiece.row, selectedPiece.col, 2500),
-            width: '0px', 
-            height: '0px'
+            width: '42%', /* Kích thước container tính theo % bàn cờ */
+            height: 'auto',
+            'aspect-ratio': '1/1' /* Luôn giữ hình vuông */
           }"
         >
           <div 
@@ -278,21 +278,21 @@
       })
   })
 
-  // Hàm tính toán vị trí cho các item vòng tròn (SỬ DỤNG LEFT/TOP THAY VÌ TRANSFORM)
+  // Hàm tính toán vị trí cho các item vòng tròn (SỬ DỤNG % ĐỂ SCALE)
   const getRadialItemStyle = (index: number, total: number) => {
-    // Bán kính vòng tròn (đơn vị PX)
-    const radius = 65; 
+    // Bán kính = 35% của hộp chứa (hộp chứa rộng 42% bàn cờ)
+    const radiusPercent = 35; 
     
-    // Chia đều góc (360 độ / tổng số item)
+    // Tâm vòng tròn là 50%, 50% của hộp chứa
     const angleStep = (2 * Math.PI) / total;
     const angle = index * angleStep - (Math.PI / 2);
 
-    const x = Math.round(radius * Math.cos(angle));
-    const y = Math.round(radius * Math.sin(angle));
+    const x = 50 + radiusPercent * Math.cos(angle);
+    const y = 50 + radiusPercent * Math.sin(angle);
 
     return {
-      left: `${x}px`,
-      top: `${y}px`
+      left: `${x}%`,
+      top: `${y}%`
     };
   }
 
@@ -755,7 +755,8 @@
   .radial-item {
     position: absolute;
     top: 0; left: 0; /* Vị trí gốc là tâm */
-    width: 44px; height: 44px;
+    width: 28%; /* % theo hộp chứa, tức là ~ 12% bàn cờ */
+    aspect-ratio: 1; /* Hình vuông/tròn */
     border-radius: 50%;
     /* Background kính mờ tối */
     background: rgba(40, 40, 40, 0.85);
@@ -767,15 +768,13 @@
     cursor: pointer;
     box-shadow: 0 4px 8px rgba(0,0,0,0.4);
     transition: all 0.2s;
-    /* Căn chỉnh để tâm của item trùng với điểm tính toán */
-    margin-top: -22px; 
-    margin-left: -22px;
+    transform: translate(-50%, -50%); /* Căn giữa vào điểm neo */
 
     /* SỬ DỤNG HOVER ĐỂ SCALE MÀ KHÔNG GÂY XUNG ĐỘT */
     &:hover {
       background: rgba(60, 60, 60, 0.95);
       border-color: #00d2ff;
-      transform: scale(1.15); /* Ở đây dùng transform là OK vì trong getRadialItemStyle ta dùng left/top */
+      transform: translate(-50%, -50%) scale(1.15); /* Scale lên 1 chút */
       z-index: 2050;
       box-shadow: 0 0 15px rgba(0, 210, 255, 0.6);
     }
@@ -789,12 +788,12 @@
 
   .radial-count {
     position: absolute;
-    top: -2px; right: -2px;
+    top: 0; right: 0;
     background: #ff3d00;
     color: white;
     font-size: 10px;
     font-weight: bold;
-    width: 16px; height: 16px;
+    min-width: 16px; height: 16px;
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     border: 1px solid #fff;
