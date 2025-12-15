@@ -5,7 +5,7 @@
   import TopToolbar from './components/TopToolbar.vue'
   import Chessboard from './components/Chessboard.vue'
   import AnalysisSidebar from './components/AnalysisSidebar.vue'
-  import FlipPromptDialog from './components/FlipPromptDialog.vue'
+  // import FlipPromptDialog from './components/FlipPromptDialog.vue' // Đã bỏ vì chức năng đã được chuyển vào Chessboard.vue
   import FenInputDialog from './components/FenInputDialog.vue'
   import GameEndDialog from './components/GameEndDialog.vue'
 
@@ -122,7 +122,6 @@
         <Chessboard />
       </div>
       <AnalysisSidebar />
-      <FlipPromptDialog />
       <FenInputDialog
         v-model="game.isFenInputDialogVisible.value"
         @confirm="game.confirmFenInput"
