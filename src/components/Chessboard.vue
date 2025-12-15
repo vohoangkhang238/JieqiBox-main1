@@ -275,13 +275,11 @@
       })
   })
 
-  // Hàm tính toán vị trí cho các item vòng tròn
+  // Hàm tính toán vị trí cho các item vòng tròn (SỬ DỤNG LEFT/TOP THAY VÌ TRANSFORM)
   const getRadialItemStyle = (index: number, total: number) => {
     // Bán kính vòng tròn (đơn vị PX)
     const radius = 65; 
     
-    // Chia đều góc (360 độ / tổng số item)
-    // Bắt đầu từ góc trên cùng (-90 độ hoặc -PI/2 radian)
     const angleStep = (2 * Math.PI) / total;
     const angle = index * angleStep - (Math.PI / 2);
 
@@ -289,7 +287,8 @@
     const y = Math.round(radius * Math.sin(angle));
 
     return {
-      transform: `translate(${x}px, ${y}px)`
+      left: `${x}px`,
+      top: `${y}px`
     };
   }
 
@@ -730,8 +729,6 @@
     position: absolute;
     top: 0; left: 0; width: 100%; height: 100%;
     z-index: 1900;
-    /* Có thể thêm nền mờ nhẹ nếu thích */
-    /* background-color: rgba(0,0,0,0.1); */
     cursor: default;
   }
 
@@ -770,10 +767,11 @@
     margin-top: -22px; 
     margin-left: -22px;
 
+    /* SỬ DỤNG HOVER ĐỂ SCALE MÀ KHÔNG GÂY XUNG ĐỘT */
     &:hover {
       background: rgba(60, 60, 60, 0.95);
       border-color: #00d2ff;
-      transform: scale(1.15) !important;
+      transform: scale(1.15); /* Ở đây dùng transform là OK vì trong getRadialItemStyle ta dùng left/top */
       z-index: 2050;
       box-shadow: 0 0 15px rgba(0, 210, 255, 0.6);
     }
