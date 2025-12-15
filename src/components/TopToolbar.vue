@@ -129,73 +129,53 @@
 
         <v-divider vertical class="mx-2 my-1"></v-divider>
 
-        <div v-if="!isMatchRunning" class="d-flex align-center" style="gap: 20px;">
+        <div v-if="!isMatchRunning" class="d-flex align-center" style="gap: 12px;">
           <v-btn 
             @click="toggleBlackAi" 
-            variant="text" 
-            icon 
-            size="small" 
-            density="compact" 
-            :disabled="!engineLoaded" 
-            :title="isBlackAi ? 'Tắt AI Đen' : 'Bật AI Đen'"
+            variant="text" icon size="small" density="compact" 
+            :disabled="!engineLoaded" :title="isBlackAi ? 'Tắt AI Đen' : 'Bật AI Đen'"
           >
-            <img 
-              src="@/assets/robotblack.png" 
-              alt="Black AI" 
-              style="width: 24px; height: 24px; object-fit: contain;" 
-              :style="{ opacity: isBlackAi ? 1 : 0.4 }" 
-            />
+            <img src="@/assets/robotblack.png" alt="Black AI" style="width: 24px; height: 24px; object-fit: contain;" :style="{ opacity: isBlackAi ? 1 : 0.4 }" />
           </v-btn>
 
           <v-btn 
             @click="toggleRedAi" 
-            variant="text" 
-            icon 
-            size="small" 
-            density="compact" 
-            :disabled="!engineLoaded" 
-            :title="isRedAi ? 'Tắt AI Đỏ' : 'Bật AI Đỏ'"
+            variant="text" icon size="small" density="compact" 
+            :disabled="!engineLoaded" :title="isRedAi ? 'Tắt AI Đỏ' : 'Bật AI Đỏ'"
           >
-            <img 
-              src="@/assets/robotred.png" 
-              alt="Red AI" 
-              style="width: 24px; height: 24px; object-fit: contain;" 
-              :style="{ opacity: isRedAi ? 1 : 0.4 }" 
-            />
+            <img src="@/assets/robotred.png" alt="Red AI" style="width: 24px; height: 24px; object-fit: contain;" :style="{ opacity: isRedAi ? 1 : 0.4 }" />
           </v-btn>
 
           <v-btn 
             @click="handleAnalysisButtonClick" 
-            variant="text" 
-            icon 
-            size="small" 
-            density="compact" 
-            :disabled="!engineLoaded" 
-            :title="isThinking || isPondering ? $t('analysis.stopAnalysis') : $t('analysis.startAnalysis')"
+            variant="text" icon size="small" density="compact" 
+            :disabled="!engineLoaded" :title="isManualAnalysis ? 'Dừng phân tích' : 'Bắt đầu phân tích'"
           >
-            <img 
-              src="@/assets/analyze_icon.png" 
-              alt="Analyze" 
-              style="width: 24px; height: 24px; object-fit: contain;" 
-              :style="{ opacity: (isThinking || isPondering) || isManualAnalysis ? 1 : 0.4 }" 
-            />
+            <img src="@/assets/analyze_icon.png" alt="Analyze" style="width: 24px; height: 24px; object-fit: contain;" :style="{ opacity: isManualAnalysis ? 1 : 0.4 }" />
           </v-btn>
 
           <v-btn 
-            icon 
-            size="small" 
-            variant="text" 
+            icon size="small" variant="text" 
             @click="handleVariation" 
-            :disabled="!isVariationAvailable" 
-            :title="$t('toolbar.variation')"
+            :disabled="!isVariationAvailable" :title="$t('toolbar.variation')"
           >
-            <img 
-              src="@/assets/goim.png" 
-              alt="Variation" 
-              style="width: 24px; height: 24px; object-fit: contain;" 
-            />
+            <img src="@/assets/goim.png" alt="Variation" style="width: 24px; height: 24px; object-fit: contain;" />
           </v-btn>
-        </div>
+          
+          <v-divider vertical class="mx-1"></v-divider>
+
+          <div class="time-control-box" title="Thời gian cho mỗi nước đi (Giây)">
+            <v-icon icon="mdi-timer-outline" size="16" color="#666" class="mr-1"></v-icon>
+            <input 
+              type="number" 
+              v-model.lazy="moveTimeSeconds"
+              min="0.1" 
+              step="0.1"
+              class="time-input" 
+            />
+            <span class="time-unit">s</span>
+          </div>
+          </div>
       </div>
       
       <div class="toolbar-right"></div>
@@ -226,6 +206,7 @@
   import { useInterfaceSettings } from '../composables/useInterfaceSettings'
   import { useConfigManager } from '../composables/useConfigManager'
   import { useGameSettings } from '../composables/useGameSettings'
+  import { useHumanVsAiSettings } from '@/composables/useHumanVsAiSettings'
 
   const { t, locale } = useI18n()
   const configManager = useConfigManager()
@@ -234,6 +215,7 @@
   const jaiEngine = inject('jai-engine-state') as any
   const { darkMode } = useInterfaceSettings()
   const { enablePonder } = useGameSettings()
+  const { isHumanVsAiMode } = useHumanVsAiSettings()
 
   const { 
     sideToMove, playMoveFromUci, pendingFlip, initialFen, history, 
@@ -243,11 +225,9 @@
     clearUserArrows 
   } = gameState
 
-  // --- ENGINE STATE ---
   const { 
     isThinking, isStopping, startAnalysis, stopAnalysis, 
-    currentSearchMoves, bestMove, isPondering, stopPonder, loadEngine,
-    ponderhit // Added ponderhit from engineState
+    currentSearchMoves, bestMove, isPondering, stopPonder, loadEngine 
   } = engineState
   
   const engineLoaded = computed(() => engineState.isEngineLoaded.value)
@@ -262,7 +242,7 @@
   const showOpeningBookDialog = ref(false)
   const showEngineManager = ref(false)
 
-  // Other states
+  // Settings & Analysis
   const isWaitingToRestartForVariation = ref(false)
   const variationRestartData = ref<{ fen: string; moves: string[] } | null>(null)
   const excludedMoves = ref<string[]>([])
@@ -275,42 +255,47 @@
     analysisMode: 'movetime', advancedScript: '',
   })
 
+  // --- COMPUTED MỚI: QUẢN LÝ THỜI GIAN NHANH ---
+  const moveTimeSeconds = computed({
+    get: () => {
+      // Chuyển từ ms sang s để hiển thị
+      const ms = analysisSettings.value.movetime || 1000
+      return parseFloat((ms / 1000).toFixed(1))
+    },
+    set: (val: number) => {
+      // Chuyển từ s sang ms để lưu
+      const ms = Math.round(val * 1000)
+      const newSettings = { 
+        ...analysisSettings.value, 
+        movetime: ms,
+        analysisMode: 'movetime' // Đảm bảo chuyển về chế độ theo thời gian
+      }
+      handleSettingsChanged(newSettings)
+    }
+  })
+
   const isRedAi = ref(false)
   const isBlackAi = ref(false)
   const isManualAnalysis = ref(false)
   const managedEngines = ref<any[]>([])
   const selectedEngineId = ref<string | null>(null)
-  
-  // Local state for analysis context stability (matching AnalysisSidebar)
-  const lastAnalysisFen = ref<string>('')
-  const lastAnalysisPrefixMoves = ref<string[]>([])
 
   // --- Handlers ---
   const handleCopyFen = async () => {
     try {
       const fen = generateFen ? generateFen() : ''
-      if (fen) {
-        await navigator.clipboard.writeText(fen)
-        console.log('FEN copied:', fen)
-      }
-    } catch (err) {
-      console.error('Failed to copy FEN:', err)
-    }
+      if (fen) await navigator.clipboard.writeText(fen)
+    } catch (err) { console.error(err) }
   }
 
   const handleClearDrawings = () => {
-    if (gameState.clearUserArrows) {
-      gameState.clearUserArrows()
-    } else {
-      window.dispatchEvent(new CustomEvent('clear-drawings'))
-    }
+    if (gameState.clearUserArrows) gameState.clearUserArrows()
+    else window.dispatchEvent(new CustomEvent('clear-drawings'))
   }
 
   function changeLocale(lang: string) {
     locale.value = lang
-    if (configManager.updateLanguage) {
-      configManager.updateLanguage(lang)
-    }
+    if (configManager.updateLanguage) configManager.updateLanguage(lang)
   }
 
   function toggleFlipMode() { flipMode.value = flipMode.value === 'free' ? 'random' : 'free' }
@@ -318,83 +303,36 @@
   function toggleDarkMode() { darkMode.value = !darkMode.value }
   function handleUndoMove() { if (!isMatchRunning.value) undoLastMove() }
 
-  // --- ANALYSIS HANDLERS (Updated from AnalysisSidebar) ---
   function handleAnalysisButtonClick() {
-    if (isThinking.value || isPondering.value) {
-      handleStopAnalysis()
-    } else {
-      manualStartAnalysis()
-    }
+    if (isThinking.value || isPondering.value) handleStopAnalysis()
+    else manualStartAnalysis()
   }
 
   function manualStartAnalysis() {
-    // Disable AI auto-play when manual analysis is active
     isRedAi.value = false
     isBlackAi.value = false
     isManualAnalysis.value = true
-    
-    // NOTE: Avoid overwriting global __MANUAL_ANALYSIS__ with boolean if it's supposed to be a Ref
-    // Use local state effectively.
-
-    // Stop any ongoing ponder when starting manual analysis
-    if (isPondering.value) {
-      stopPonder({ playBestMoveOnStop: false })
-    }
-
-    const infiniteSettings = { 
-      movetime: 0, 
-      maxThinkTime: 0, 
-      maxDepth: 0, 
-      maxNodes: 0, 
-      analysisMode: 'infinite' 
-    }
-    
-    // Record analysis-time context
-    lastAnalysisFen.value = baseFenForEngine.value
-    lastAnalysisPrefixMoves.value = [...engineMovesSinceLastReveal.value]
-
-    startAnalysis(
-      infiniteSettings, 
-      engineMovesSinceLastReveal.value, 
-      baseFenForEngine.value, 
-      currentSearchMoves.value
-    )
+    ;(window as any).__MANUAL_ANALYSIS__ = true
+    if (isPondering.value) stopPonder({ playBestMoveOnStop: false })
+    const infiniteSettings = { movetime: 0, maxThinkTime: 0, maxDepth: 0, maxNodes: 0, analysisMode: 'infinite' }
+    startAnalysis(infiniteSettings, engineMovesSinceLastReveal.value, baseFenForEngine.value, currentSearchMoves.value)
   }
 
   function handleStopAnalysis() {
-    // If pondering is active, check if it's a ponder hit scenario
-    if (isPondering.value) {
-      if (ponderhit.value) {
-        stopPonder({ playBestMoveOnStop: true })
-      } else {
-        stopPonder({ playBestMoveOnStop: false })
-      }
-      return
-    }
-
-    // If we are in auto-analysis mode, the stop button should act as a "Move Now" command.
-    if (isRedAi.value || isBlackAi.value) {
-      stopAnalysis({ playBestMoveOnStop: true })
-    } else {
-      // If in manual analysis mode, the stop button just cancels the analysis.
-      stopAnalysis({ playBestMoveOnStop: false })
-    }
+    stopAnalysis({ playBestMoveOnStop: false })
     isManualAnalysis.value = false
+    ;(window as any).__MANUAL_ANALYSIS__ = false
   }
 
   function toggleRedAi() {
-    if (isRedAi.value && isThinking.value && sideToMove.value === 'red') {
-      stopAnalysis({ playBestMoveOnStop: false })
-    }
+    if (isRedAi.value && isThinking.value && sideToMove.value === 'red') stopAnalysis({ playBestMoveOnStop: false })
     if (!isRedAi.value) isManualAnalysis.value = false
     isRedAi.value = !isRedAi.value
     nextTick(() => checkAndTriggerAi())
   }
 
   function toggleBlackAi() {
-    if (isBlackAi.value && isThinking.value && sideToMove.value === 'black') {
-      stopAnalysis({ playBestMoveOnStop: false })
-    }
+    if (isBlackAi.value && isThinking.value && sideToMove.value === 'black') stopAnalysis({ playBestMoveOnStop: false })
     if (!isBlackAi.value) isManualAnalysis.value = false
     isBlackAi.value = !isBlackAi.value
     nextTick(() => checkAndTriggerAi())
@@ -471,7 +409,6 @@
     }
   }
 
-  // Watchers
   watch([sideToMove, isRedAi, isBlackAi, engineLoaded, pendingFlip], () => { nextTick(() => checkAndTriggerAi()) })
   watch(currentMoveIndex, () => {
     if (isManualAnalysis.value && !isThinking.value && engineLoaded.value && !isStopping.value && !isCurrentAiTurnNow()) {
@@ -544,7 +481,7 @@
     isRedAi.value = false
     isBlackAi.value = false
     isManualAnalysis.value = false
-    // Removed direct window manipulation to prevent state conflicts
+    ;(window as any).__MANUAL_ANALYSIS__ = false
   }
 
   const handleEditPosition = () => { if (!isMatchRunning.value) showPositionEditor.value = true }
@@ -596,27 +533,22 @@
     }
   }
   
-  // --- CẢI THIỆN: Auto Load Engine ---
   const autoLoadEngine = async () => {
     await refreshManagedEngines()
     if (managedEngines.value.length > 0) {
       const lastId = configManager.getLastSelectedEngineId()
-      // Nếu có lastId thì lấy, không thì lấy engine đầu tiên
       const engineToLoad = lastId 
         ? managedEngines.value.find(e => e.id === lastId) 
         : managedEngines.value[0]
       
       if (engineToLoad) {
         selectedEngineId.value = engineToLoad.id
-        
-        // Kiểm tra xem đang ở chế độ nào để load đúng engine
-        if (isMatchMode.value) {
+        if (isMatchRunning.value) { 
            if (!jaiEngine.isEngineLoaded.value) {
              console.log("Auto-loading Match Engine:", engineToLoad.name)
              jaiEngine.loadEngine(engineToLoad)
            }
         } else {
-           // Ở chế độ thường, kiểm tra engineState.isEngineLoaded
            if (!engineState.isEngineLoaded.value) {
              console.log("Auto-loading Analysis Engine:", engineToLoad.name)
              loadEngine(engineToLoad)
@@ -665,7 +597,6 @@
 
   .top-toolbar {
     display: flex;
-    /* Canh trái */
     justify-content: flex-start; 
     align-items: center;
     padding: 4px 16px;
@@ -683,7 +614,6 @@
     display: flex;
     gap: 4px;
     align-items: center;
-    /* Chiếm hết không gian */
     flex-grow: 1; 
 
     @media (max-width: 768px) {
@@ -692,8 +622,43 @@
     }
   }
 
-  /* Ẩn toolbar bên phải nhưng giữ class */
   .toolbar-right {
     display: none; 
+  }
+  
+  /* STYLES CHO Ô NHẬP THỜI GIAN */
+  .time-control-box {
+    display: flex;
+    align-items: center;
+    background: rgba(var(--v-theme-surface), 0.5);
+    border: 1px solid rgba(var(--v-border-color), 0.5);
+    border-radius: 4px;
+    padding: 2px 4px;
+    height: 28px;
+  }
+
+  .time-input {
+    width: 45px;
+    border: none;
+    outline: none;
+    text-align: right;
+    font-weight: bold;
+    font-size: 13px;
+    color: rgb(var(--v-theme-on-surface));
+    background: transparent;
+    -moz-appearance: textfield; /* Ẩn nút tăng giảm mặc định trên Firefox */
+  }
+  
+  .time-input::-webkit-outer-spin-button,
+  .time-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  .time-unit {
+    font-size: 11px;
+    margin-left: 2px;
+    color: rgba(var(--v-theme-on-surface), 0.7);
+    user-select: none;
   }
 </style>
