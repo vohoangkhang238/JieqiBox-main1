@@ -66,7 +66,7 @@
           :class="getAnnotationClass(lastMovePositions)"
           :style="{
             ...rcStyle(displayRow(lastMovePositions.from.row), displayCol(lastMovePositions.from.col)),
-            width: '3%' 
+            width: '2.5%' 
           }"
         ></div>
 
@@ -220,6 +220,7 @@
   const isMatchRunning = computed(() => jaiEngine?.isMatchRunning?.value || false)
   const { pieces, selectedPieceId, handleBoardClick, isAnimating, lastMovePositions, registerArrowClearCallback, history, currentMoveIndex, unrevealedPieceCounts, adjustUnrevealedCount, getPieceNameFromChar, validationStatus } = gs
 
+  // COMPUTED SELECTED PIECE
   const selectedPiece = computed(() => { if (!unref(selectedPieceId)) return null; return unref(pieces).find((p: Piece) => p.id === unref(selectedPieceId)) })
 
   const poolErrorMessage = computed(() => {
@@ -448,6 +449,7 @@
   /* HIỆU ỨNG CHẤM NHỎ (SMALL DOT) CHO NƯỚC ĐI HỢP LỆ */
   .valid-move-dot {
     position: absolute;
+    /* Width đã được override trong template thành 2.5% */
     width: 2.5%; 
     aspect-ratio: 1;
     border-radius: 50%;
@@ -470,7 +472,7 @@
     z-index: 10;
   }
 
-  /* FROM: CHẤM TRÒN ĐỎ (NHƯ YÊU CẦU "dấu chấm tròn nhỏ") */
+  /* FROM: CHẤM TRÒN ĐỎ (ĐÃ SỬA: BỎ BORDER, THÊM NỀN) */
   .highlight.from { 
     background-color: rgba(255, 107, 107, 0.8); 
     border-radius: 50%;
