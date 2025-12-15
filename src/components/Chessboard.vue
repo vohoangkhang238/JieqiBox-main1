@@ -172,6 +172,7 @@
           class="radial-menu-container"
           :style="{
             ...rcStyle(selectedPiece.row, selectedPiece.col, 2500),
+            /* Kích thước này (34%) giúp vòng tròn ôm sát quân cờ */
             width: '34%', 
             height: 'auto',
             'aspect-ratio': '1/1'
@@ -277,12 +278,11 @@
       })
   })
 
-  // Hàm tính toán vị trí cho các item vòng tròn (SỬ DỤNG LEFT/TOP)
+  // Hàm tính toán vị trí cho các item vòng tròn (SỬ DỤNG LEFT/TOP ĐỂ KHÔNG BỊ LỆCH)
   const getRadialItemStyle = (index: number, total: number) => {
-    // Radius = 37% của hộp chứa (hộp chứa 34% bàn cờ) => Item cách tâm vừa phải
+    // Radius = 37% của hộp chứa (hộp chứa 34% bàn cờ) -> Đảm bảo ôm sát
     const radiusPercent = 37; 
     
-    // Chia đều góc
     const angleStep = (2 * Math.PI) / total;
     const angle = index * angleStep - (Math.PI / 2);
 
@@ -302,20 +302,8 @@
   }
 
   const handleFlipRandom = () => {
-    if (pendingFlip.value && pendingFlip.value.callback) {
-      const pieces = flipSelectionPieces.value
-      if (pieces.length === 0) return
-      const pool: string[] = []
-      pieces.forEach((p: any) => {
-        for(let i=0; i < (p.count as number); i++) {
-          pool.push(p.name)
-        }
-      })
-      if (pool.length > 0) {
-        const randomIndex = Math.floor(Math.random() * pool.length)
-        pendingFlip.value.callback(pool[randomIndex])
-      }
-    }
+    // Đã vô hiệu hóa theo yêu cầu
+    // if (pendingFlip.value && pendingFlip.value.callback) { ... }
   }
   // -------------------------
 
@@ -762,7 +750,7 @@
     /* Dùng left/top để định vị, transform chỉ để canh tâm */
     transform: translate(-50%, -50%);
     
-    width: 25%; /* Thu nhỏ kích thước quân chọn (trước là 28%) */
+    width: 25%; /* Kích thước quân chọn nhỏ gọn */
     aspect-ratio: 1;
     border-radius: 50%;
     /* Background kính mờ tối */
