@@ -171,13 +171,13 @@
             size="small" 
             density="compact" 
             :disabled="!engineLoaded" 
-            :title="isManualAnalysis ? 'Dừng phân tích' : 'Bắt đầu phân tích'"
+            :title="isThinking || isPondering ? $t('analysis.stopAnalysis') : $t('analysis.startAnalysis')"
           >
             <img 
               src="@/assets/analyze_icon.png" 
               alt="Analyze" 
               style="width: 24px; height: 24px; object-fit: contain;" 
-              :style="{ opacity: isManualAnalysis ? 1 : 0.4 }" 
+              :style="{ opacity: (isThinking || isPondering) || isManualAnalysis ? 1 : 0.4 }" 
             />
           </v-btn>
 
@@ -243,13 +243,13 @@
     clearUserArrows 
   } = gameState
 
-  // --- SỬA LỖI REACTIVITY: Truy cập trực tiếp engineState ---
+  // --- ENGINE STATE ---
   const { 
     isThinking, isStopping, startAnalysis, stopAnalysis, 
-    currentSearchMoves, bestMove, isPondering, stopPonder, loadEngine 
+    currentSearchMoves, bestMove, isPondering, stopPonder, loadEngine,
+    ponderhit // Added ponderhit from engineState
   } = engineState
   
-  // Tạo computed property để đảm bảo luôn lấy giá trị mới nhất
   const engineLoaded = computed(() => engineState.isEngineLoaded.value)
 
   // Dialog states
@@ -280,6 +280,10 @@
   const isManualAnalysis = ref(false)
   const managedEngines = ref<any[]>([])
   const selectedEngineId = ref<string | null>(null)
+  
+  // Local state for analysis context stability (matching AnalysisSidebar)
+  const lastAnalysisFen = ref<string>('')
+  const lastAnalysisPrefixMoves = ref<string[]>([])
 
   // --- Handlers ---
   const handleCopyFen = async () => {
@@ -314,36 +318,83 @@
   function toggleDarkMode() { darkMode.value = !darkMode.value }
   function handleUndoMove() { if (!isMatchRunning.value) undoLastMove() }
 
+  // --- ANALYSIS HANDLERS (Updated from AnalysisSidebar) ---
   function handleAnalysisButtonClick() {
-    if (isThinking.value || isPondering.value) handleStopAnalysis()
-    else manualStartAnalysis()
+    if (isThinking.value || isPondering.value) {
+      handleStopAnalysis()
+    } else {
+      manualStartAnalysis()
+    }
   }
 
   function manualStartAnalysis() {
+    // Disable AI auto-play when manual analysis is active
     isRedAi.value = false
     isBlackAi.value = false
     isManualAnalysis.value = true
-    ;(window as any).__MANUAL_ANALYSIS__ = true
-    if (isPondering.value) stopPonder({ playBestMoveOnStop: false })
-    const infiniteSettings = { movetime: 0, maxThinkTime: 0, maxDepth: 0, maxNodes: 0, analysisMode: 'infinite' }
-    startAnalysis(infiniteSettings, engineMovesSinceLastReveal.value, baseFenForEngine.value, currentSearchMoves.value)
+    
+    // NOTE: Avoid overwriting global __MANUAL_ANALYSIS__ with boolean if it's supposed to be a Ref
+    // Use local state effectively.
+
+    // Stop any ongoing ponder when starting manual analysis
+    if (isPondering.value) {
+      stopPonder({ playBestMoveOnStop: false })
+    }
+
+    const infiniteSettings = { 
+      movetime: 0, 
+      maxThinkTime: 0, 
+      maxDepth: 0, 
+      maxNodes: 0, 
+      analysisMode: 'infinite' 
+    }
+    
+    // Record analysis-time context
+    lastAnalysisFen.value = baseFenForEngine.value
+    lastAnalysisPrefixMoves.value = [...engineMovesSinceLastReveal.value]
+
+    startAnalysis(
+      infiniteSettings, 
+      engineMovesSinceLastReveal.value, 
+      baseFenForEngine.value, 
+      currentSearchMoves.value
+    )
   }
 
   function handleStopAnalysis() {
-    stopAnalysis({ playBestMoveOnStop: false })
+    // If pondering is active, check if it's a ponder hit scenario
+    if (isPondering.value) {
+      if (ponderhit.value) {
+        stopPonder({ playBestMoveOnStop: true })
+      } else {
+        stopPonder({ playBestMoveOnStop: false })
+      }
+      return
+    }
+
+    // If we are in auto-analysis mode, the stop button should act as a "Move Now" command.
+    if (isRedAi.value || isBlackAi.value) {
+      stopAnalysis({ playBestMoveOnStop: true })
+    } else {
+      // If in manual analysis mode, the stop button just cancels the analysis.
+      stopAnalysis({ playBestMoveOnStop: false })
+    }
     isManualAnalysis.value = false
-    ;(window as any).__MANUAL_ANALYSIS__ = false
   }
 
   function toggleRedAi() {
-    if (isRedAi.value && isThinking.value && sideToMove.value === 'red') stopAnalysis({ playBestMoveOnStop: false })
+    if (isRedAi.value && isThinking.value && sideToMove.value === 'red') {
+      stopAnalysis({ playBestMoveOnStop: false })
+    }
     if (!isRedAi.value) isManualAnalysis.value = false
     isRedAi.value = !isRedAi.value
     nextTick(() => checkAndTriggerAi())
   }
 
   function toggleBlackAi() {
-    if (isBlackAi.value && isThinking.value && sideToMove.value === 'black') stopAnalysis({ playBestMoveOnStop: false })
+    if (isBlackAi.value && isThinking.value && sideToMove.value === 'black') {
+      stopAnalysis({ playBestMoveOnStop: false })
+    }
     if (!isBlackAi.value) isManualAnalysis.value = false
     isBlackAi.value = !isBlackAi.value
     nextTick(() => checkAndTriggerAi())
@@ -493,7 +544,7 @@
     isRedAi.value = false
     isBlackAi.value = false
     isManualAnalysis.value = false
-    ;(window as any).__MANUAL_ANALYSIS__ = false
+    // Removed direct window manipulation to prevent state conflicts
   }
 
   const handleEditPosition = () => { if (!isMatchRunning.value) showPositionEditor.value = true }
