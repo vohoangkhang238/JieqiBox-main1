@@ -117,7 +117,7 @@
           class="valid-move-dot"
           :style="{ 
             ...rcStyle(move.row, move.col), 
-            width: '2.5%' 
+            width: '2.5%' /* Ép kích thước nhỏ lại */
           }"
         ></div>
       </div>
@@ -212,7 +212,6 @@
   const isMatchRunning = computed(() => jaiEngine?.isMatchRunning?.value || false)
   const { pieces, selectedPieceId, handleBoardClick, isAnimating, lastMovePositions, registerArrowClearCallback, history, currentMoveIndex, unrevealedPieceCounts, adjustUnrevealedCount, getPieceNameFromChar, validationStatus } = gs
 
-  // COMPUTED SELECTED PIECE (QUAN TRỌNG)
   const selectedPiece = computed(() => { if (!unref(selectedPieceId)) return null; return unref(pieces).find((p: Piece) => p.id === unref(selectedPieceId)) })
 
   const poolErrorMessage = computed(() => {
@@ -430,7 +429,7 @@
 </script>
 
 <style scoped lang="scss">
-  /* HIỆU ỨNG 4 GÓC (BRACKET) */
+  /* HIỆU ỨNG 4 GÓC (BRACKET) CHO QUÂN ĐANG CHỌN */
   .selection-mark { position: absolute; width: 12%; aspect-ratio: 1; transform: translate(-50%, -50%); pointer-events: none; z-index: 30; }
   .corner { position: absolute; width: 20%; height: 20%; border-style: solid; border-color: #007bff; border-width: 2px; }
   .top-left { top: 0; left: 0; border-right: none; border-bottom: none; }
@@ -438,7 +437,7 @@
   .bottom-left { bottom: 0; left: 0; border-right: none; border-top: none; }
   .bottom-right { bottom: 0; right: 0; border-left: none; border-top: none; }
 
-  /* HIỆU ỨNG CHẤM NHỎ (SMALL DOT) */
+  /* HIỆU ỨNG CHẤM NHỎ (SMALL DOT) CHO NƯỚC ĐI HỢP LỆ */
   .valid-move-dot {
     position: absolute;
     /* Width đã được override trong template thành 2.5% */
@@ -454,10 +453,10 @@
     pointer-events: none;
   }
 
-  /* HIỆU ỨNG LAST MOVE (KHUNG VUÔNG) */
+  /* HIỆU ỨNG LAST MOVE (KHUNG VUÔNG) - Bỏ border-radius để thành vuông vức */
   .highlight {
     position: absolute; width: 12%; aspect-ratio: 1; 
-    border-radius: 4px; 
+    border-radius: 0; /* Vuông góc */
     transform: translate(-50%, -50%);
     pointer-events: none; z-index: 10;
   }
