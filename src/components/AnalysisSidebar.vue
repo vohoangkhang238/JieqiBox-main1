@@ -57,24 +57,31 @@
       </button>
     </div>
 
-    <div class="pikafish-log-container" ref="logContainer">
-      <div v-if="!isEngineActive && parsedLogList.length === 0" class="log-placeholder">
-        Động cơ chưa được kích hoạt
-      </div>
-      
-      <div v-for="(line, index) in parsedLogList" :key="index" class="log-entry">
-        <div class="log-header">
-          <span class="p-item">Độ sâu:{{ line.depth }}</span>
-          <span class="p-item">Điểm:{{ line.scoreText }}</span>
-          <span class="p-item">Thời gian:{{ line.timeText }}</span>
-          <span class="p-item">NPS:{{ line.npsText }}</span>
-          <span class="p-item" v-if="line.wdlText">{{ line.wdlText }}</span>
+    <DraggablePanel panel-id="engine-log" class="mt-2">
+      <template #header>
+        <div class="panel-title-text">
+          <h3>{{ $t('analysis.engineAnalysis') }}</h3>
         </div>
-        <div class="log-pv">
-          {{ line.chinesePv }}
+      </template>
+      <div class="pikafish-log-container resizable-log" ref="logContainer">
+        <div v-if="!isEngineActive && parsedLogList.length === 0" class="log-placeholder">
+          Động cơ chưa được kích hoạt
+        </div>
+        
+        <div v-for="(line, index) in parsedLogList" :key="index" class="log-entry">
+          <div class="log-header">
+            <span class="p-item">Độ sâu:{{ line.depth }}</span>
+            <span class="p-item">Điểm:{{ line.scoreText }}</span>
+            <span class="p-item">Thời gian:{{ line.timeText }}</span>
+            <span class="p-item">NPS:{{ line.npsText }}</span>
+            <span class="p-item" v-if="line.wdlText">{{ line.wdlText }}</span>
+          </div>
+          <div class="log-pv">
+            {{ line.chinesePv }}
+          </div>
         </div>
       </div>
-    </div>
+    </DraggablePanel>
 
     <DraggablePanel panel-id="notation" class="mt-2 flex-grow-1">
       <template #header>
@@ -329,7 +336,7 @@ watch(parsedLogList, () => {
   font-family: 'Consolas', 'Monaco', monospace;
   background-color: #f5f5f5;
   padding: 8px;
-  overflow-y: auto;
+  overflow-y: hidden; /* Ẩn scroll chính để dùng scroll của từng panel */
 }
 
 /* 1. TOOLBAR */
@@ -400,14 +407,20 @@ watch(parsedLogList, () => {
 }
 .pika-settings-btn:hover { background: #ddd; border-radius: 4px; }
 
-/* 2. LOG DISPLAY (Cao 250px) */
+/* 2. LOG DISPLAY (Cho phép resize dọc) */
 .pikafish-log-container {
+  /* Chiều cao mặc định */
   height: 250px; 
+  /* Quan trọng để resize hoạt động */
+  resize: vertical; 
+  overflow: auto;
+  
   flex-shrink: 0;
   background: white;
-  overflow-y: auto;
   padding: 5px;
   border: 1px solid #ccc;
+  min-height: 100px; /* Chiều cao tối thiểu */
+  max-height: 80vh;
 }
 
 .log-entry {
@@ -461,4 +474,12 @@ watch(parsedLogList, () => {
 .move-item:hover { background: #eee; }
 .move-item.current-move { background: #d1c4e9; font-weight: bold; }
 .move-number { width: 30px; color: #666; }
+
+/* Tùy chỉnh tiêu đề panel */
+.panel-title-text h3, .notation-header h3 {
+  font-size: 13px;
+  margin: 0;
+  color: #333;
+  font-weight: bold;
+}
 </style>
