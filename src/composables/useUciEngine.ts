@@ -240,9 +240,8 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
         analysis.value = analysisLines.filter(Boolean).join('\n')
       }
 
-      // --- XỬ LÝ BESTMOVE (LOGIC MỚI: HỎI USER KHI GẶP QUÂN ÚP) ---
       if (ln.startsWith('bestmove')) {
-        const parts = ln.trim().split(/\s+/)
+        const parts = ln.split(' ')
         const mv = parts[1] ?? ''
         let ponderMoveFromEngine = ''
         const ponderIndex = parts.indexOf('ponder')
@@ -258,9 +257,7 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
             ignoreNextBestMove.value = false
             bestMove.value = ''
           } else if (playOnStop.value) {
-            // Khi stop mà cần đi, ta cũng phải check quân úp, nhưng để đơn giản ta gán mv
-            // và để logic check phía dưới xử lý nếu mv tồn tại
-            bestMove.value = mv 
+            bestMove.value = mv
           } else {
             bestMove.value = ''
           }
@@ -270,10 +267,10 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
           nextTick(() => {
             window.dispatchEvent(new CustomEvent('engine-stopped-and-ready'))
           })
-          if (!playOnStop.value) return // Nếu không playOnStop thì return luôn
+          return
         }
 
-        if (!isThinking.value && !isPondering.value && !playOnStop.value) return
+        if (!isThinking.value && !isPondering.value) return
 
         if (isPondering.value) {
           isPondering.value = false
@@ -294,7 +291,6 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
           analysis.value = t('uci.checkmate')
           send('stop')
         } else {
-          // Update analysis text
           if (showChineseNotation && mv) {
             try {
               let rootFen = generateFen()
@@ -312,78 +308,6 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
               ? t('uci.bestMove', { move: mv })
               : t('uci.noMoves')
           }
-
-          // === LOGIC THỰC HIỆN NƯỚC ĐI ===
-          if (mv) {
-            const from = { 
-              col: mv.charCodeAt(0) - 'a'.charCodeAt(0), 
-              row: 9 - parseInt(mv[1]) 
-            }
-            const to = { 
-              col: mv.charCodeAt(2) - 'a'.charCodeAt(0), 
-              row: 9 - parseInt(mv[3]) 
-            }
-
-            const pieces = gameState.pieces.value
-            const movingPiece = pieces.find((p: any) => p.row === from.row && p.col === from.col)
-            const targetPiece = pieces.find((p: any) => p.row === to.row && p.col === to.col)
-
-            // Hàm thực hiện nước đi cuối cùng
-            const doFinalMove = () => {
-              gameState.move(from, to)
-            }
-
-            // Hàm kiểm tra quân đích (Bị ăn)
-            const checkTarget = () => {
-              if (targetPiece && !targetPiece.isKnown) {
-                console.log("[AI] Ăn quân úp -> Dừng & Hỏi User")
-                const side = targetPiece.name.startsWith('red') ? 'red' : 'black'
-                
-                gameState.pendingFlip.value = {
-                  side: side,
-                  callback: (selectedName: string) => {
-                    targetPiece.name = selectedName
-                    targetPiece.isKnown = true
-                    gameState.adjustUnrevealedCount(gameState.getCharFromPieceName(selectedName), -1)
-                    gameState.pendingFlip.value = null
-                    
-                    // Sau khi lật đích -> Đi luôn
-                    doFinalMove()
-                  }
-                }
-              } else {
-                // Đích không phải quân úp -> Đi luôn
-                doFinalMove()
-              }
-            }
-
-            // Hàm kiểm tra quân nguồn (AI đi quân úp)
-            const checkSource = () => {
-              if (movingPiece && !movingPiece.isKnown) {
-                console.log("[AI] Cầm quân úp đi -> Dừng & Hỏi User")
-                const side = movingPiece.name.startsWith('red') ? 'red' : 'black'
-                
-                gameState.pendingFlip.value = {
-                  side: side,
-                  callback: (selectedName: string) => {
-                    movingPiece.name = selectedName
-                    movingPiece.isKnown = true
-                    gameState.adjustUnrevealedCount(gameState.getCharFromPieceName(selectedName), -1)
-                    gameState.pendingFlip.value = null
-                    
-                    // Sau khi lật nguồn -> Kiểm tra đích
-                    checkTarget()
-                  }
-                }
-              } else {
-                // Nguồn đã ngửa -> Kiểm tra đích
-                checkTarget()
-              }
-            }
-
-            // Bắt đầu quy trình kiểm tra
-            checkSource()
-          }
         }
 
         bestMove.value = mv
@@ -399,12 +323,11 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
         analysisLines.length = 0
         isInfinitePondering.value = false
       }
-      // -----------------------------------------------------------
-
       if (ln === 'uciok' && !(window as any).__UCI_TERMINAL_ACTIVE__)
         send('isready')
       if (ln === 'readyok') analysis.value = t('uci.engineReady')
 
+      // Capture raw UCI options
       if (ln.startsWith('option name ')) {
         uciOptionsText.value += ln + '\n'
       }
@@ -439,7 +362,7 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
     currentEngine.value = null
     engineOutput.value = []
     uciOptionsText.value = ''
-    overriddenOptions.value = {}
+    overriddenOptions.value = {} // Reset các cài đặt tạm khi load engine mới
 
     playSoundLoop('loading')
 
