@@ -166,14 +166,9 @@
 
           <div class="time-control-box" title="Thời gian cho mỗi nước đi (Giây)">
             <v-icon icon="mdi-timer-outline" size="16" color="#666" class="mr-1"></v-icon>
-            <input 
-              type="number" 
-              v-model.lazy="moveTimeSeconds"
-              min="0.1" 
-              step="0.1"
-              class="time-input" 
-            />
-            <span class="time-unit">s</span>
+            <select v-model="moveTimeSeconds" class="time-select">
+              <option v-for="t in timeOptions" :key="t" :value="t">{{ t }}s</option>
+            </select>
           </div>
           </div>
       </div>
@@ -255,12 +250,19 @@
     analysisMode: 'movetime', advancedScript: '',
   })
 
-  // --- COMPUTED MỚI: QUẢN LÝ THỜI GIAN NHANH ---
+  // --- DANH SÁCH TÙY CHỌN THỜI GIAN (0.1, 1..100) ---
+  const timeOptions = [
+    0.1, 
+    ...Array.from({length: 100}, (_, i) => i + 1) // Tạo mảng từ 1 đến 100
+  ]
+
+  // --- COMPUTED: QUẢN LÝ THỜI GIAN ---
   const moveTimeSeconds = computed({
     get: () => {
-      // Chuyển từ ms sang s để hiển thị
+      // Chuyển từ ms sang s để hiển thị, nếu không có trong list thì trả về giá trị thô
       const ms = analysisSettings.value.movetime || 1000
-      return parseFloat((ms / 1000).toFixed(1))
+      const seconds = parseFloat((ms / 1000).toFixed(1))
+      return seconds
     },
     set: (val: number) => {
       // Chuyển từ s sang ms để lưu
@@ -268,7 +270,7 @@
       const newSettings = { 
         ...analysisSettings.value, 
         movetime: ms,
-        analysisMode: 'movetime' // Đảm bảo chuyển về chế độ theo thời gian
+        analysisMode: 'movetime' 
       }
       handleSettingsChanged(newSettings)
     }
@@ -626,7 +628,7 @@
     display: none; 
   }
   
-  /* STYLES CHO Ô NHẬP THỜI GIAN */
+  /* STYLES CHO DROPDOWN THỜI GIAN */
   .time-control-box {
     display: flex;
     align-items: center;
@@ -637,28 +639,21 @@
     height: 28px;
   }
 
-  .time-input {
-    width: 45px;
+  .time-select {
     border: none;
     outline: none;
-    text-align: right;
-    font-weight: bold;
+    background: transparent;
     font-size: 13px;
     color: rgb(var(--v-theme-on-surface));
-    background: transparent;
-    -moz-appearance: textfield; /* Ẩn nút tăng giảm mặc định trên Firefox */
+    font-weight: bold;
+    cursor: pointer;
+    min-width: 50px;
+    text-align: right;
+    padding-right: 4px;
   }
   
-  .time-input::-webkit-outer-spin-button,
-  .time-input::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-  }
-
-  .time-unit {
-    font-size: 11px;
-    margin-left: 2px;
-    color: rgba(var(--v-theme-on-surface), 0.7);
-    user-select: none;
+  .time-select option {
+    background-color: rgb(var(--v-theme-surface));
+    color: rgb(var(--v-theme-on-surface));
   }
 </style>
