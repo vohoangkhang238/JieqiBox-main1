@@ -41,12 +41,22 @@
           :src="img(p)"
           class="piece"
           :class="{
-            selected: p.id === selectedPieceId,
             animated: isAnimating && showAnimations,
             inCheck: p.id === checkedKingId,
           }"
           :style="rcStyle(p.row, p.col, p.zIndex)"
         />
+      </div>
+
+      <div 
+        v-if="selectedPiece" 
+        class="selection-mark"
+        :style="rcStyle(selectedPiece.row, selectedPiece.col, 30)"
+      >
+        <div class="corner top-left"></div>
+        <div class="corner top-right"></div>
+        <div class="corner bottom-left"></div>
+        <div class="corner bottom-right"></div>
       </div>
 
       <div class="last-move-highlights" v-if="lastMovePositions">
@@ -374,7 +384,13 @@
     validationStatus,
   } = gs
 
-  // --- Logic hiển thị lỗi (Dịch sang Tiếng Việt) ---
+  // --- Computed để lấy quân đang chọn (cho hiệu ứng 4 góc) ---
+  const selectedPiece = computed(() => {
+    if (!unref(selectedPieceId)) return null
+    return unref(pieces).find((p: Piece) => p.id === unref(selectedPieceId))
+  })
+
+  // --- Logic hiển thị lỗi ---
   const poolErrorMessage = computed(() => {
     if (!validationStatus.value) return null
     const s = validationStatus.value
@@ -384,7 +400,6 @@
 
     let msg = s.replace(/^Error:\s*|^错误:\s*/i, '').trim()
 
-    // Pattern: 紅方15暗子 > 14池
     const matchMismatch = msg.match(/(红方|黑方)(\d+)暗子\s*>\s*(\d+)池/)
     if (matchMismatch) {
         const side = matchMismatch[1] === '红方' ? 'Đỏ' : 'Đen'
@@ -393,7 +408,6 @@
         return `Lỗi: ${side} dư quân (${count} > ${pool} trong kho)`
     }
 
-    // Fallback Translation
     msg = msg.replace(/红方/g, 'Bên Đỏ ')
              .replace(/黑方/g, 'Bên Đen ')
              .replace(/暗子/g, ' quân úp')
@@ -405,7 +419,7 @@
     return `Lỗi: ${msg}`
   })
 
-  // --- Logic cho Kho Quân Úp (Đã ẩn Tướng) ---
+  // --- Logic Pool ---
   const INITIAL_PIECE_COUNTS: { [k: string]: number } = {
     r: 2, n: 2, b: 2, a: 2, c: 2, p: 5, k: 1,
     R: 2, N: 2, B: 2, A: 2, C: 2, P: 5, K: 1,
@@ -1112,7 +1126,32 @@
 </script>
 
 <style scoped lang="scss">
-  /* --- LAYOUT CHÍNH --- */
+  /* --- STYLES MỚI CHO HIỆU ỨNG 4 GÓC (BRACKET SELECTION) --- */
+  .selection-mark {
+    position: absolute;
+    width: 12%; /* Khớp với kích thước quân cờ */
+    aspect-ratio: 1;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 30; /* Nằm trên quân cờ (z-index 20) */
+  }
+
+  .corner {
+    position: absolute;
+    width: 20%;
+    height: 20%;
+    border-style: solid;
+    border-color: #007bff; /* Màu xanh dương tiêu chuẩn */
+    border-width: 2px;
+  }
+
+  /* Định vị 4 góc */
+  .top-left { top: 0; left: 0; border-right: none; border-bottom: none; }
+  .top-right { top: 0; right: 0; border-left: none; border-bottom: none; }
+  .bottom-left { bottom: 0; left: 0; border-right: none; border-top: none; }
+  .bottom-right { bottom: 0; right: 0; border-left: none; border-top: none; }
+
+  /* --- CÁC STYLE KHÁC GIỮ NGUYÊN --- */
   .chessboard-wrapper {
     display: flex;
     flex-direction: row;
@@ -1151,7 +1190,7 @@
     }
   }
 
-  /* --- SIDE PANEL (KHO QUÂN) --- */
+  /* --- SIDE PANEL --- */
   .side-panel {
     flex: 1; 
     display: flex;
@@ -1198,10 +1237,9 @@
     width: auto;
   }
 
-  /* --- SỐ LƯỢNG QUÂN (TO HƠN, KHÔNG IN ĐẬM) --- */
   .pool-num {
     font-size: 1.4rem; 
-    font-weight: normal; /* Không in đậm */
+    font-weight: normal; 
     color: #fff;
     text-align: right;
     min-width: auto;
@@ -1210,12 +1248,10 @@
     text-shadow: 0 1px 2px rgba(0,0,0,0.5);
   }
   
-  /* Màu số Đỏ */
   .red-num {
     color: #ff5252;
   }
 
-  /* Màu số Đen (có viền trắng để nổi trên nền tối) */
   .black-num {
     color: #000000;
     text-shadow: 0 0 1px #fff;
@@ -1227,7 +1263,6 @@
     gap: 2px;
   }
 
-  /* --- NÚT + / - (TO HƠN) --- */
   .tiny-btn {
     width: 16px;
     height: 14px;
@@ -1256,23 +1291,22 @@
     justify-content: center;
   }
 
-  /* --- STYLE THÔNG BÁO LỖI (Nền trắng, Chữ đỏ, In đậm) --- */
   .pool-error {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 4px;
-    background: #ffffff; /* Nền trắng */
-    border: 1px solid #d32f2f; /* Viền đỏ */
+    background: #ffffff; 
+    border: 1px solid #d32f2f; 
     border-radius: 4px;
     padding: 6px 4px;
-    color: #d32f2f; /* Chữ màu đỏ đậm */
-    font-weight: bold; /* In đậm */
+    color: #d32f2f; 
+    font-weight: bold; 
     font-size: 11px;
     text-align: center;
     word-break: break-word;
     max-width: 95%;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2); /* Bóng đổ */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2); 
   }
 
   @media (max-width: 768px) {
@@ -1315,7 +1349,6 @@
     }
   }
 
-  /* ... (Các style mặc định khác) ... */
   .eval-bar {
     position: absolute;
     top: 0;
@@ -1391,10 +1424,15 @@
     &.animated {
       transition: all 0.2s ease;
     }
+    
+    /* BỎ STYLE SELECTED CŨ (NÚT TRÒN/SHADOW) */
+    /*
     &.selected {
       transform: translate(-50%, -50%) scale(1.1);
       filter: drop-shadow(0 0 8px #f00);
     }
+    */
+
     &.inCheck {
       transform: translate(-50%, -50%) scale(1.13);
       filter: drop-shadow(0 0 0 #f00) drop-shadow(0 0 16px #ff2222)
