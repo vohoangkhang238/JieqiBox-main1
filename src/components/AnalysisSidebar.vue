@@ -103,20 +103,47 @@
           <h3>{{ $t('analysis.notation') }}</h3>
         </div>
       </template>
+      
       <div
-        class="move-list flex-grow-1"
-        ref="moveListElement"
+        class="notation-table-container flex-grow-1"
         :class="{ 'disabled-clicks': isMatchRunning }"
+        ref="moveListElement"
       >
-         <div
-          v-for="(entry, idx) in history"
-          :key="idx"
-          class="move-item"
-          :class="{ 'current-move': currentMoveIndex === idx + 1 }"
-          @click="replayToMove(idx + 1)"
-        >
-          <span class="move-number">{{ Math.floor(idx / 2) + 1 }}.</span>
-          <span class="move-uci">{{ entry.data }}</span>
+        <div class="notation-row header">
+          <div class="col-num">#</div>
+          <div class="col-move">Đỏ</div>
+          <div class="col-move">Đen</div>
+        </div>
+
+        <div class="notation-body">
+          <div 
+            v-for="pair in formattedHistory" 
+            :key="pair.moveNumber" 
+            class="notation-row"
+            :class="{ 'active-row': currentMoveIndex === pair.redIndex || currentMoveIndex === pair.blackIndex }"
+          >
+            <div class="col-num">{{ pair.moveNumber }}.</div>
+            
+            <div 
+              class="col-move clickable" 
+              :class="{ 'current-move': currentMoveIndex === pair.redIndex }"
+              @click="replayToMove(pair.redIndex)"
+            >
+              {{ pair.redMove }}
+            </div>
+            
+            <div 
+              class="col-move clickable" 
+              :class="{ 'current-move': currentMoveIndex === pair.blackIndex }"
+              @click="pair.blackIndex ? replayToMove(pair.blackIndex) : null"
+            >
+              {{ pair.blackMove }}
+            </div>
+          </div>
+          
+          <div v-if="formattedHistory.length === 0" class="empty-notation">
+            Chưa có nước đi nào
+          </div>
         </div>
       </div>
     </DraggablePanel>
@@ -126,7 +153,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, inject, ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { computed, inject, ref, watch, nextTick, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useConfigManager } from '@/composables/useConfigManager'
 import EngineManagerDialog from './EngineManagerDialog.vue'
@@ -157,57 +184,39 @@ const managedEngines = ref<any[]>([])
 const selectedEngineId = ref<string | null>(null)
 const moveListElement = ref<HTMLElement | null>(null)
 
-// --- KÍCH THƯỚC ĐỘNG (RESIZABLE) ---
-const sidebarWidth = ref(420) // Độ rộng mặc định
-const logHeight = ref(250)    // Chiều cao log mặc định
+// --- KÍCH THƯỚC ĐỘNG ---
+const sidebarWidth = ref(420)
+const logHeight = ref(250)
 
-// --- LOGIC KÉO DÃN CHIỀU RỘNG (SIDEBAR WIDTH) ---
+// --- LOGIC KÉO DÃN ---
 const startResizeWidth = (e: MouseEvent) => {
   const startX = e.clientX
   const startWidth = sidebarWidth.value
-
   const onMouseMove = (e: MouseEvent) => {
-    // Vì sidebar nằm bên phải, kéo sang trái (giảm X) = tăng width
-    // Kéo sang phải (tăng X) = giảm width
     const delta = startX - e.clientX
     const newWidth = startWidth + delta
-    
-    // Giới hạn width: min 300px, max 800px
-    if (newWidth >= 300 && newWidth <= 800) {
-      sidebarWidth.value = newWidth
-    }
+    if (newWidth >= 300 && newWidth <= 800) sidebarWidth.value = newWidth
   }
-
   const onMouseUp = () => {
     window.removeEventListener('mousemove', onMouseMove)
     window.removeEventListener('mouseup', onMouseUp)
   }
-
   window.addEventListener('mousemove', onMouseMove)
   window.addEventListener('mouseup', onMouseUp)
 }
 
-// --- LOGIC KÉO DÃN CHIỀU CAO (LOG HEIGHT) ---
 const startResizeHeight = (e: MouseEvent) => {
   const startY = e.clientY
   const startHeight = logHeight.value
-
   const onMouseMove = (e: MouseEvent) => {
-    // Kéo xuống (tăng Y) = tăng height
     const delta = e.clientY - startY
     const newHeight = startHeight + delta
-    
-    // Giới hạn height: min 100px, max 600px
-    if (newHeight >= 100 && newHeight <= 600) {
-      logHeight.value = newHeight
-    }
+    if (newHeight >= 100 && newHeight <= 600) logHeight.value = newHeight
   }
-
   const onMouseUp = () => {
     window.removeEventListener('mousemove', onMouseMove)
     window.removeEventListener('mouseup', onMouseUp)
   }
-
   window.addEventListener('mousemove', onMouseMove)
   window.addEventListener('mouseup', onMouseUp)
 }
@@ -216,7 +225,39 @@ const startResizeHeight = (e: MouseEvent) => {
 const isEngineActive = computed(() => isEngineLoaded.value || isThinking.value)
 const isMatchRunning = computed(() => jaiEngine?.isMatchRunning?.value || false)
 
-// --- KẾT NỐI DỮ LIỆU ENGINE (THREADS & HASH) ---
+// --- LOGIC MỚI: FORMAT BIÊN BẢN DẠNG BẢNG (Formatted History) ---
+const formattedHistory = computed(() => {
+  const moves: any[] = []
+  const hist = history.value || []
+  
+  for (let i = 0; i < hist.length; i += 2) {
+    const moveNumber = Math.floor(i / 2) + 1
+    const redEntry = hist[i]
+    const blackEntry = hist[i + 1]
+    
+    moves.push({
+      moveNumber,
+      redMove: redEntry ? redEntry.data : '',
+      redIndex: i + 1, // Index để replay (1-based)
+      blackMove: blackEntry ? blackEntry.data : '',
+      blackIndex: blackEntry ? i + 2 : null
+    })
+  }
+  return moves
+})
+
+// --- TỰ ĐỘNG CUỘN BIÊN BẢN (AUTO SCROLL NOTATION) ---
+watch(currentMoveIndex, () => {
+  nextTick(() => {
+    // Tìm phần tử đang active (current-move)
+    const activeEl = document.querySelector('.col-move.current-move')
+    if (activeEl) {
+      activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+  })
+})
+
+// --- KẾT NỐI ENGINE ---
 const actualThreads = computed({
   get: () => {
     if (!uciOptions?.value) return 1
@@ -224,9 +265,7 @@ const actualThreads = computed({
     return opt ? parseInt(opt.value) : 1
   },
   set: (val) => {
-    if (isEngineLoaded.value && setOption) {
-      setOption('Threads', val)
-    }
+    if (isEngineLoaded.value && setOption) setOption('Threads', val)
   }
 })
 
@@ -237,32 +276,22 @@ const actualHash = computed({
     return opt ? parseInt(opt.value) : 16
   },
   set: (val) => {
-    if (isEngineLoaded.value && setOption) {
-      setOption('Hash', val)
-    }
+    if (isEngineLoaded.value && setOption) setOption('Hash', val)
   }
 })
 
-// --- Logic Bật/Tắt Engine (Checkbox) ---
 const toggleEngineState = async (e: Event) => {
   const isChecked = (e.target as HTMLInputElement).checked
-  
   if (isChecked) {
     if (!selectedEngineId.value) {
       if (managedEngines.value.length > 0) selectedEngineId.value = managedEngines.value[0].id
       else return alert('Vui lòng thêm engine trước')
     }
-    
     const engineToLoad = managedEngines.value.find((e: any) => e.id === selectedEngineId.value)
     if (engineToLoad) {
-      if (!isEngineLoaded.value) {
-        await loadEngine(engineToLoad)
-      }
+      if (!isEngineLoaded.value) await loadEngine(engineToLoad)
       const currentFen = generateFen()
-      startAnalysis(
-        { movetime: 0, analysisMode: 'infinite' }, 
-        [], currentFen, []
-      )
+      startAnalysis({ movetime: 0, analysisMode: 'infinite' }, [], currentFen, [])
     }
   } else {
     if (isThinking.value) stopAnalysis({ playBestMoveOnStop: false })
@@ -271,10 +300,7 @@ const toggleEngineState = async (e: Event) => {
 }
 
 const handleEngineChange = async () => {
-  if (selectedEngineId.value) {
-      configManager.setLastSelectedEngineId(selectedEngineId.value)
-  }
-
+  if (selectedEngineId.value) configManager.setLastSelectedEngineId(selectedEngineId.value)
   if (isEngineActive.value) {
     if (isThinking.value) stopAnalysis({ playBestMoveOnStop: false })
     await unloadEngine()
@@ -285,15 +311,13 @@ const handleEngineChange = async () => {
   }
 }
 
-// --- Logic Phân tích Log ---
+// --- LOG PARSING ---
 function parseInfoLine(line: string) {
   if (!line.startsWith('info') || !line.includes('depth')) return null
-  
   const extract = (key: string) => {
     const match = line.match(new RegExp(`${key}\\s+([^\\s]+)`))
     return match ? match[1] : null
   }
-
   const depth = parseInt(extract('depth') || '0')
   const scoreType = extract('score') 
   const scoreVal = parseInt(line.match(/score\s+(cp|mate)\s+([\-\d]+)/)?.[2] || '0')
@@ -302,7 +326,6 @@ function parseInfoLine(line: string) {
   const nps = extract('nps')
   const pvMatch = line.match(/\spv\s+(.*)/)
   const pv = pvMatch ? pvMatch[1] : ''
-
   const wdlMatch = line.match(/wdl\s+(\d+)\s+(\d+)\s+(\d+)/)
   let wdlText = ''
   if (wdlMatch) {
@@ -314,16 +337,12 @@ function parseInfoLine(line: string) {
       wdlText = `T(${w}%)H(${d}%)B(${l}%)`
     }
   }
-
   let scoreText = scoreVal.toString()
   if (scoreType === 'mate') scoreText = `M${Math.abs(scoreVal)}`
-  
   let timeText = (time / 1000).toFixed(1) 
-  
   let npsText = '0'
   if (nps) npsText = `${(parseInt(nps)/1000).toFixed(0)}K`
   else if (nodes) npsText = `${(parseInt(nodes)/1000).toFixed(0)}K`
-
   return { raw: line, depth, scoreText, timeText, npsText, wdlText, pv }
 }
 
@@ -332,20 +351,16 @@ const parsedLogList = computed(() => {
     .filter((l: any) => l.kind === 'recv' && l.text.startsWith('info depth'))
     .map((l: any) => l.text)
     .reverse() 
-  
   const displayLines = rawLines.slice(0, 20)
   const currentFen = generateFen()
-  
   return displayLines.map((lineStr: string) => {
     const info = parseInfoLine(lineStr)
     if (!info) return null
-
     let chinesePv = info.pv
     try {
       const moves = uciToChineseMoves(currentFen, info.pv)
       chinesePv = moves.join(' ')
     } catch (e) {}
-
     return { ...info, chinesePv }
   }).filter((x: any) => x !== null)
 })
@@ -354,28 +369,21 @@ onMounted(async () => {
   await configManager.loadConfig()
   managedEngines.value = configManager.getEngines()
   const lastSelectedId = configManager.getLastSelectedEngineId()
-  
-  if (lastSelectedId) {
-      selectedEngineId.value = lastSelectedId
-  } else if (managedEngines.value.length > 0) {
-      selectedEngineId.value = managedEngines.value[0].id
-  }
+  if (lastSelectedId) selectedEngineId.value = lastSelectedId
+  else if (managedEngines.value.length > 0) selectedEngineId.value = managedEngines.value[0].id
 })
 
 watch(parsedLogList, () => {
   nextTick(() => {
     const container = document.querySelector('.pikafish-log-container');
-    if (container && container.scrollTop === 0) { 
-       container.scrollTop = 0; 
-    }
+    if (container && container.scrollTop === 0) container.scrollTop = 0; 
   })
 }, { deep: true })
 </script>
 
 <style lang="scss">
-/* Reset & Base */
+/* --- Sidebar Base --- */
 .sidebar {
-    /* KHÔNG set width tĩnh nữa, dùng style inline từ biến sidebarWidth */
     height: calc(100vh - 120px); 
     padding: 12px;
     display: flex;
@@ -386,191 +394,145 @@ watch(parsedLogList, () => {
     overflow-y: hidden;
     background-color: rgb(var(--v-theme-surface));
     font-family: 'Noto Sans SC', sans-serif;
-    position: relative; /* Để đặt thanh kéo */
+    position: relative;
     min-width: 300px;
 }
 
-/* Thanh kéo bên trái sidebar */
 .resize-handle-left {
-  position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  width: 5px;
-  cursor: ew-resize; /* Con trỏ kéo ngang */
-  z-index: 100;
-  background-color: transparent;
+  position: absolute; top: 0; left: 0; bottom: 0; width: 5px;
+  cursor: ew-resize; z-index: 100; background-color: transparent;
   transition: background-color 0.2s;
 }
-.resize-handle-left:hover {
-  background-color: rgba(0, 123, 255, 0.3); /* Hiện màu khi hover */
-}
+.resize-handle-left:hover { background-color: rgba(0, 123, 255, 0.3); }
 
-/* Thanh kéo bên dưới Log panel */
 .resize-handle-bottom {
-  width: 100%;
-  height: 8px;
-  cursor: ns-resize; /* Con trỏ kéo dọc */
-  background-color: #f0f0f0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-top: 1px solid #ddd;
-  border-bottom: 1px solid #ddd;
-  margin-top: -1px;
+  width: 100%; height: 8px; cursor: ns-resize;
+  background-color: #f0f0f0; display: flex; align-items: center; justify-content: center;
+  border-top: 1px solid #ddd; border-bottom: 1px solid #ddd; margin-top: -1px;
 }
-.resize-handle-bottom:hover {
-  background-color: #e0e0e0;
-}
-.handle-grip {
-  width: 30px;
-  height: 3px;
-  background-color: #bbb;
-  border-radius: 2px;
-}
+.resize-handle-bottom:hover { background-color: #e0e0e0; }
+.handle-grip { width: 30px; height: 3px; background-color: #bbb; border-radius: 2px; }
 
-/* Pikafish Theme */
 .sidebar.pikafish-theme {
   font-family: 'Consolas', 'Monaco', monospace;
   background-color: #f5f5f5;
   padding: 8px;
-  overflow-y: hidden; 
 }
 
-/* 1. TOOLBAR */
+/* --- Toolbar --- */
 .pikafish-toolbar {
-  background: #e0e0e0;
-  display: flex;
-  align-items: center;
-  padding: 4px 6px;
-  gap: 6px;
-  border: 1px solid #ccc;
-  height: 38px;
-  flex-shrink: 0;
+  background: #e0e0e0; display: flex; align-items: center; padding: 4px 6px;
+  gap: 6px; border: 1px solid #ccc; height: 38px; flex-shrink: 0;
 }
-
-/* Checkbox */
-.engine-toggle {
-  display: flex;
-  align-items: center;
-}
-.engine-toggle input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  accent-color: #6a1b9a; 
-  cursor: pointer;
-}
-
-/* Input/Select Box */
+.engine-toggle input[type="checkbox"] { width: 18px; height: 18px; accent-color: #6a1b9a; cursor: pointer; }
 .engine-info-box {
-  background: white;
-  border: 1px solid #aaa;
-  padding: 2px 4px;
-  font-size: 13px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  overflow: hidden;
+  background: white; border: 1px solid #aaa; padding: 2px 4px; font-size: 13px;
+  height: 24px; display: flex; align-items: center; overflow: hidden;
 }
-
 .engine-name { flex-grow: 1; min-width: 100px; }
 .threads { width: 50px; }
 .hash { width: 70px; }
-
 .pika-select, .pika-select-small, .pika-input {
-  border: none;
-  width: 100%;
-  outline: none;
-  font-family: inherit;
-  font-size: 12px;
-  background: transparent;
-  padding: 0;
-  margin: 0;
+  border: none; width: 100%; outline: none; font-family: inherit; font-size: 12px;
+  background: transparent; padding: 0; margin: 0;
 }
-
-.custom-display-name {
-  font-weight: bold;
-  color: #000;
-  background-color: #e0e0e0;
-}
-
-.pika-settings-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 2px;
-  min-width: 24px;
-}
+.custom-display-name { font-weight: bold; color: #000; background-color: #e0e0e0; }
+.pika-settings-btn { background: none; border: none; cursor: pointer; padding: 2px; min-width: 24px; }
 .pika-settings-btn:hover { background: #ddd; border-radius: 4px; }
 
-/* 2. LOG DISPLAY */
+/* --- Log Display --- */
 .pikafish-log-container {
-  /* Chiều cao được set động bằng style inline */
-  flex-shrink: 0;
-  background: white;
-  overflow-y: auto;
-  padding: 5px;
-  border: 1px solid #ccc;
-  border-bottom: none; /* Bỏ border bottom vì đã có thanh kéo */
+  flex-shrink: 0; background: white; overflow-y: auto; padding: 5px;
+  border: 1px solid #ccc; border-bottom: none;
 }
-
-.log-entry {
-  margin-bottom: 6px;
-  padding-bottom: 4px;
-  border-bottom: 1px dotted #f0f0f0;
-}
-
+.log-entry { margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px dotted #f0f0f0; }
 .log-header {
-  color: #008000; 
-  font-size: 12px;
-  font-weight: bold;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-bottom: 2px;
+  color: #008000; font-size: 12px; font-weight: bold; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px;
 }
-
 .p-item { margin-right: 8px; }
+.log-pv { color: #000; font-size: 14px; line-height: 1.4; word-wrap: break-word; font-family: 'Noto Sans SC', sans-serif; }
+.log-placeholder { text-align: center; color: #999; margin-top: 20px; font-style: italic; }
 
-.log-pv {
-  color: #000;
-  font-size: 14px;
-  line-height: 1.4;
-  word-wrap: break-word; 
-  font-family: 'Noto Sans SC', sans-serif;
-}
-
-.log-placeholder {
-  text-align: center;
-  color: #999;
-  margin-top: 20px;
-  font-style: italic;
-}
-
-/* 3. NOTATION */
-.mt-2 { margin-top: 8px !important; }
-
-.move-list {
-  padding: 10px;
-  border-radius: 5px;
-  height: 100%; 
-  min-height: 100px;
-  overflow-y: auto;
-  font-family: 'Courier New', Courier, monospace;
+/* --- Notation Table Style --- */
+.notation-table-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  font-size: 13px;
+  border-radius: 4px;
   background-color: white;
+  overflow: hidden;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 14px;
 }
-.move-item { display: flex; padding: 2px 4px; cursor: pointer; }
-.move-item:hover { background: #eee; }
-.move-item.current-move { background: #d1c4e9; font-weight: bold; }
-.move-number { width: 30px; color: #666; }
 
-/* Tùy chỉnh tiêu đề panel */
-.panel-title-text h3, .notation-header h3 {
-  font-size: 13px;
-  margin: 0;
-  color: #333;
+/* Header */
+.notation-row.header {
+  background-color: #e0e0e0;
   font-weight: bold;
+  border-bottom: 1px solid #ccc;
+  color: #333;
+}
+
+/* Row chung */
+.notation-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.notation-body {
+  flex-grow: 1;
+  overflow-y: auto;
+}
+
+/* Cột */
+.col-num {
+  width: 40px;
+  text-align: center;
+  border-right: 1px solid #eee;
+  color: #666;
+  background-color: #f9f9f9;
+  padding: 4px 0;
+  font-size: 12px;
+}
+
+.col-move {
+  flex: 1;
+  text-align: center;
+  padding: 4px 0;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.col-move:hover {
+  background-color: #eaeaea;
+}
+
+/* Highlight nước đi hiện tại */
+.col-move.current-move {
+  background-color: #ffeb3b; /* Vàng sáng */
+  color: #000;
+  font-weight: bold;
+  box-shadow: inset 0 0 0 1px #fbc02d;
+}
+
+/* Dòng active (đang xem) */
+.notation-row.active-row {
+  background-color: #fff9c4;
+}
+
+.empty-notation {
+  text-align: center;
+  padding: 20px;
+  color: #999;
+  font-style: italic;
+  font-size: 13px;
+}
+
+.panel-title-text h3, .notation-header h3 {
+  font-size: 13px; margin: 0; color: #333; font-weight: bold;
 }
 </style>
