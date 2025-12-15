@@ -384,7 +384,7 @@
     validationStatus,
   } = gs
 
-  // --- Computed để lấy quân đang chọn (cho hiệu ứng 4 góc) ---
+  // --- MỚI: Computed xác định quân đang chọn để vẽ khung ---
   const selectedPiece = computed(() => {
     if (!unref(selectedPieceId)) return null
     return unref(pieces).find((p: Piece) => p.id === unref(selectedPieceId))
@@ -1126,26 +1126,25 @@
 </script>
 
 <style scoped lang="scss">
-  /* --- STYLES MỚI CHO HIỆU ỨNG 4 GÓC (BRACKET SELECTION) --- */
+  /* --- MỚI: HIỆU ỨNG 4 GÓC (BRACKET) --- */
   .selection-mark {
     position: absolute;
-    width: 12%; /* Khớp với kích thước quân cờ */
+    width: 12%; 
     aspect-ratio: 1;
     transform: translate(-50%, -50%);
     pointer-events: none;
-    z-index: 30; /* Nằm trên quân cờ (z-index 20) */
+    z-index: 30;
   }
 
   .corner {
     position: absolute;
-    width: 20%;
+    width: 20%; 
     height: 20%;
     border-style: solid;
-    border-color: #007bff; /* Màu xanh dương tiêu chuẩn */
+    border-color: #007bff; /* Màu xanh dương chuyên nghiệp */
     border-width: 2px;
   }
 
-  /* Định vị 4 góc */
   .top-left { top: 0; left: 0; border-right: none; border-bottom: none; }
   .top-right { top: 0; right: 0; border-left: none; border-bottom: none; }
   .bottom-left { bottom: 0; left: 0; border-right: none; border-top: none; }
@@ -1424,8 +1423,8 @@
     &.animated {
       transition: all 0.2s ease;
     }
-    
-    /* BỎ STYLE SELECTED CŨ (NÚT TRÒN/SHADOW) */
+
+    /* BỎ STYLE SELECTED CŨ */
     /*
     &.selected {
       transform: translate(-50%, -50%) scale(1.1);
