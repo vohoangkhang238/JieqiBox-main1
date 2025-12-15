@@ -252,6 +252,7 @@
     analysisMode: 'movetime', advancedScript: '',
   })
 
+  // Time Options 0.1s -> 100s
   const timeOptions = [
     0.1, 
     ...Array.from({length: 100}, (_, i) => i + 1)
@@ -311,7 +312,6 @@
   
   function togglePonder() { 
     enablePonder.value = !enablePonder.value 
-    // Nếu tắt Ponder khi đang Ponder thì dừng ngay
     if (!enablePonder.value && isPondering.value) {
       stopPonder({ playBestMoveOnStop: false })
     }
@@ -413,31 +413,30 @@
     startPonder(baseFenForEngine.value, engineMovesSinceLastReveal.value, pMove, analysisSettings.value)
   }
 
+  // --- SỬA LỖI PONDER: DÙNG SỰ KIỆN ĐỂ ĐỒNG BỘ ---
   async function checkAndTriggerAi() {
     if (isStopping.value) return
     
-    // --- SỬA LỖI PONDER: Chỉ check Ponder Hit khi đến lượt AI (Người vừa đi xong) ---
     if (isPondering.value) {
-        // Nếu hiện tại là lượt của AI (tức là Người vừa đi nước cuối)
-        // Thì mới kiểm tra xem nước Người đi có trúng Ponder không
         if (isCurrentAiTurnNow()) {
             const lastMoveEntry = history.value[currentMoveIndex.value - 1]
             const lastMove = lastMoveEntry ? lastMoveEntry.data : ''
             
             if (isPonderMoveMatch(lastMove)) {
                 handlePonderHit()
-                return // Engine chuyển sang Thinking, không cần startAnalysis mới
+                return 
             } else {
+                // MISS: Dừng ponder và THOÁT NGAY. 
+                // Đợi sự kiện onEngineReady gọi lại để start analysis mới
                 stopPonder({ playBestMoveOnStop: false })
+                return 
             }
         } else {
-            // Nếu không phải lượt AI (tức là AI vừa đi xong và đang Ponder cho nước tiếp theo của Người)
-            // THÌ KHÔNG ĐƯỢC DỪNG PONDER.
+            // Chưa đến lượt AI -> Cứ để engine ponder
             return
         }
     }
     
-    // Logic AI bình thường
     if (isThinking.value && !isCurrentAiTurnNow() && !isManualAnalysis.value) {
       stopAnalysis({ playBestMoveOnStop: false })
       return
@@ -475,7 +474,6 @@
     }
   })
 
-  // Watch BestMove để kích hoạt Ponder sau khi AI đi
   watch(bestMove, move => {
     if (!move) return
     if (engineLoaded.value && isCurrentAiTurnNow() && !isMatchRunning.value && !isManualAnalysis.value) {
@@ -484,11 +482,9 @@
         const ok = playMoveFromUci(move)
         bestMove.value = ''
         if (ok) {
-          // AI đi xong -> Start Ponder
           nextTick(() => {
              startPonderAfterAiMove()
           })
-          
           nextTick(() => checkAndTriggerAi())
         }
       }, 50)
@@ -666,14 +662,23 @@
     }
   }
 
+  // --- LẮNG NGHE SỰ KIỆN ENGINE DỪNG ---
+  const onEngineReady = () => {
+    console.log('[DEBUG] onEngineReady: Checking AI trigger...')
+    // Khi engine đã dừng (do stopPonder), kiểm tra lại để chạy analysis mới
+    checkAndTriggerAi()
+  }
+
   onMounted(async () => {
     loadAnalysisSettings()
     await autoLoadEngine()
     window.addEventListener('force-stop-ai', handleForceStopAi)
+    window.addEventListener('engine-stopped-and-ready', onEngineReady) // Thêm lắng nghe
   })
 
   onUnmounted(() => {
     window.removeEventListener('force-stop-ai', handleForceStopAi)
+    window.removeEventListener('engine-stopped-and-ready', onEngineReady) // Dọn dẹp
   })
 </script>
 
