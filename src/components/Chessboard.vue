@@ -43,7 +43,6 @@
             :class="{
               animated: isAnimating && showAnimations,
               inCheck: p.id === checkedKingId,
-              // Giữ quân sáng, không làm mờ
             }"
             :style="rcStyle(p.row, p.col, p.zIndex)"
           />
@@ -174,8 +173,8 @@
           class="radial-menu-container"
           :style="{
             ...rcStyle(selectedPiece.row, selectedPiece.col, 2500),
-            /* Sử dụng width thực tế để làm mốc tính toán cho con */
-            width: '45%', 
+            /* Đã thu nhỏ container để các quân ôm sát hơn */
+            width: '34%', 
             height: 'auto',
             'aspect-ratio': '1/1'
           }"
@@ -280,11 +279,10 @@
       })
   })
 
-  // Hàm tính toán vị trí cho các item vòng tròn
+  // Hàm tính toán vị trí cho các item vòng tròn (SỬ DỤNG LEFT/TOP)
   const getRadialItemStyle = (index: number, total: number) => {
-    // Bán kính vòng tròn = 35% của hộp chứa
-    // Hộp chứa = 45% bàn cờ, nên 35% hộp chứa là khoảng cách vừa đủ đẹp
-    const radiusPercent = 35; 
+    // Radius = 37% của hộp chứa (hộp chứa 34% bàn cờ) => Item cách tâm khá gần
+    const radiusPercent = 37; 
     
     // Chia đều góc
     const angleStep = (2 * Math.PI) / total;
@@ -750,7 +748,7 @@
     position: absolute;
     transform: translate(-50%, -50%); /* Căn giữa vào quân cờ */
     z-index: 2000;
-    /* width/height sẽ được ghi đè bằng inline style */
+    width: 0; height: 0; /* Container ảo */
     /* Hiệu ứng zoom in */
     animation: zoomIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   }
@@ -766,7 +764,7 @@
     /* Dùng left/top để định vị, transform chỉ để canh tâm */
     transform: translate(-50%, -50%);
     
-    width: 28%; /* % theo hộp chứa, tức là ~ 12% bàn cờ */
+    width: 25%; /* Thu nhỏ kích thước quân chọn (trước là 28%) */
     aspect-ratio: 1;
     border-radius: 50%;
     /* Background kính mờ tối */
@@ -798,12 +796,12 @@
 
   .radial-count {
     position: absolute;
-    top: 0; right: 0;
+    top: -4px; right: -4px; /* Đẩy ra xa hơn một chút để không che quân */
     background: #ff3d00;
     color: white;
-    font-size: 10px;
+    font-size: 9px; /* Nhỏ lại */
     font-weight: bold;
-    width: 16px; height: 16px;
+    width: 14px; height: 14px;
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     border: 1px solid #fff;
