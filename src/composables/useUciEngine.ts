@@ -168,7 +168,7 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
         analysis.value = analysisLines.filter(Boolean).join('\n')
       }
 
-      // --- XỬ LÝ BESTMOVE (LOGIC QUAN TRỌNG ĐÃ FIX) ---
+      // --- XỬ LÝ BESTMOVE (LOGIC QUAN TRỌNG ĐÃ FIX TREO UI) ---
       if (ln.startsWith('bestmove')) {
         const parts = ln.split(/\s+/)
         const mv = parts[1] ?? ''
@@ -191,7 +191,6 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
           }
           playOnStop.value = false
           nextTick(() => window.dispatchEvent(new CustomEvent('engine-stopped-and-ready')))
-          
           if (!bestMove.value) return 
         }
 
@@ -204,7 +203,7 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
           return
         }
 
-        isThinking.value = false 
+        isThinking.value = false
         const analysisTime = analysisStartTime.value ? Date.now() - analysisStartTime.value : 0
         lastAnalysisTime.value = analysisTime
         analysisStartTime.value = null
@@ -225,7 +224,7 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
             analysis.value = mv ? t('uci.bestMove', { move: mv }) : t('uci.noMoves')
           }
 
-          // === LOGIC XỬ LÝ QUÂN ÚP (AI ĐÁNH CỜ ZIGA) ===
+          // === LOGIC XỬ LÝ QUÂN ÚP (FIXED: XÁC ĐỊNH SIDE CHÍNH XÁC) ===
           if (mv) {
             const from = { 
               col: mv.charCodeAt(0) - 'a'.charCodeAt(0), 
@@ -240,52 +239,52 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
             const movingPiece = pieces.find((p: any) => p.row === from.row && p.col === from.col)
             const targetPiece = pieces.find((p: any) => p.row === to.row && p.col === to.col)
 
-            console.log(`[AI] Intent: ${mv} | Moving: ${movingPiece?.name} -> Target: ${targetPiece?.name || 'Empty'}`)
+            console.log(`[AI] Move: ${mv}, Source: ${movingPiece?.name}, Target: ${targetPiece?.name || 'Empty'}`)
 
             const doFinalMove = () => {
-              console.log("✅ AI Executing Move")
               gameState.move(from, to)
-              // Reset selection để tắt vòng tròn sau khi đi xong
               gameState.selectedPieceId.value = null 
             }
 
-            // Sử dụng nextTick để đảm bảo UI không bị lock bởi update trước đó
+            // Dùng nextTick để đảm bảo UI không bị lock
             nextTick(() => {
                 
                 // === CASE 1: AI CẦM QUÂN ÚP ĐI ===
                 if (movingPiece && !movingPiece.isKnown) {
                     console.log("🛑 AI moves Hidden Piece. Asking User...")
                     
-                    // 1. Force Select quân nguồn để vòng tròn hiện đúng chỗ
+                    // Force Select để hiện vòng tròn đúng chỗ
                     gameState.selectedPieceId.value = movingPiece.id
                     
-                    // 2. Lấy phe của quân đang đi (AI side)
+                    // Xác định phe của quân đang đi (chính là phe AI)
                     const side = movingPiece.name.startsWith('red') ? 'red' : 'black'
 
                     gameState.pendingFlip.value = {
                         side: side,
                         callback: (selectedName: string) => {
-                            // Update logic
                             movingPiece.name = selectedName
                             movingPiece.isKnown = true
                             gameState.adjustUnrevealedCount(gameState.getCharFromPieceName(selectedName), -1)
                             gameState.pendingFlip.value = null
                             
-                            // Check tiếp xem có ăn quân không
-                            if (targetPiece && !targetPiece.isKnown) {
-                                // Delay nhỏ để UI cập nhật xong bước 1
-                                setTimeout(() => handleTargetFlip(), 50)
-                            } else {
-                                doFinalMove()
-                            }
+                            // Check tiếp đích đến
+                            setTimeout(() => {
+                                if (targetPiece && !targetPiece.isKnown) {
+                                    handleTargetFlip(side) // Truyền phe tấn công vào để suy ra phe bị ăn
+                                } else {
+                                    doFinalMove()
+                                }
+                            }, 50)
                         }
                     }
                     return // Dừng flow
                 }
 
-                // === CASE 2: AI ĂN QUÂN ÚP ===
+                // === CASE 2: AI ĂN QUÂN ÚP (QUÂN NGUỒN ĐÃ NGỬA) ===
                 if (targetPiece && !targetPiece.isKnown) {
-                    handleTargetFlip()
+                    // Xác định phe tấn công dựa trên quân đi
+                    const attackerColor = movingPiece.name.startsWith('red') ? 'red' : 'black'
+                    handleTargetFlip(attackerColor)
                     return // Dừng flow
                 }
 
@@ -294,17 +293,17 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
             })
 
             // Hàm xử lý lật quân đích (bị ăn)
-            const handleTargetFlip = () => {
+            // attackerColor: màu của quân đi ăn (Red/Black)
+            const handleTargetFlip = (attackerColor: string) => {
                 console.log("🛑 AI captures Hidden Piece. Asking User...")
                 
-                // 1. Force Select quân BỊ ĂN để vòng tròn hiện ở đó
+                // Force Select quân BỊ ĂN để vòng tròn hiện ở đó
                 gameState.selectedPieceId.value = targetPiece.id
 
-                // 2. Lấy phe của quân BỊ ĂN
-                // Logic: Quân bị ăn luôn khác phe với quân đang đi (AI)
-                // Lấy phe của AI hiện tại
-                const aiSide = gameState.sideToMove.value // 'red' or 'black'
-                const targetSide = aiSide === 'red' ? 'black' : 'red'
+                // Phe bị ăn luôn ngược lại với phe tấn công
+                const targetSide = attackerColor === 'red' ? 'black' : 'red'
+
+                console.log(`Attacker: ${attackerColor} -> Target needs to be from: ${targetSide} pool`)
 
                 gameState.pendingFlip.value = {
                     side: targetSide,
