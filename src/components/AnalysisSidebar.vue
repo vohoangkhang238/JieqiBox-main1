@@ -20,7 +20,14 @@
       </div>
 
       <div class="engine-info-box threads">
-        <input type="number" v-model="tempThreads" min="1" max="128" class="pika-input" title="Threads" />
+        <input 
+          type="number" 
+          v-model="tempThreads" 
+          min="1" 
+          max="128" 
+          class="pika-input" 
+          title="Threads (Số luồng)" 
+        />
       </div>
 
       <div class="engine-info-box hash">
@@ -62,7 +69,7 @@
       <template #header>
         <div class="notation-header">
           <h3>{{ $t('analysis.notation') }}</h3>
-          </div>
+        </div>
       </template>
       <div
         class="move-list flex-grow-1"
@@ -82,7 +89,6 @@
       </div>
     </DraggablePanel>
 
-
     <EngineManagerDialog v-model="showEngineManager" />
   </div>
 </template>
@@ -98,7 +104,7 @@ import { uciToChineseMoves } from '@/utils/chineseNotation'
 const { t } = useI18n()
 const configManager = useConfigManager()
 
-// --- Injects (Giả định có sẵn từ context lớn hơn) ---
+// --- Injects ---
 const gameState = inject('game-state') as any
 const engineState = inject('engine-state') as any
 const jaiEngine = inject('jai-engine-state') as any 
@@ -109,6 +115,7 @@ const {
   history, currentMoveIndex, initialFen, generateFen, replayToMove,
 } = gameState
 
+// ĐÃ SỬA: Bỏ 'uciOptions' và 'setOption' để tránh lỗi undefined
 const { 
   engineOutput, isEngineLoaded, isEngineLoading, isThinking, 
   loadEngine, unloadEngine, startAnalysis, stopAnalysis, isPondering
@@ -118,20 +125,20 @@ const {
 const showEngineManager = ref(false)
 const managedEngines = ref<any[]>([])
 const selectedEngineId = ref<string | null>(null)
-const tempThreads = ref(16) // Visual placeholder
-const tempHash = ref(1024)  // Visual placeholder
+const tempThreads = ref(16) // Biến tạm để hiển thị UI
+const tempHash = ref(1024)  // Biến tạm để hiển thị UI
 const moveListElement = ref<HTMLElement | null>(null)
 
-// Computed: Trạng thái engine hoạt động (dùng cho Checkbox)
+// Computed
 const isEngineActive = computed(() => isEngineLoaded.value || isThinking.value)
 const isMatchRunning = computed(() => jaiEngine?.isMatchRunning?.value || false)
 
-// --- Logic Xử lý Engine (Checkbox) ---
+// --- Logic Checkbox ---
 const toggleEngineState = async (e: Event) => {
   const isChecked = (e.target as HTMLInputElement).checked
   
   if (isChecked) {
-    // BẬT: Load Engine -> Start Analysis
+    // BẬT
     if (!selectedEngineId.value) {
       if (managedEngines.value.length > 0) selectedEngineId.value = managedEngines.value[0].id
       else return alert('Vui lòng thêm engine trước')
@@ -142,34 +149,27 @@ const toggleEngineState = async (e: Event) => {
       if (!isEngineLoaded.value) {
         await loadEngine(engineToLoad)
       }
-      // Start Infinite Analysis
       const currentFen = generateFen()
       startAnalysis(
         { movetime: 0, analysisMode: 'infinite' }, 
-        [], // moves
-        currentFen, 
-        [] // currentSearchMoves
+        [], currentFen, []
       )
     }
   } else {
-    // TẮT: Stop Analysis -> Unload
+    // TẮT
     if (isThinking.value) stopAnalysis({ playBestMoveOnStop: false })
     if (isEngineLoaded.value) await unloadEngine()
   }
 }
 
 const handleEngineChange = async () => {
-  // Lưu engine ID vừa chọn
   if (selectedEngineId.value) {
       configManager.setLastSelectedEngineId(selectedEngineId.value)
   }
 
   if (isEngineActive.value) {
-    // Nếu đang chạy mà đổi engine -> stop, unload, load mới, start analysis
     if (isThinking.value) stopAnalysis({ playBestMoveOnStop: false })
     await unloadEngine()
-    
-    // Tự động load và start lại engine mới
     nextTick(() => {
         const event = { target: { checked: true } } as any
         toggleEngineState(event)
@@ -177,9 +177,7 @@ const handleEngineChange = async () => {
   }
 }
 
-// --- Logic Parse Log (Giống ảnh) ---
-
-// Helper parse dòng UCI
+// --- Parse Log ---
 function parseInfoLine(line: string) {
   if (!line.startsWith('info') || !line.includes('depth')) return null
   
@@ -197,7 +195,6 @@ function parseInfoLine(line: string) {
   const pvMatch = line.match(/\spv\s+(.*)/)
   const pv = pvMatch ? pvMatch[1] : ''
 
-  // Parse WDL (Win/Draw/Loss)
   const wdlMatch = line.match(/wdl\s+(\d+)\s+(\d+)\s+(\d+)/)
   let wdlText = ''
   if (wdlMatch) {
@@ -219,26 +216,16 @@ function parseInfoLine(line: string) {
   if (nps) npsText = `${(parseInt(nps)/1000).toFixed(0)}K`
   else if (nodes) npsText = `${(parseInt(nodes)/1000).toFixed(0)}K`
 
-  return {
-    raw: line,
-    depth,
-    scoreText,
-    timeText,
-    npsText,
-    wdlText, 
-    pv
-  }
+  return { raw: line, depth, scoreText, timeText, npsText, wdlText, pv }
 }
 
-// Computed: Biến đổi engineOutput thành danh sách hiển thị giống ảnh
 const parsedLogList = computed(() => {
   const rawLines = engineState.engineOutput.value
     .filter((l: any) => l.kind === 'recv' && l.text.startsWith('info depth'))
     .map((l: any) => l.text)
-    .reverse() // MỚI NHẤT LÊN ĐẦU
+    .reverse() 
   
   const displayLines = rawLines.slice(0, 20)
-  
   const currentFen = generateFen()
   
   return displayLines.map((lineStr: string) => {
@@ -249,15 +236,12 @@ const parsedLogList = computed(() => {
     try {
       const moves = uciToChineseMoves(currentFen, info.pv)
       chinesePv = moves.join(' ')
-    } catch (e) {
-      // Fallback nếu lỗi
-    }
+    } catch (e) {}
 
     return { ...info, chinesePv }
   }).filter((x: any) => x !== null)
 })
 
-// --- Lifecycle ---
 onMounted(async () => {
   await configManager.loadConfig()
   managedEngines.value = configManager.getEngines()
@@ -270,11 +254,9 @@ onMounted(async () => {
   }
 })
 
-// Tự động cuộn xuống dưới cùng khi có log mới
 watch(parsedLogList, () => {
   nextTick(() => {
     const container = document.querySelector('.pikafish-log-container');
-    // Chỉ cuộn nếu người dùng chưa cuộn thủ công
     if (container && container.scrollHeight - container.clientHeight <= container.scrollTop + 50) {
       container.scrollTop = container.scrollHeight;
     }
@@ -283,7 +265,7 @@ watch(parsedLogList, () => {
 </script>
 
 <style lang="scss">
-/* Reset & Base */
+/* Style Reset */
 .sidebar {
     width: 420px;
     height: calc(100vh - 120px); 
@@ -295,18 +277,17 @@ watch(parsedLogList, () => {
     border-left: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
     overflow-y: auto;
     background-color: rgb(var(--v-theme-surface));
-    font-family: 'Noto Sans SC', sans-serif; /* Fallback chung */
+    font-family: 'Noto Sans SC', sans-serif;
 }
 
-/* --- PIKAFISH THEME OVERRIDES --- */
+/* Pikafish Theme */
 .sidebar.pikafish-theme {
-  font-family: 'Consolas', 'Monaco', monospace; /* Font log */
+  font-family: 'Consolas', 'Monaco', monospace;
   background-color: #f5f5f5;
   padding: 8px;
   overflow-y: auto;
 }
 
-/* 1. PIKAFISH TOOLBAR */
 .pikafish-toolbar {
   background: #e0e0e0;
   display: flex;
@@ -318,7 +299,6 @@ watch(parsedLogList, () => {
   flex-shrink: 0;
 }
 
-/* Custom Checkbox */
 .engine-toggle {
   display: flex;
   align-items: center;
@@ -330,7 +310,6 @@ watch(parsedLogList, () => {
   cursor: pointer;
 }
 
-/* Input Fields */
 .engine-info-box {
   background: white;
   border: 1px solid #aaa;
@@ -355,7 +334,7 @@ watch(parsedLogList, () => {
   background: transparent;
   padding: 0;
   margin: 0;
-  appearance: none; /* Hide default select arrow */
+  appearance: none; 
 }
 
 .pika-settings-btn {
@@ -367,10 +346,8 @@ watch(parsedLogList, () => {
 }
 .pika-settings-btn:hover { background: #ddd; border-radius: 4px; }
 
-
-/* 2. LOG DISPLAY STYLES (GIỚI HẠN CHIỀU CAO) */
 .pikafish-log-container {
-  height: 250px; /* GIỚI HẠN CHIỀU CAO */
+  height: 250px; 
   flex-shrink: 0;
   background: white;
   overflow-y: auto;
@@ -384,7 +361,6 @@ watch(parsedLogList, () => {
   border-bottom: 1px dotted #f0f0f0;
 }
 
-/* Header line (Xanh lá) */
 .log-header {
   color: #008000; 
   font-size: 12px;
@@ -399,21 +375,12 @@ watch(parsedLogList, () => {
   margin-right: 8px;
 }
 
-/* PV Line (Đen, Nước đi Tiếng Trung) */
 .log-pv {
   color: #000;
   font-size: 14px;
   line-height: 1.4;
   word-wrap: break-word; 
-  font-family: 
-    'Noto Sans SC', 
-    'Microsoft YaHei', 
-    'PingFang SC', 
-    'Hiragino Sans GB', 
-    'Source Han Sans SC', 
-    'WenQuanYi Micro Hei', 
-    'Heiti SC',
-    sans-serif; /* Ưu tiên font hỗ trợ Hán tự */
+  font-family: 'Noto Sans SC', sans-serif;
 }
 
 .log-placeholder {
@@ -423,8 +390,6 @@ watch(parsedLogList, () => {
   font-style: italic;
 }
 
-/* 3. CÁC NÚT VÀ NOTATION */
-
 .mt-2 {
     margin-top: 8px !important;
 }
@@ -432,7 +397,7 @@ watch(parsedLogList, () => {
 .move-list {
   padding: 10px;
   border-radius: 5px;
-  height: 100%; /* Đảm bảo nó fill phần còn lại của Panel */
+  height: 100%; 
   min-height: 100px;
   overflow-y: auto;
   font-family: 'Courier New', Courier, monospace;
