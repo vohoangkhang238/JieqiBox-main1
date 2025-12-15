@@ -170,7 +170,8 @@
               <option v-for="t in timeOptions" :key="t" :value="t">{{ t }}s</option>
             </select>
           </div>
-          </div>
+
+        </div>
       </div>
       
       <div class="toolbar-right"></div>
@@ -250,22 +251,19 @@
     analysisMode: 'movetime', advancedScript: '',
   })
 
-  // --- DANH SÁCH TÙY CHỌN THỜI GIAN (0.1, 1..100) ---
+  // Time Options 0.1s -> 100s
   const timeOptions = [
     0.1, 
-    ...Array.from({length: 100}, (_, i) => i + 1) // Tạo mảng từ 1 đến 100
+    ...Array.from({length: 100}, (_, i) => i + 1)
   ]
 
-  // --- COMPUTED: QUẢN LÝ THỜI GIAN ---
   const moveTimeSeconds = computed({
     get: () => {
-      // Chuyển từ ms sang s để hiển thị, nếu không có trong list thì trả về giá trị thô
       const ms = analysisSettings.value.movetime || 1000
       const seconds = parseFloat((ms / 1000).toFixed(1))
       return seconds
     },
     set: (val: number) => {
-      // Chuyển từ s sang ms để lưu
       const ms = Math.round(val * 1000)
       const newSettings = { 
         ...analysisSettings.value, 
@@ -327,15 +325,23 @@
   }
 
   function toggleRedAi() {
-    if (isRedAi.value && isThinking.value && sideToMove.value === 'red') stopAnalysis({ playBestMoveOnStop: false })
+    // Nếu AI đang nghĩ và đến lượt nó, stop để nó đi nước ngay (Move Now) hoặc hủy
+    if (isRedAi.value && isThinking.value && sideToMove.value === 'red') {
+       stopAnalysis({ playBestMoveOnStop: false }) 
+    }
+    // Tắt manual analysis nếu có
     if (!isRedAi.value) isManualAnalysis.value = false
+    
     isRedAi.value = !isRedAi.value
     nextTick(() => checkAndTriggerAi())
   }
 
   function toggleBlackAi() {
-    if (isBlackAi.value && isThinking.value && sideToMove.value === 'black') stopAnalysis({ playBestMoveOnStop: false })
+    if (isBlackAi.value && isThinking.value && sideToMove.value === 'black') {
+       stopAnalysis({ playBestMoveOnStop: false })
+    }
     if (!isBlackAi.value) isManualAnalysis.value = false
+    
     isBlackAi.value = !isBlackAi.value
     nextTick(() => checkAndTriggerAi())
   }
@@ -385,11 +391,16 @@
 
   async function checkAndTriggerAi() {
     if (isStopping.value) return
+    
+    // Nếu đang nghĩ mà KHÔNG phải lượt AI và KHÔNG phải phân tích thủ công -> Stop
+    // (Đây là trường hợp AI vừa đi xong, đến lượt người)
     if (isThinking.value && !isCurrentAiTurnNow() && !isManualAnalysis.value) {
       stopAnalysis({ playBestMoveOnStop: false })
       return
     }
+
     const shouldRunAi = engineLoaded.value && isCurrentAiTurnNow() && !isThinking.value && !pendingFlip.value && !isMatchRunning.value && !isManualAnalysis.value
+    
     if (shouldRunAi) {
       try {
         const enableBook = gameState?.openingBook?.config?.enableInGame
@@ -407,16 +418,20 @@
           }
         }
       } catch (e) { console.error(e) }
+      
       startAnalysis(analysisSettings.value, engineMovesSinceLastReveal.value, baseFenForEngine.value, currentSearchMoves.value)
     }
   }
 
   watch([sideToMove, isRedAi, isBlackAi, engineLoaded, pendingFlip], () => { nextTick(() => checkAndTriggerAi()) })
+  
+  // Auto restart manual analysis if position changes
   watch(currentMoveIndex, () => {
     if (isManualAnalysis.value && !isThinking.value && engineLoaded.value && !isStopping.value && !isCurrentAiTurnNow()) {
       manualStartAnalysis()
     }
   })
+
   watch(bestMove, move => {
     if (!move) return
     if (engineLoaded.value && isCurrentAiTurnNow() && !isMatchRunning.value && !isManualAnalysis.value) {
@@ -478,12 +493,42 @@
     if (engineState.clearSearchMoves) engineState.clearSearchMoves()
   }
 
-  const handleForceStopAi = () => {
+  // --- SỬA LỖI QUAN TRỌNG TẠI ĐÂY ---
+  const handleForceStopAi = (event: Event) => {
+    // Ép kiểu event để lấy detail
+    const customEvent = event as CustomEvent
+    const reason = customEvent.detail?.reason
+
+    console.log(`[DEBUG] handleForceStopAi: reason=${reason}`)
+
+    // 1. Nếu là nước đi thủ công (manual-move), chỉ dừng suy nghĩ, KHÔNG tắt AI
+    if (reason === 'manual-move') {
+      if (isThinking.value) {
+        stopAnalysis({ playBestMoveOnStop: false })
+      }
+      return 
+    }
+
+    // 2. Các trường hợp khác: Reset toàn bộ
     resetVariationState()
+    
+    // Bảo tồn Manual Analysis khi Undo/Replay
+    const preserveManualAnalysis = reason === 'undo-move' || reason === 'replay-move'
+    const wasManualAnalysis = isManualAnalysis.value
+
+    if (isThinking.value) {
+      stopAnalysis({ playBestMoveOnStop: false })
+    }
+
     isRedAi.value = false
     isBlackAi.value = false
-    isManualAnalysis.value = false
-    ;(window as any).__MANUAL_ANALYSIS__ = false
+
+    if (preserveManualAnalysis && wasManualAnalysis) {
+       // Giữ nguyên
+    } else {
+       isManualAnalysis.value = false
+       ;(window as any).__MANUAL_ANALYSIS__ = false
+    }
   }
 
   const handleEditPosition = () => { if (!isMatchRunning.value) showPositionEditor.value = true }
@@ -491,8 +536,14 @@
   const setupNewGame = () => {
     if (isMatchRunning.value) return
     if (engineState.stopAnalysis) engineState.stopAnalysis()
+    
+    // Reset manual
     resetVariationState()
-    handleForceStopAi()
+    isRedAi.value = false
+    isBlackAi.value = false
+    isManualAnalysis.value = false
+    ;(window as any).__MANUAL_ANALYSIS__ = false
+
     gameState.setupNewGame()
   }
 
@@ -504,7 +555,14 @@
   const handleOpenNotation = () => {
     if (isMatchRunning.value) return
     if (engineState.stopAnalysis) engineState.stopAnalysis()
-    handleForceStopAi()
+    
+    // Reset khi mở file mới
+    resetVariationState()
+    isRedAi.value = false
+    isBlackAi.value = false
+    isManualAnalysis.value = false
+    ;(window as any).__MANUAL_ANALYSIS__ = false
+
     isOpening.value = true
     try { gameState.openGameNotation() } catch (e) { console.error(e) } finally { isOpening.value = false }
   }
@@ -512,7 +570,12 @@
   const handleApplyNotationText = async (text: string) => {
     if (isMatchRunning.value) return
     if (engineState.stopAnalysis) engineState.stopAnalysis()
-    handleForceStopAi()
+    
+    resetVariationState()
+    isRedAi.value = false
+    isBlackAi.value = false
+    isManualAnalysis.value = false
+    
     isApplyingText.value = true
     try { await gameState.loadGameNotationFromText(text) } catch (e) { console.error(e) } finally { isApplyingText.value = false }
   }
@@ -524,7 +587,11 @@
 
   const handlePositionChanged = () => {
     if (engineState.stopAnalysis) engineState.stopAnalysis()
-    handleForceStopAi()
+    // Reset
+    resetVariationState()
+    isRedAi.value = false
+    isBlackAi.value = false
+    isManualAnalysis.value = false
   }
 
   const refreshManagedEngines = async () => {
