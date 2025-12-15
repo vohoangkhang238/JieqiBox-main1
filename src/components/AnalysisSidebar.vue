@@ -12,36 +12,43 @@
       </div>
 
       <div class="engine-info-box engine-name">
-        <select v-model="selectedEngineId" @change="handleEngineChange" class="pika-select" :disabled="!isEngineLoaded">
-          <option :value="selectedEngineId" selected disabled hidden>
-            {{ currentEngineNameDisplay }}
+        <select v-model="selectedEngineId" @change="handleEngineChange" class="pika-select" :disabled="!isEngineLoaded && isEngineLoading">
+          <option 
+            v-if="isEngineActive && selectedEngineId" 
+            :value="selectedEngineId" 
+            class="custom-display-name"
+          >
+            Pikafish - JieQ
           </option>
+          
           <option v-for="eng in managedEngines" :key="eng.id" :value="eng.id">
             {{ eng.name }}
           </option>
         </select>
       </div>
 
-      <div class="engine-info-box threads">
+      <div class="engine-info-box threads" title="Số luồng (Threads)">
         <input 
           type="number" 
           v-model.lazy="actualThreads" 
           min="1" 
           max="128" 
           class="pika-input" 
-          title="Threads (Số luồng)" 
           :disabled="!isEngineLoaded"
         />
       </div>
 
-      <div class="engine-info-box hash">
-        <select v-model="actualHash" class="pika-select-small" title="Hash Size" :disabled="!isEngineLoaded">
+      <div class="engine-info-box hash" title="Bộ nhớ Hash (MB)">
+        <select v-model="actualHash" class="pika-select-small" :disabled="!isEngineLoaded">
           <option value="16">16 MB</option>
           <option value="64">64 MB</option>
           <option value="128">128 MB</option>
           <option value="256">256 MB</option>
           <option value="512">512 MB</option>
           <option value="1024">1024 MB</option>
+          <option value="2048">2048 MB</option>
+          <option value="4096">4096 MB</option>
+          <option value="8192">8192 MB</option>
         </select>
       </div>
 
@@ -112,73 +119,64 @@ const configManager = useConfigManager()
 const gameState = inject('game-state') as any
 const engineState = inject('engine-state') as any
 const jaiEngine = inject('jai-engine-state') as any 
-const isMatchMode = ref(false)
-const isHumanVsAiMode = ref(false)
+
+// Lấy các state từ engineState (yêu cầu useUciEngine.ts đã được update)
+const { 
+  engineOutput, isEngineLoaded, isEngineLoading, isThinking, 
+  loadEngine, unloadEngine, startAnalysis, stopAnalysis, 
+  uciOptions, setOption 
+} = engineState
 
 const { 
   history, currentMoveIndex, initialFen, generateFen, replayToMove,
 } = gameState
 
-const { 
-  engineOutput, isEngineLoaded, isEngineLoading, isThinking, 
-  loadEngine, unloadEngine, startAnalysis, stopAnalysis, isPondering,
-  uciOptions, setOption 
-} = engineState
-
-// --- Engine/UI State ---
+// --- State UI ---
 const showEngineManager = ref(false)
 const managedEngines = ref<any[]>([])
 const selectedEngineId = ref<string | null>(null)
 const moveListElement = ref<HTMLElement | null>(null)
 
-// Computed
+// Computed trạng thái
 const isEngineActive = computed(() => isEngineLoaded.value || isThinking.value)
 const isMatchRunning = computed(() => jaiEngine?.isMatchRunning?.value || false)
 
-// --- COMPUTED: TÊN HIỂN THỊ CỐ ĐỊNH ---
-const currentEngineNameDisplay = computed(() => {
-    // Nếu Engine đang tải/chạy, hiển thị tên cố định
-    if (isEngineActive.value || isEngineLoading.value) {
-        return 'Pikafish - JieQ'
-    }
-    // Nếu chưa tải, hiển thị tên của Engine được chọn
-    const selectedEngine = managedEngines.value.find(e => e.id === selectedEngineId.value)
-    return selectedEngine ? selectedEngine.name : 'Chọn Engine...'
-})
+// --- KẾT NỐI DỮ LIỆU ENGINE (THREADS & HASH) ---
 
-// --- COMPUTED: KẾT NỐI THẬT VỚI ENGINE ---
-
-// 1. Threads (Số luồng)
+// 1. Threads
 const actualThreads = computed({
   get: () => {
+    if (!uciOptions?.value) return 1
     const opt = uciOptions.value.find((o: any) => o.name?.toLowerCase() === 'threads')
     return opt ? parseInt(opt.value) : 1
   },
   set: (val) => {
-    if (isEngineLoaded.value) {
+    if (isEngineLoaded.value && setOption) {
       setOption('Threads', val)
     }
   }
 })
 
-// 2. Hash (Bộ nhớ)
+// 2. Hash
 const actualHash = computed({
   get: () => {
+    if (!uciOptions?.value) return 16
     const opt = uciOptions.value.find((o: any) => o.name?.toLowerCase() === 'hash')
     return opt ? parseInt(opt.value) : 16
   },
   set: (val) => {
-    if (isEngineLoaded.value) {
+    if (isEngineLoaded.value && setOption) {
       setOption('Hash', val)
     }
   }
 })
 
-// --- Logic Checkbox Bật/Tắt ---
+// --- Logic Bật/Tắt Engine (Checkbox) ---
 const toggleEngineState = async (e: Event) => {
   const isChecked = (e.target as HTMLInputElement).checked
   
   if (isChecked) {
+    // BẬT ENGINE
     if (!selectedEngineId.value) {
       if (managedEngines.value.length > 0) selectedEngineId.value = managedEngines.value[0].id
       else return alert('Vui lòng thêm engine trước')
@@ -189,6 +187,7 @@ const toggleEngineState = async (e: Event) => {
       if (!isEngineLoaded.value) {
         await loadEngine(engineToLoad)
       }
+      // Tự động chạy Infinite Analysis
       const currentFen = generateFen()
       startAnalysis(
         { movetime: 0, analysisMode: 'infinite' }, 
@@ -196,17 +195,20 @@ const toggleEngineState = async (e: Event) => {
       )
     }
   } else {
+    // TẮT ENGINE
     if (isThinking.value) stopAnalysis({ playBestMoveOnStop: false })
     if (isEngineLoaded.value) await unloadEngine()
   }
 }
 
+// Xử lý khi thay đổi Engine trong Dropdown
 const handleEngineChange = async () => {
   if (selectedEngineId.value) {
       configManager.setLastSelectedEngineId(selectedEngineId.value)
   }
 
   if (isEngineActive.value) {
+    // Restart nếu đang chạy
     if (isThinking.value) stopAnalysis({ playBestMoveOnStop: false })
     await unloadEngine()
     nextTick(() => {
@@ -216,7 +218,7 @@ const handleEngineChange = async () => {
   }
 }
 
-// --- Parse Log ---
+// --- Logic Phân tích Log ---
 function parseInfoLine(line: string) {
   if (!line.startsWith('info') || !line.includes('depth')) return null
   
@@ -234,6 +236,7 @@ function parseInfoLine(line: string) {
   const pvMatch = line.match(/\spv\s+(.*)/)
   const pv = pvMatch ? pvMatch[1] : ''
 
+  // Parse WDL
   const wdlMatch = line.match(/wdl\s+(\d+)\s+(\d+)\s+(\d+)/)
   let wdlText = ''
   if (wdlMatch) {
@@ -262,7 +265,7 @@ const parsedLogList = computed(() => {
   const rawLines = engineState.engineOutput.value
     .filter((l: any) => l.kind === 'recv' && l.text.startsWith('info depth'))
     .map((l: any) => l.text)
-    .reverse() 
+    .reverse() // Mới nhất lên đầu
   
   const displayLines = rawLines.slice(0, 20)
   const currentFen = generateFen()
@@ -281,6 +284,7 @@ const parsedLogList = computed(() => {
   }).filter((x: any) => x !== null)
 })
 
+// --- Lifecycle ---
 onMounted(async () => {
   await configManager.loadConfig()
   managedEngines.value = configManager.getEngines()
@@ -293,18 +297,19 @@ onMounted(async () => {
   }
 })
 
+// Auto scroll log (chỉ khi user đang ở gần đáy hoặc chưa cuộn)
 watch(parsedLogList, () => {
   nextTick(() => {
     const container = document.querySelector('.pikafish-log-container');
-    if (container && container.scrollHeight - container.clientHeight <= container.scrollTop + 50) {
-      container.scrollTop = container.scrollHeight;
+    if (container && container.scrollTop === 0) { // Log mới nằm trên cùng nên có thể muốn scroll lên top
+       container.scrollTop = 0; 
     }
   })
 }, { deep: true })
 </script>
 
 <style lang="scss">
-/* Style Reset */
+/* Reset & Base */
 .sidebar {
     width: 420px;
     height: calc(100vh - 120px); 
@@ -327,6 +332,7 @@ watch(parsedLogList, () => {
   overflow-y: auto;
 }
 
+/* 1. TOOLBAR */
 .pikafish-toolbar {
   background: #e0e0e0;
   display: flex;
@@ -338,6 +344,7 @@ watch(parsedLogList, () => {
   flex-shrink: 0;
 }
 
+/* Checkbox */
 .engine-toggle {
   display: flex;
   align-items: center;
@@ -349,6 +356,7 @@ watch(parsedLogList, () => {
   cursor: pointer;
 }
 
+/* Input/Select Box */
 .engine-info-box {
   background: white;
   border: 1px solid #aaa;
@@ -360,24 +368,11 @@ watch(parsedLogList, () => {
   overflow: hidden;
 }
 
-.engine-name { 
-    flex-grow: 1; 
-    min-width: 100px;
-}
-
-/* Dropdown styling */
-.engine-name select {
-    width: 100%;
-    /* Dùng background image để ẩn mũi tên dropdown mặc định trên một số trình duyệt */
-    background: transparent;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-}
-
+.engine-name { flex-grow: 1; min-width: 100px; }
 .threads { width: 50px; }
 .hash { width: 70px; }
 
+/* Custom Select Style */
 .pika-select, .pika-select-small, .pika-input {
   border: none;
   width: 100%;
@@ -389,6 +384,13 @@ watch(parsedLogList, () => {
   margin: 0;
 }
 
+/* Styling for the custom display name option */
+.custom-display-name {
+  font-weight: bold;
+  color: #000;
+  background-color: #e0e0e0;
+}
+
 .pika-settings-btn {
   background: none;
   border: none;
@@ -398,6 +400,7 @@ watch(parsedLogList, () => {
 }
 .pika-settings-btn:hover { background: #ddd; border-radius: 4px; }
 
+/* 2. LOG DISPLAY (Cao 250px) */
 .pikafish-log-container {
   height: 250px; 
   flex-shrink: 0;
@@ -423,9 +426,7 @@ watch(parsedLogList, () => {
   margin-bottom: 2px;
 }
 
-.p-item {
-  margin-right: 8px;
-}
+.p-item { margin-right: 8px; }
 
 .log-pv {
   color: #000;
@@ -442,9 +443,8 @@ watch(parsedLogList, () => {
   font-style: italic;
 }
 
-.mt-2 {
-    margin-top: 8px !important;
-}
+/* 3. NOTATION */
+.mt-2 { margin-top: 8px !important; }
 
 .move-list {
   padding: 10px;
