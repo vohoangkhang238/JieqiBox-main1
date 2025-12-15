@@ -1,169 +1,170 @@
 <template>
   <div class="chessboard-wrapper" :class="{ 'has-chart': showPositionChart }">
-    <div class="chessboard-container">
-      <img src="@/assets/xiangqi.png" class="bg" alt="board" />
+    
+    <div class="main-column">
+      <div class="chessboard-container">
+        <img src="@/assets/xiangqi.png" class="bg" alt="board" />
 
-      <div
-        v-if="showEvaluationBar && currentEvalPercent !== null"
-        class="eval-bar"
-        aria-hidden="true"
-      >
         <div
-          class="eval-top"
-          :style="{
-            height: currentEvalPercent + '%',
-            background: isRedOnTop ? '#e53935' : '#333',
-          }"
-        ></div>
-        <div
-          class="eval-bottom"
-          :style="{
-            height: 100 - (currentEvalPercent as number) + '%',
-            background: isRedOnTop ? '#333' : '#e53935',
-          }"
-        ></div>
-        <div
-          class="eval-marker"
-          :style="{ top: currentEvalPercent + '%' }"
-        ></div>
-      </div>
+          v-if="showEvaluationBar && currentEvalPercent !== null"
+          class="eval-bar"
+          aria-hidden="true"
+        >
+          <div
+            class="eval-top"
+            :style="{
+              height: currentEvalPercent + '%',
+              background: isRedOnTop ? '#e53935' : '#333',
+            }"
+          ></div>
+          <div
+            class="eval-bottom"
+            :style="{
+              height: 100 - (currentEvalPercent as number) + '%',
+              background: isRedOnTop ? '#333' : '#e53935',
+            }"
+          ></div>
+          <div
+            class="eval-marker"
+            :style="{ top: currentEvalPercent + '%' }"
+          ></div>
+        </div>
 
-      <div 
-        class="pieces"
-        @click="boardClick"
-        @contextmenu.prevent
-      >
-        <img
-          v-for="p in pieces"
-          :key="p.id"
-          :src="img(p)"
-          class="piece"
-          :class="{
-            animated: isAnimating && showAnimations,
-            inCheck: p.id === checkedKingId,
-          }"
-          :style="rcStyle(p.row, p.col, p.zIndex)"
-        />
-      </div>
+        <div 
+          class="pieces"
+          @click="boardClick"
+          @contextmenu.prevent
+        >
+          <img
+            v-for="p in pieces"
+            :key="p.id"
+            :src="img(p)"
+            class="piece"
+            :class="{
+              animated: isAnimating && showAnimations,
+              inCheck: p.id === checkedKingId,
+            }"
+            :style="rcStyle(p.row, p.col, p.zIndex)"
+          />
+        </div>
 
-      <div 
-        v-if="selectedPiece" 
-        class="selection-mark"
-        :style="rcStyle(selectedPiece.row, selectedPiece.col, 30)"
-      >
-        <div class="corner top-left"></div>
-        <div class="corner top-right"></div>
-        <div class="corner bottom-left"></div>
-        <div class="corner bottom-right"></div>
-      </div>
-
-      <div class="last-move-highlights" v-if="lastMovePositions">
-        <div
-          class="highlight from"
-          :class="getAnnotationClass(lastMovePositions)"
-          :style="{
-            ...rcStyle(displayRow(lastMovePositions.from.row), displayCol(lastMovePositions.from.col)),
-            width: '2.5%' 
-          }"
-        ></div>
-        <div
-          class="highlight to"
-          :class="getAnnotationClass(lastMovePositions)"
-          :style="{
-            ...rcStyle(displayRow(lastMovePositions.to.row), displayCol(lastMovePositions.to.col)),
-            width: '12%'
-          }"
+        <div 
+          v-if="selectedPiece" 
+          class="selection-mark"
+          :style="rcStyle(selectedPiece.row, selectedPiece.col, 30)"
         >
           <div class="corner top-left"></div>
           <div class="corner top-right"></div>
           <div class="corner bottom-left"></div>
           <div class="corner bottom-right"></div>
         </div>
-      </div>
 
-      <div
-        v-if="lastMovePositions && getCurrentMoveAnnotation()"
-        class="annotation-layer"
-      >
+        <div class="last-move-highlights" v-if="lastMovePositions">
+          <div
+            class="highlight from"
+            :class="getAnnotationClass(lastMovePositions)"
+            :style="{
+              ...rcStyle(displayRow(lastMovePositions.from.row), displayCol(lastMovePositions.from.col)),
+              width: '2.5%' 
+            }"
+          ></div>
+          <div
+            class="highlight to"
+            :class="getAnnotationClass(lastMovePositions)"
+            :style="{
+              ...rcStyle(displayRow(lastMovePositions.to.row), displayCol(lastMovePositions.to.col)),
+              width: '12%'
+            }"
+          >
+            <div class="corner top-left"></div>
+            <div class="corner top-right"></div>
+            <div class="corner bottom-left"></div>
+            <div class="corner bottom-right"></div>
+          </div>
+        </div>
+
         <div
-          class="annotation-anchor"
-          :class="getAnnotationClass(lastMovePositions)"
-          :style="rcStyle(displayRow(lastMovePositions.to.row), displayCol(lastMovePositions.to.col))"
+          v-if="lastMovePositions && getCurrentMoveAnnotation()"
+          class="annotation-layer"
         >
-          <div class="annotation-badge">{{ getCurrentMoveAnnotation() }}</div>
+          <div
+            class="annotation-anchor"
+            :class="getAnnotationClass(lastMovePositions)"
+            :style="rcStyle(displayRow(lastMovePositions.to.row), displayCol(lastMovePositions.to.col))"
+          >
+            <div class="annotation-badge">{{ getCurrentMoveAnnotation() }}</div>
+          </div>
         </div>
+
+        <svg class="user-drawings" viewBox="0 0 90 100" preserveAspectRatio="none">
+          <circle
+            v-for="(circle, idx) in userCircles"
+            :key="`circle-${idx}`"
+            :cx="circle.x"
+            :cy="circle.y"
+            :r="circle.radius"
+            fill="none"
+            stroke="#ff6b6b"
+            stroke-width="1"
+            opacity="0.8"
+          />
+          <defs>
+            <marker id="user-arrow-marker" markerWidth="3" markerHeight="3" refX="2" refY="1.5" orient="auto">
+              <polygon points="0 0, 3 1.5, 0 3" fill="#ff6b6b" />
+            </marker>
+          </defs>
+          <line
+            v-for="(arrow, idx) in userArrows"
+            :key="`arrow-${idx}`"
+            :x1="arrow.x1" :y1="arrow.y1" :x2="arrow.x2" :y2="arrow.y2"
+            stroke="#ff6b6b" stroke-width="2" marker-end="url(#user-arrow-marker)" opacity="0.8"
+          />
+        </svg>
+
+        <div class="valid-moves-indicators" v-if="validMovesForSelectedPiece.length > 0">
+          <div
+            v-for="(move, index) in validMovesForSelectedPiece"
+            :key="`valid-move-${index}`"
+            class="valid-move-dot"
+            :style="{ 
+              ...rcStyle(move.row, move.col), 
+              width: '2.5%' 
+            }"
+          ></div>
+        </div>
+
+        <div class="board-labels" v-if="showCoordinates">
+          <div class="rank-labels">
+            <span v-for="(rank, index) in ranks" :key="rank" :style="rankLabelStyle(index)">{{ rank }}</span>
+          </div>
+          <div class="file-labels">
+            <span v-for="(file, index) in files" :key="file" :style="fileLabelStyle(index)">{{ file }}</span>
+          </div>
+        </div>
+
+        <svg class="ar" viewBox="0 0 90 100" preserveAspectRatio="none" v-if="showArrows">
+          <defs>
+            <marker v-for="(color, idx) in arrowColors" :key="`marker-${idx}`" :id="`ah-${idx}`" markerWidth="2.5" markerHeight="2.5" refX="1.5" refY="1.25" orient="auto">
+              <polygon points="0 0, 2.5 1.25, 0 2.5" :fill="color" />
+            </marker>
+            <marker id="ah-selected" markerWidth="2.5" markerHeight="2.5" refX="1.5" refY="1.25" orient="auto">
+              <polygon points="0 0, 2.5 1.25, 0 2.5" fill="#e53935" />
+            </marker>
+          </defs>
+          <template v-for="(a, idx) in arrs" :key="`arrow-${idx}`">
+            <line :x1="a.x1" :y1="a.y1" :x2="a.x2" :y2="a.y2" :style="{ stroke: arrowColor(idx) }" :marker-end="`url(#ah-${idx % arrowColors.length})`" class="al" />
+            <text v-if="arrs.length > 1" :x="(a.x1 + a.x2) / 2" :y="(a.y1 + a.y2) / 2" :fill="arrowColor(idx)" class="arrow-label">{{ a.pv }}</text>
+          </template>
+          <template v-if="selectedPvArrow">
+            <line :x1="selectedPvArrow.x1" :y1="selectedPvArrow.y1" :x2="selectedPvArrow.x2" :y2="selectedPvArrow.y2" marker-end="url(#ah-selected)" class="al selected-arrow-shadow" />
+            <line :x1="selectedPvArrow.x1" :y1="selectedPvArrow.y1" :x2="selectedPvArrow.x2" :y2="selectedPvArrow.y2" marker-end="url(#ah-selected)" class="al selected-arrow" />
+          </template>
+        </svg>
+
+        <ClearHistoryConfirmDialog :visible="showClearHistoryDialog" :onConfirm="onConfirmClearHistory" :onCancel="onCancelClearHistory" />
       </div>
 
-      <svg class="user-drawings" viewBox="0 0 90 100" preserveAspectRatio="none">
-        <circle
-          v-for="(circle, idx) in userCircles"
-          :key="`circle-${idx}`"
-          :cx="circle.x"
-          :cy="circle.y"
-          :r="circle.radius"
-          fill="none"
-          stroke="#ff6b6b"
-          stroke-width="1"
-          opacity="0.8"
-        />
-        <defs>
-          <marker id="user-arrow-marker" markerWidth="3" markerHeight="3" refX="2" refY="1.5" orient="auto">
-            <polygon points="0 0, 3 1.5, 0 3" fill="#ff6b6b" />
-          </marker>
-        </defs>
-        <line
-          v-for="(arrow, idx) in userArrows"
-          :key="`arrow-${idx}`"
-          :x1="arrow.x1" :y1="arrow.y1" :x2="arrow.x2" :y2="arrow.y2"
-          stroke="#ff6b6b" stroke-width="2" marker-end="url(#user-arrow-marker)" opacity="0.8"
-        />
-      </svg>
-
-      <div class="valid-moves-indicators" v-if="validMovesForSelectedPiece.length > 0">
-        <div
-          v-for="(move, index) in validMovesForSelectedPiece"
-          :key="`valid-move-${index}`"
-          class="valid-move-dot"
-          :style="{ 
-            ...rcStyle(move.row, move.col), 
-            width: '2.5%' 
-          }"
-        ></div>
-      </div>
-
-      <div class="board-labels" v-if="showCoordinates">
-        <div class="rank-labels">
-          <span v-for="(rank, index) in ranks" :key="rank" :style="rankLabelStyle(index)">{{ rank }}</span>
-        </div>
-        <div class="file-labels">
-          <span v-for="(file, index) in files" :key="file" :style="fileLabelStyle(index)">{{ file }}</span>
-        </div>
-      </div>
-
-      <svg class="ar" viewBox="0 0 90 100" preserveAspectRatio="none" v-if="showArrows">
-        <defs>
-          <marker v-for="(color, idx) in arrowColors" :key="`marker-${idx}`" :id="`ah-${idx}`" markerWidth="2.5" markerHeight="2.5" refX="1.5" refY="1.25" orient="auto">
-            <polygon points="0 0, 2.5 1.25, 0 2.5" :fill="color" />
-          </marker>
-          <marker id="ah-selected" markerWidth="2.5" markerHeight="2.5" refX="1.5" refY="1.25" orient="auto">
-            <polygon points="0 0, 2.5 1.25, 0 2.5" fill="#e53935" />
-          </marker>
-        </defs>
-        <template v-for="(a, idx) in arrs" :key="`arrow-${idx}`">
-          <line :x1="a.x1" :y1="a.y1" :x2="a.x2" :y2="a.y2" :style="{ stroke: arrowColor(idx) }" :marker-end="`url(#ah-${idx % arrowColors.length})`" class="al" />
-          <text v-if="arrs.length > 1" :x="(a.x1 + a.x2) / 2" :y="(a.y1 + a.y2) / 2" :fill="arrowColor(idx)" class="arrow-label">{{ a.pv }}</text>
-        </template>
-        <template v-if="selectedPvArrow">
-          <line :x1="selectedPvArrow.x1" :y1="selectedPvArrow.y1" :x2="selectedPvArrow.x2" :y2="selectedPvArrow.y2" marker-end="url(#ah-selected)" class="al selected-arrow-shadow" />
-          <line :x1="selectedPvArrow.x1" :y1="selectedPvArrow.y1" :x2="selectedPvArrow.x2" :y2="selectedPvArrow.y2" marker-end="url(#ah-selected)" class="al selected-arrow" />
-        </template>
-      </svg>
-
-      <ClearHistoryConfirmDialog :visible="showClearHistoryDialog" :onConfirm="onConfirmClearHistory" :onCancel="onCancelClearHistory" />
-    </div>
-
-    <div class="bottom-panel">
-      <template v-if="pendingFlip">
+      <div v-if="pendingFlip" class="flip-prompt-area">
         <div class="flip-prompt-container">
           <div class="flip-prompt-header">
             <span>Chọn quân {{ pendingFlip.side === 'red' ? 'Đỏ' : 'Đen' }}</span>
@@ -186,42 +187,42 @@
             </div>
           </div>
         </div>
-      </template>
+      </div>
+    </div>
 
-      <template v-else>
-        <div class="pool-section">
-          <div v-for="item in (isRedOnTop ? redPool : blackPool)" :key="item.char" class="pool-row">
-            <img :src="getPieceImageUrl(item.name)" class="pool-img" />
-            <div class="pool-controls">
-               <span class="pool-num" :class="isRedOnTop ? 'red-num' : 'black-num'">{{ item.count }}</span>
-               <div class="pool-btns">
-                  <button class="tiny-btn" @click="adjustUnrevealedCount(item.char, 1)" :disabled="item.count >= item.max">+</button>
-                  <button class="tiny-btn" @click="adjustUnrevealedCount(item.char, -1)" :disabled="item.count <= 0">-</button>
-               </div>
-            </div>
+    <div class="side-panel">
+      <div class="pool-section top-pool">
+        <div v-for="item in (isRedOnTop ? redPool : blackPool)" :key="item.char" class="pool-row">
+          <img :src="getPieceImageUrl(item.name)" class="pool-img" />
+          <div class="pool-controls">
+             <span class="pool-num" :class="isRedOnTop ? 'red-num' : 'black-num'">{{ item.count }}</span>
+             <div class="pool-btns">
+                <button class="tiny-btn" @click="adjustUnrevealedCount(item.char, 1)" :disabled="item.count >= item.max">+</button>
+                <button class="tiny-btn" @click="adjustUnrevealedCount(item.char, -1)" :disabled="item.count <= 0">-</button>
+             </div>
           </div>
         </div>
-        
-        <div v-if="poolErrorMessage" class="pool-error-wrapper">
-          <div class="pool-error">
-            <v-icon icon="mdi-alert-circle" size="x-small" color="error"></v-icon>
-            <span>{{ poolErrorMessage }}</span>
-          </div>
+      </div>
+      
+      <div class="pool-divider">
+        <div v-if="poolErrorMessage" class="pool-error">
+          <v-icon icon="mdi-alert-circle" size="x-small" color="error"></v-icon>
+          <span>{{ poolErrorMessage }}</span>
         </div>
+      </div>
 
-        <div class="pool-section">
-          <div v-for="item in (isRedOnTop ? blackPool : redPool)" :key="item.char" class="pool-row">
-            <img :src="getPieceImageUrl(item.name)" class="pool-img" />
-            <div class="pool-controls">
-               <span class="pool-num" :class="isRedOnTop ? 'black-num' : 'red-num'">{{ item.count }}</span>
-               <div class="pool-btns">
-                  <button class="tiny-btn" @click="adjustUnrevealedCount(item.char, 1)" :disabled="item.count >= item.max">+</button>
-                  <button class="tiny-btn" @click="adjustUnrevealedCount(item.char, -1)" :disabled="item.count <= 0">-</button>
-               </div>
-            </div>
+      <div class="pool-section bottom-pool">
+        <div v-for="item in (isRedOnTop ? blackPool : redPool)" :key="item.char" class="pool-row">
+          <img :src="getPieceImageUrl(item.name)" class="pool-img" />
+          <div class="pool-controls">
+             <span class="pool-num" :class="isRedOnTop ? 'black-num' : 'red-num'">{{ item.count }}</span>
+             <div class="pool-btns">
+                <button class="tiny-btn" @click="adjustUnrevealedCount(item.char, 1)" :disabled="item.count >= item.max">+</button>
+                <button class="tiny-btn" @click="adjustUnrevealedCount(item.char, -1)" :disabled="item.count <= 0">-</button>
+             </div>
           </div>
         </div>
-      </template>
+      </div>
     </div>
 
     <EvaluationChart v-if="showPositionChart" :history="history" :current-move-index="currentMoveIndex" :initial-fen="unref(gs?.initialFen)" @seek="handleChartSeek" />
@@ -252,7 +253,7 @@
 
   const selectedPiece = computed(() => { if (!unref(selectedPieceId)) return null; return unref(pieces).find((p: Piece) => p.id === unref(selectedPieceId)) })
 
-  // --- LOGIC CHO PHẦN FLIP SELECTION (CHỌN QUÂN LẬT) ---
+  // --- LOGIC: FLIP SELECTION ---
   const flipSelectionPieces = computed(() => {
     if (!pendingFlip.value) return []
     const requiredSide = pendingFlip.value.side
@@ -277,21 +278,19 @@
     if (pendingFlip.value && pendingFlip.value.callback) {
       const pieces = flipSelectionPieces.value
       if (pieces.length === 0) return
-      
       const pool: string[] = []
       pieces.forEach((p: any) => {
         for(let i=0; i < (p.count as number); i++) {
           pool.push(p.name)
         }
       })
-      
       if (pool.length > 0) {
         const randomIndex = Math.floor(Math.random() * pool.length)
         pendingFlip.value.callback(pool[randomIndex])
       }
     }
   }
-  // ---------------------------------------------------
+  // -------------------------
 
   const poolErrorMessage = computed(() => {
     if (!validationStatus.value) return null
@@ -485,22 +484,22 @@
 </script>
 
 <style scoped lang="scss">
-  /* 1. HIỆU ỨNG CHỌN QUÂN (SELECTION MARK): XANH DƯƠNG */
+  /* 1. SELECTION MARK */
   .selection-mark { position: absolute; width: 12%; aspect-ratio: 1; transform: translate(-50%, -50%); pointer-events: none; z-index: 30; }
   .selection-mark .corner { border-color: #007bff; } 
 
-  /* 2. HIỆU ỨNG NƯỚC ĐI ĐẾN (TO): 4 GÓC XANH LÁ/CYAN */
+  /* 2. HIGHLIGHT TO */
   .highlight.to { position: absolute; width: 12%; aspect-ratio: 1; transform: translate(-50%, -50%); pointer-events: none; z-index: 25; }
   .highlight.to .corner { border-color: #4ecdc4; }
 
-  /* STYLE CORNER (4 GÓC - ĐẬM & BO GÓC) */
+  /* CORNER STYLE */
   .corner { position: absolute; width: 25%; height: 25%; border-style: solid; border-width: 3px; }
   .top-left { top: 0; left: 0; border-right: none; border-bottom: none; border-top-left-radius: 6px; }
   .top-right { top: 0; right: 0; border-left: none; border-bottom: none; border-top-right-radius: 6px; }
   .bottom-left { bottom: 0; left: 0; border-right: none; border-top: none; border-bottom-left-radius: 6px; }
   .bottom-right { bottom: 0; right: 0; border-left: none; border-top: none; border-bottom-right-radius: 6px; }
 
-  /* 3. HIỆU ỨNG NƯỚC ĐI TỪ (FROM): CHẤM TRÒN NHỎ */
+  /* 3. HIGHLIGHT FROM */
   .highlight.from {
     position: absolute;
     aspect-ratio: 1;
@@ -512,7 +511,7 @@
     pointer-events: none;
   }
 
-  /* 4. GỢI Ý NƯỚC ĐI (VALID MOVE): CHẤM TRÒN NHỎ XANH */
+  /* 4. VALID MOVE */
   .valid-move-dot {
     position: absolute;
     width: 2.5%; 
@@ -527,50 +526,81 @@
     pointer-events: none;
   }
 
-  /* --- SỬA LAYOUT CHÍNH: XẾP DỌC ĐỂ KHO QUÂN XUỐNG DƯỚI --- */
+  /* --- LAYOUT CHÍNH: HÀNG NGANG (ROW) --- */
+  /* Bàn cờ bên trái, Kho quân bên phải */
   .chessboard-wrapper {
     display: flex;
-    flex-direction: column; /* Quan trọng: Xếp theo cột */
-    align-items: center;
+    flex-direction: row; /* Xếp ngang */
+    align-items: flex-start;
     justify-content: center;
-    gap: 12px;
+    gap: 20px;
     width: 100%;
     max-width: 95vmin;
     margin: 0 auto;
+    
+    @media (max-width: 768px) {
+      flex-direction: column; /* Mobile thì xếp dọc lại */
+      gap: 12px;
+    }
+  }
+
+  /* CỘT CHÍNH (CHỨA BÀN CỜ + FLIP PROMPT) */
+  .main-column {
+    display: flex;
+    flex-direction: column; /* Bàn cờ trên, Flip Prompt dưới */
+    flex: 0 0 auto;
+    width: 80%; /* Bàn cờ chiếm phần lớn */
+    gap: 12px;
+    
+    @media (max-width: 768px) {
+      width: 100%;
+    }
   }
 
   .chessboard-container {
     position: relative;
-    width: 100%; /* Chiếm hết bề ngang container */
+    width: 100%;
     aspect-ratio: 9/10;
     margin: auto;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
-    flex: none; /* Bỏ flex cứng */
   }
 
-  /* KHO QUÂN / PANEL DƯỚI */
-  .bottom-panel {
-    width: 100%; /* Chiếm hết bề ngang dưới bàn cờ */
+  /* KHO QUÂN (SIDE PANEL) - NẰM BÊN PHẢI */
+  .side-panel {
     display: flex;
-    flex-direction: row; /* Hai phe xếp ngang hàng */
-    justify-content: center;
-    align-items: flex-start;
+    flex-direction: column; /* Hai phe Đỏ/Đen xếp dọc */
+    justify-content: space-between;
+    align-items: center;
     background: rgba(0, 0, 0, 0.2);
     border-radius: 6px;
     padding: 8px;
-    gap: 20px;
-    min-height: 80px; /* Đảm bảo đủ chiều cao */
+    gap: 10px;
+    min-width: 70px;
+    flex: 1; /* Chiếm phần còn lại */
+    align-self: stretch; /* Cao bằng bàn cờ */
+    
+    @media (max-width: 768px) {
+      width: 100%;
+      flex-direction: row; /* Mobile: kho quân nằm ngang bên dưới */
+      min-height: auto;
+      align-self: auto;
+    }
   }
 
-  /* KHO QUÂN */
+  /* CÁC STYLE CHO KHO QUÂN */
   .pool-section {
     display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 6px;
-    flex: 1;
-    justify-content: center;
+    flex-direction: column; /* Các quân xếp dọc */
+    gap: 4px;
+    width: 100%;
+    align-items: center;
+    
+    @media (max-width: 768px) {
+      flex-direction: row; /* Mobile: xếp ngang */
+      flex-wrap: wrap;
+      justify-content: center;
+    }
   }
 
   .pool-row {
@@ -581,8 +611,13 @@
     border-radius: 4px;
     padding: 4px;
     position: relative;
-    gap: 4px;
-    min-width: 45px;
+    gap: 2px;
+    width: 100%;
+    
+    @media (max-width: 768px) {
+      width: auto;
+      min-width: 45px;
+    }
   }
 
   .pool-img {
@@ -595,15 +630,13 @@
     display: flex;
     align-items: center;
     flex-direction: row;
-    justify-content: center;
     gap: 2px;
   }
 
   .pool-num {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     font-weight: bold;
     color: #fff;
-    text-align: right;
     line-height: 1;
     margin-right: 2px;
     text-shadow: 0 1px 2px rgba(0,0,0,0.5);
@@ -616,6 +649,10 @@
     display: flex;
     flex-direction: column;
     gap: 1px;
+    
+    @media (max-width: 768px) {
+      display: none; /* Ẩn nút trên mobile */
+    }
   }
 
   .tiny-btn {
@@ -637,50 +674,52 @@
     &:disabled { opacity: 0.3; cursor: default; border-color: transparent; }
   }
 
-  .pool-error-wrapper {
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    width: auto;
-    height: auto;
-    margin-bottom: 8px;
-    z-index: 100;
+  .pool-divider {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
   }
 
   .pool-error {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
+    gap: 2px;
     background: #ffffff;
     border: 1px solid #d32f2f;
     border-radius: 4px;
-    padding: 6px 8px;
+    padding: 4px;
     color: #d32f2f;
     font-weight: bold;
-    font-size: 12px;
+    font-size: 10px;
     text-align: center;
     word-break: break-word;
     box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    white-space: nowrap;
+    max-width: 100%;
   }
 
-  /* FLIP PROMPT UI */
+  /* --- FLIP PROMPT AREA (NẰM DƯỚI BÀN CỜ) --- */
+  .flip-prompt-area {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 6px;
+    padding: 8px;
+    min-height: 60px;
+  }
+
   .flip-prompt-container {
     display: flex;
     flex-direction: column;
     width: 100%;
-    height: 100%;
-    gap: 4px;
+    gap: 6px;
   }
 
   .flip-prompt-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0 4px;
-    margin-bottom: 2px;
     color: #fff;
     font-weight: bold;
     font-size: 13px;
@@ -697,7 +736,6 @@
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 4px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.2);
     &:hover { background: #0056b3; }
   }
@@ -707,11 +745,9 @@
     flex-wrap: wrap;
     justify-content: center;
     gap: 8px;
-    flex: 1;
     overflow-y: auto;
     padding: 2px;
     scrollbar-width: thin;
-    scrollbar-color: rgba(255,255,255,0.3) transparent;
   }
 
   .flip-choice-item {
@@ -724,8 +760,7 @@
     cursor: pointer;
     border: 1px solid rgba(255,255,255,0.1);
     transition: all 0.15s;
-    position: relative;
-    min-width: 42px;
+    min-width: 40px;
 
     &:hover {
       background: rgba(255, 255, 255, 0.25);
@@ -755,28 +790,7 @@
     font-weight: bold;
   }
 
-  /* Responsive Mobile */
-  @media (max-width: 768px) {
-    .bottom-panel {
-      padding: 6px;
-      gap: 10px;
-    }
-    .pool-section {
-      gap: 4px;
-    }
-    .pool-img {
-      width: 28px;
-      height: 28px;
-    }
-    .pool-controls {
-      flex-direction: column-reverse;
-    }
-    .pool-btns {
-      display: none; /* Ẩn nút +/- trên mobile cho gọn */
-    }
-  }
-
-  /* CÁC STYLE PHỤ KHÁC GIỮ NGUYÊN */
+  /* CÁC STYLE KHÁC GIỮ NGUYÊN */
   .eval-bar { position: absolute; top: 0; bottom: 0; left: -12px; width: 8px; border-radius: 4px; overflow: hidden; background: #ddd; box-shadow: 0 0 2px rgba(0, 0, 0, 0.2); z-index: 5; pointer-events: none; @media (max-width: 768px) { left: -10px; width: 6px; } }
   .eval-top { width: 100%; background: #e53935; transition: height 0.15s ease; pointer-events: none; }
   .eval-bottom { width: 100%; background: #333; transition: height 0.15s ease; pointer-events: none; }
