@@ -164,8 +164,7 @@
         <div 
           v-if="pendingFlip" 
           class="flip-overlay-fixed" 
-          @click="handleFlipRandom"
-          title="Bấm ra ngoài để lật ngẫu nhiên"
+          @click.stop
         ></div>
 
         <div 
@@ -173,7 +172,6 @@
           class="radial-menu-container"
           :style="{
             ...rcStyle(selectedPiece.row, selectedPiece.col, 2500),
-            /* Đã thu nhỏ container để các quân ôm sát hơn */
             width: '34%', 
             height: 'auto',
             'aspect-ratio': '1/1'
@@ -196,7 +194,7 @@
       <div v-if="pendingFlip" class="flip-hint-area">
         <div class="flip-hint-text">
           <v-icon icon="mdi-gesture-tap" size="small" class="mr-1"></v-icon>
-          Bấm vào quân để chọn, hoặc bấm ra ngoài để chọn ngẫu nhiên
+          Vui lòng chọn quân cần lật
         </div>
       </div>
     </div>
@@ -281,7 +279,7 @@
 
   // Hàm tính toán vị trí cho các item vòng tròn (SỬ DỤNG LEFT/TOP)
   const getRadialItemStyle = (index: number, total: number) => {
-    // Radius = 37% của hộp chứa (hộp chứa 34% bàn cờ) => Item cách tâm khá gần
+    // Radius = 37% của hộp chứa (hộp chứa 34% bàn cờ) => Item cách tâm vừa phải
     const radiusPercent = 37; 
     
     // Chia đều góc
@@ -748,7 +746,7 @@
     position: absolute;
     transform: translate(-50%, -50%); /* Căn giữa vào quân cờ */
     z-index: 2000;
-    width: 0; height: 0; /* Container ảo */
+    /* width/height sẽ được ghi đè bằng inline style */
     /* Hiệu ứng zoom in */
     animation: zoomIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   }
