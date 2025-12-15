@@ -1,5 +1,10 @@
 <template>
-  <div class="sidebar pikafish-theme">
+  <div 
+    class="sidebar pikafish-theme" 
+    :style="{ width: sidebarWidth + 'px' }"
+  >
+    <div class="resize-handle-left" @mousedown.prevent="startResizeWidth"></div>
+
     <div class="pikafish-toolbar">
       <div class="engine-toggle">
         <input 
@@ -57,13 +62,18 @@
       </button>
     </div>
 
-    <DraggablePanel panel-id="engine-log" class="mt-2">
+    <DraggablePanel panel-id="engine-log" class="mt-2" :no-resize="true">
       <template #header>
         <div class="panel-title-text">
           <h3>{{ $t('analysis.engineAnalysis') }}</h3>
         </div>
       </template>
-      <div class="pikafish-log-container resizable-log" ref="logContainer">
+      
+      <div 
+        class="pikafish-log-container" 
+        ref="logContainer"
+        :style="{ height: logHeight + 'px' }"
+      >
         <div v-if="!isEngineActive && parsedLogList.length === 0" class="log-placeholder">
           Động cơ chưa được kích hoạt
         </div>
@@ -81,9 +91,13 @@
           </div>
         </div>
       </div>
+      
+      <div class="resize-handle-bottom" @mousedown.prevent="startResizeHeight">
+        <div class="handle-grip"></div>
+      </div>
     </DraggablePanel>
 
-    <DraggablePanel panel-id="notation" class="mt-2 flex-grow-1">
+    <DraggablePanel panel-id="notation" class="mt-2 flex-grow-1" :no-resize="true">
       <template #header>
         <div class="notation-header">
           <h3>{{ $t('analysis.notation') }}</h3>
@@ -112,7 +126,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, inject, ref, watch, nextTick, onMounted } from 'vue'
+import { computed, inject, ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useConfigManager } from '@/composables/useConfigManager'
 import EngineManagerDialog from './EngineManagerDialog.vue'
@@ -127,7 +141,6 @@ const gameState = inject('game-state') as any
 const engineState = inject('engine-state') as any
 const jaiEngine = inject('jai-engine-state') as any 
 
-// Lấy các state từ engineState (yêu cầu useUciEngine.ts đã được update)
 const { 
   engineOutput, isEngineLoaded, isEngineLoading, isThinking, 
   loadEngine, unloadEngine, startAnalysis, stopAnalysis, 
@@ -144,13 +157,66 @@ const managedEngines = ref<any[]>([])
 const selectedEngineId = ref<string | null>(null)
 const moveListElement = ref<HTMLElement | null>(null)
 
+// --- KÍCH THƯỚC ĐỘNG (RESIZABLE) ---
+const sidebarWidth = ref(420) // Độ rộng mặc định
+const logHeight = ref(250)    // Chiều cao log mặc định
+
+// --- LOGIC KÉO DÃN CHIỀU RỘNG (SIDEBAR WIDTH) ---
+const startResizeWidth = (e: MouseEvent) => {
+  const startX = e.clientX
+  const startWidth = sidebarWidth.value
+
+  const onMouseMove = (e: MouseEvent) => {
+    // Vì sidebar nằm bên phải, kéo sang trái (giảm X) = tăng width
+    // Kéo sang phải (tăng X) = giảm width
+    const delta = startX - e.clientX
+    const newWidth = startWidth + delta
+    
+    // Giới hạn width: min 300px, max 800px
+    if (newWidth >= 300 && newWidth <= 800) {
+      sidebarWidth.value = newWidth
+    }
+  }
+
+  const onMouseUp = () => {
+    window.removeEventListener('mousemove', onMouseMove)
+    window.removeEventListener('mouseup', onMouseUp)
+  }
+
+  window.addEventListener('mousemove', onMouseMove)
+  window.addEventListener('mouseup', onMouseUp)
+}
+
+// --- LOGIC KÉO DÃN CHIỀU CAO (LOG HEIGHT) ---
+const startResizeHeight = (e: MouseEvent) => {
+  const startY = e.clientY
+  const startHeight = logHeight.value
+
+  const onMouseMove = (e: MouseEvent) => {
+    // Kéo xuống (tăng Y) = tăng height
+    const delta = e.clientY - startY
+    const newHeight = startHeight + delta
+    
+    // Giới hạn height: min 100px, max 600px
+    if (newHeight >= 100 && newHeight <= 600) {
+      logHeight.value = newHeight
+    }
+  }
+
+  const onMouseUp = () => {
+    window.removeEventListener('mousemove', onMouseMove)
+    window.removeEventListener('mouseup', onMouseUp)
+  }
+
+  window.addEventListener('mousemove', onMouseMove)
+  window.addEventListener('mouseup', onMouseUp)
+}
+
 // Computed trạng thái
 const isEngineActive = computed(() => isEngineLoaded.value || isThinking.value)
 const isMatchRunning = computed(() => jaiEngine?.isMatchRunning?.value || false)
 
 // --- KẾT NỐI DỮ LIỆU ENGINE (THREADS & HASH) ---
-
-// 1. Threads
 const actualThreads = computed({
   get: () => {
     if (!uciOptions?.value) return 1
@@ -164,7 +230,6 @@ const actualThreads = computed({
   }
 })
 
-// 2. Hash
 const actualHash = computed({
   get: () => {
     if (!uciOptions?.value) return 16
@@ -183,7 +248,6 @@ const toggleEngineState = async (e: Event) => {
   const isChecked = (e.target as HTMLInputElement).checked
   
   if (isChecked) {
-    // BẬT ENGINE
     if (!selectedEngineId.value) {
       if (managedEngines.value.length > 0) selectedEngineId.value = managedEngines.value[0].id
       else return alert('Vui lòng thêm engine trước')
@@ -194,7 +258,6 @@ const toggleEngineState = async (e: Event) => {
       if (!isEngineLoaded.value) {
         await loadEngine(engineToLoad)
       }
-      // Tự động chạy Infinite Analysis
       const currentFen = generateFen()
       startAnalysis(
         { movetime: 0, analysisMode: 'infinite' }, 
@@ -202,20 +265,17 @@ const toggleEngineState = async (e: Event) => {
       )
     }
   } else {
-    // TẮT ENGINE
     if (isThinking.value) stopAnalysis({ playBestMoveOnStop: false })
     if (isEngineLoaded.value) await unloadEngine()
   }
 }
 
-// Xử lý khi thay đổi Engine trong Dropdown
 const handleEngineChange = async () => {
   if (selectedEngineId.value) {
       configManager.setLastSelectedEngineId(selectedEngineId.value)
   }
 
   if (isEngineActive.value) {
-    // Restart nếu đang chạy
     if (isThinking.value) stopAnalysis({ playBestMoveOnStop: false })
     await unloadEngine()
     nextTick(() => {
@@ -243,7 +303,6 @@ function parseInfoLine(line: string) {
   const pvMatch = line.match(/\spv\s+(.*)/)
   const pv = pvMatch ? pvMatch[1] : ''
 
-  // Parse WDL
   const wdlMatch = line.match(/wdl\s+(\d+)\s+(\d+)\s+(\d+)/)
   let wdlText = ''
   if (wdlMatch) {
@@ -272,7 +331,7 @@ const parsedLogList = computed(() => {
   const rawLines = engineState.engineOutput.value
     .filter((l: any) => l.kind === 'recv' && l.text.startsWith('info depth'))
     .map((l: any) => l.text)
-    .reverse() // Mới nhất lên đầu
+    .reverse() 
   
   const displayLines = rawLines.slice(0, 20)
   const currentFen = generateFen()
@@ -291,7 +350,6 @@ const parsedLogList = computed(() => {
   }).filter((x: any) => x !== null)
 })
 
-// --- Lifecycle ---
 onMounted(async () => {
   await configManager.loadConfig()
   managedEngines.value = configManager.getEngines()
@@ -304,11 +362,10 @@ onMounted(async () => {
   }
 })
 
-// Auto scroll log (chỉ khi user đang ở gần đáy hoặc chưa cuộn)
 watch(parsedLogList, () => {
   nextTick(() => {
     const container = document.querySelector('.pikafish-log-container');
-    if (container && container.scrollTop === 0) { // Log mới nằm trên cùng nên có thể muốn scroll lên top
+    if (container && container.scrollTop === 0) { 
        container.scrollTop = 0; 
     }
   })
@@ -318,7 +375,7 @@ watch(parsedLogList, () => {
 <style lang="scss">
 /* Reset & Base */
 .sidebar {
-    width: 420px;
+    /* KHÔNG set width tĩnh nữa, dùng style inline từ biến sidebarWidth */
     height: calc(100vh - 120px); 
     padding: 12px;
     display: flex;
@@ -326,9 +383,50 @@ watch(parsedLogList, () => {
     gap: 8px;
     box-sizing: border-box;
     border-left: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-    overflow-y: auto;
+    overflow-y: hidden;
     background-color: rgb(var(--v-theme-surface));
     font-family: 'Noto Sans SC', sans-serif;
+    position: relative; /* Để đặt thanh kéo */
+    min-width: 300px;
+}
+
+/* Thanh kéo bên trái sidebar */
+.resize-handle-left {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 5px;
+  cursor: ew-resize; /* Con trỏ kéo ngang */
+  z-index: 100;
+  background-color: transparent;
+  transition: background-color 0.2s;
+}
+.resize-handle-left:hover {
+  background-color: rgba(0, 123, 255, 0.3); /* Hiện màu khi hover */
+}
+
+/* Thanh kéo bên dưới Log panel */
+.resize-handle-bottom {
+  width: 100%;
+  height: 8px;
+  cursor: ns-resize; /* Con trỏ kéo dọc */
+  background-color: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-top: 1px solid #ddd;
+  border-bottom: 1px solid #ddd;
+  margin-top: -1px;
+}
+.resize-handle-bottom:hover {
+  background-color: #e0e0e0;
+}
+.handle-grip {
+  width: 30px;
+  height: 3px;
+  background-color: #bbb;
+  border-radius: 2px;
 }
 
 /* Pikafish Theme */
@@ -336,7 +434,7 @@ watch(parsedLogList, () => {
   font-family: 'Consolas', 'Monaco', monospace;
   background-color: #f5f5f5;
   padding: 8px;
-  overflow-y: hidden; /* Ẩn scroll chính để dùng scroll của từng panel */
+  overflow-y: hidden; 
 }
 
 /* 1. TOOLBAR */
@@ -379,7 +477,6 @@ watch(parsedLogList, () => {
 .threads { width: 50px; }
 .hash { width: 70px; }
 
-/* Custom Select Style */
 .pika-select, .pika-select-small, .pika-input {
   border: none;
   width: 100%;
@@ -391,7 +488,6 @@ watch(parsedLogList, () => {
   margin: 0;
 }
 
-/* Styling for the custom display name option */
 .custom-display-name {
   font-weight: bold;
   color: #000;
@@ -407,20 +503,15 @@ watch(parsedLogList, () => {
 }
 .pika-settings-btn:hover { background: #ddd; border-radius: 4px; }
 
-/* 2. LOG DISPLAY (Cho phép resize dọc) */
+/* 2. LOG DISPLAY */
 .pikafish-log-container {
-  /* Chiều cao mặc định */
-  height: 250px; 
-  /* Quan trọng để resize hoạt động */
-  resize: vertical; 
-  overflow: auto;
-  
+  /* Chiều cao được set động bằng style inline */
   flex-shrink: 0;
   background: white;
+  overflow-y: auto;
   padding: 5px;
   border: 1px solid #ccc;
-  min-height: 100px; /* Chiều cao tối thiểu */
-  max-height: 80vh;
+  border-bottom: none; /* Bỏ border bottom vì đã có thanh kéo */
 }
 
 .log-entry {
