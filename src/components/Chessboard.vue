@@ -165,7 +165,7 @@
 
         <div 
           v-if="pendingFlip" 
-          class="flip-overlay-fixed" 
+          class="flip-overlay-absolute" 
           @click="handleFlipRandom"
           title="Bấm ra ngoài để lật ngẫu nhiên"
         ></div>
@@ -173,7 +173,7 @@
         <div 
           v-if="pendingFlip && selectedPiece" 
           class="radial-menu-container"
-          :style="rcStyle(selectedPiece.row, selectedPiece.col, 2000)"
+          :style="rcStyle(selectedPiece.row, selectedPiece.col, 2500)"
         >
           <div 
             v-for="(item, index) in flipSelectionPieces" 
@@ -187,6 +187,13 @@
           </div>
         </div>
         <ClearHistoryConfirmDialog :visible="showClearHistoryDialog" :onConfirm="onConfirmClearHistory" :onCancel="onCancelClearHistory" />
+      </div>
+
+      <div v-if="pendingFlip" class="flip-hint-area">
+        <div class="flip-hint-text">
+          <v-icon icon="mdi-gesture-tap" size="small" class="mr-1"></v-icon>
+          Bấm vào quân để chọn, hoặc bấm ra ngoài để chọn ngẫu nhiên
+        </div>
       </div>
     </div>
 
@@ -270,8 +277,8 @@
 
   // Hàm tính toán vị trí cho các item vòng tròn
   const getRadialItemStyle = (index: number, total: number) => {
-    // Bán kính vòng tròn (đơn vị PX) - Điều chỉnh độ rộng vòng tại đây
-    const radius = 60; 
+    // Bán kính vòng tròn (đơn vị PX)
+    const radius = 65; 
     
     // Chia đều góc (360 độ / tổng số item)
     // Bắt đầu từ góc trên cùng (-90 độ hoặc -PI/2 radian)
@@ -718,11 +725,13 @@
     max-width: 100%;
   }
 
-  /* --- OVERLAY TOÀN MÀN HÌNH ĐỂ BẮT SỰ KIỆN CLICK RA NGOÀI --- */
-  .flip-overlay-fixed {
-    position: fixed; /* Hoặc absolute nếu muốn chỉ trong phạm vi bàn cờ */
-    top: 0; left: 0; width: 100vw; height: 100vh;
-    z-index: 1900; /* Nằm dưới menu (2000) nhưng trên mọi thứ khác */
+  /* --- OVERLAY TOÀN MÀN HÌNH (ABSOLUTE) ĐỂ BẮT SỰ KIỆN CLICK RA NGOÀI --- */
+  .flip-overlay-absolute {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 1900;
+    /* Có thể thêm nền mờ nhẹ nếu thích */
+    /* background-color: rgba(0,0,0,0.1); */
     cursor: default;
   }
 
@@ -794,6 +803,20 @@
   .piece.dimmed-piece {
     opacity: 0.3;
     filter: grayscale(100%);
+  }
+
+  /* VÙNG THÔNG BÁO DƯỚI BÀN CỜ (HƯỚNG DẪN) */
+  .flip-hint-area {
+    margin-top: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    padding: 6px 12px;
+    text-align: center;
+  }
+  .flip-hint-text {
+    font-size: 12px;
+    color: #e0e0e0;
+    display: flex; align-items: center; justify-content: center;
   }
 
   /* CÁC STYLE KHÁC GIỮ NGUYÊN */
