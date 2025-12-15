@@ -167,11 +167,16 @@
       <div v-if="pendingFlip" class="flip-prompt-area">
         <div class="flip-prompt-container">
           <div class="flip-prompt-header">
-            <span>Chọn quân {{ pendingFlip.side === 'red' ? 'Đỏ' : 'Đen' }}</span>
+            <span class="flip-prompt-title">
+              <v-icon icon="mdi-help-circle-outline" size="small" class="mr-1"></v-icon>
+              Chọn quân {{ pendingFlip.side === 'red' ? 'Đỏ' : 'Đen' }}
+            </span>
             <button class="random-btn" @click="handleFlipRandom">
-              <v-icon icon="mdi-shuffle" size="small"></v-icon> Ngẫu nhiên
+              <v-icon icon="mdi-shuffle-variant" size="small" class="mr-1"></v-icon>
+              Chọn Ngẫu nhiên
             </button>
           </div>
+          
           <div class="flip-choices">
             <div 
               v-for="item in flipSelectionPieces" 
@@ -180,9 +185,10 @@
               @click="handleFlipSelect(item.name)"
             >
               <img :src="getPieceImageUrl(item.name)" class="flip-img" />
-              <span class="flip-count">{{ item.count }}</span>
+              <div class="flip-count-badge">{{ item.count }}</div>
             </div>
             <div v-if="flipSelectionPieces.length === 0" class="flip-error">
+              <v-icon icon="mdi-alert" color="error" class="mr-1"></v-icon>
               Hết quân loại này!
             </div>
           </div>
@@ -700,94 +706,148 @@
     max-width: 100%;
   }
 
-  /* --- FLIP PROMPT AREA (NẰM DƯỚI BÀN CỜ) --- */
+  /* --- FLIP PROMPT AREA (STYLE MỚI ĐẸP HƠN, QUÂN TO HƠN) --- */
   .flip-prompt-area {
     width: 100%;
-    background: rgba(0, 0, 0, 0.4);
-    border-radius: 6px;
-    padding: 8px;
-    min-height: 60px;
+    /* Hiệu ứng kính mờ và gradient nhẹ */
+    background: rgba(30, 30, 30, 0.85); 
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 12px;
+    min-height: 100px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
   .flip-prompt-container {
     display: flex;
     flex-direction: column;
     width: 100%;
-    gap: 6px;
+    gap: 12px;
   }
 
   .flip-prompt-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    color: #fff;
-    font-weight: bold;
-    font-size: 13px;
+    padding: 0 4px;
+    margin-bottom: 2px;
+  }
+
+  .flip-prompt-title {
+    color: #e0e0e0;
+    font-weight: 600;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
   }
 
   .random-btn {
-    background: #007bff;
+    /* Style nút hiện đại hơn */
+    background: linear-gradient(135deg, #007bff, #0056b3);
     color: white;
     border: none;
-    border-radius: 4px;
-    padding: 3px 8px;
-    font-size: 11px;
-    font-weight: bold;
+    border-radius: 20px; /* Bo tròn kiểu pill */
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 600;
     cursor: pointer;
     display: flex;
     align-items: center;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-    &:hover { background: #0056b3; }
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    transition: all 0.2s ease;
+    
+    &:hover { 
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+      filter: brightness(1.1);
+    }
+    
+    &:active {
+      transform: translateY(0);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    }
   }
 
   .flip-choices {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 8px;
+    gap: 12px;
     overflow-y: auto;
-    padding: 2px;
+    padding: 4px;
+    /* Custom scrollbar */
     scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.2) transparent;
   }
 
   .flip-choice-item {
     display: flex;
     flex-direction: column;
     align-items: center;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 6px;
-    padding: 4px;
+    justify-content: center;
+    /* Style thẻ bài */
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 8px;
     cursor: pointer;
-    border: 1px solid rgba(255,255,255,0.1);
-    transition: all 0.15s;
-    min-width: 40px;
+    border: 1px solid rgba(255,255,255,0.05);
+    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+    position: relative;
+    min-width: 60px; /* Thẻ rộng hơn */
 
     &:hover {
-      background: rgba(255, 255, 255, 0.25);
+      background: rgba(255, 255, 255, 0.2);
       border-color: rgba(255, 255, 255, 0.4);
-      transform: translateY(-2px);
+      transform: translateY(-3px);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
     }
   }
 
   .flip-img {
-    width: 32px;
-    height: 32px;
+    /* QUÂN CỜ TO HƠN THEO YÊU CẦU */
+    width: 48px;
+    height: 48px;
     object-fit: contain;
+    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3));
   }
 
-  .flip-count {
+  .flip-count-badge {
+    /* Badge số lượng ở góc */
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: #ff5252;
+    color: white;
     font-size: 11px;
     font-weight: bold;
-    color: #fff;
-    margin-top: 2px;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    min-width: 20px;
+    height: 20px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #2e2e2e; /* Viền để tách biệt với nền tối */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
   }
 
   .flip-error {
     color: #ff5252;
-    font-size: 12px;
+    font-size: 14px;
     margin: auto;
     font-weight: bold;
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    background: rgba(255, 82, 82, 0.1);
+    border-radius: 8px;
   }
 
   /* CÁC STYLE KHÁC GIỮ NGUYÊN */
