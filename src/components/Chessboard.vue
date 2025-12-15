@@ -117,7 +117,7 @@
           class="valid-move-dot"
           :style="{ 
             ...rcStyle(move.row, move.col), 
-            width: '2.5%' /* Ghi đè kích thước để thành chấm nhỏ */
+            width: '2.5%' 
           }"
         ></div>
       </div>
@@ -212,7 +212,7 @@
   const isMatchRunning = computed(() => jaiEngine?.isMatchRunning?.value || false)
   const { pieces, selectedPieceId, handleBoardClick, isAnimating, lastMovePositions, registerArrowClearCallback, history, currentMoveIndex, unrevealedPieceCounts, adjustUnrevealedCount, getPieceNameFromChar, validationStatus } = gs
 
-  // COMPUTED SELECTED PIECE
+  // COMPUTED SELECTED PIECE (QUAN TRỌNG)
   const selectedPiece = computed(() => { if (!unref(selectedPieceId)) return null; return unref(pieces).find((p: Piece) => p.id === unref(selectedPieceId)) })
 
   const poolErrorMessage = computed(() => {
@@ -446,7 +446,7 @@
     aspect-ratio: 1;
     border-radius: 50%;
     transform: translate(-50%, -50%);
-    background: #4caf50; /* Xanh lá đậm đặc, không trong suốt */
+    background: #4caf50; /* Xanh lá đậm */
     border: 1px solid #2e7d32;
     box-shadow: 0 0 4px rgba(0,0,0,0.3);
     user-select: none;
@@ -457,7 +457,7 @@
   /* HIỆU ỨNG LAST MOVE (KHUNG VUÔNG) */
   .highlight {
     position: absolute; width: 12%; aspect-ratio: 1; 
-    border-radius: 4px; /* Bo góc nhẹ thay vì tròn */
+    border-radius: 4px; 
     transform: translate(-50%, -50%);
     pointer-events: none; z-index: 10;
   }
