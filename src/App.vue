@@ -5,7 +5,6 @@
   import TopToolbar from './components/TopToolbar.vue'
   import Chessboard from './components/Chessboard.vue'
   import AnalysisSidebar from './components/AnalysisSidebar.vue'
-  // import FlipPromptDialog from './components/FlipPromptDialog.vue' // Đã bỏ vì chức năng đã được chuyển vào Chessboard.vue
   import FenInputDialog from './components/FenInputDialog.vue'
   import GameEndDialog from './components/GameEndDialog.vue'
 
@@ -154,19 +153,15 @@
     gap: 20px;
     box-sizing: border-box;
     background-color: rgb(var(--v-theme-background));
-    max-height: calc(
-      100vh - 80px
-    ); /* Prevent layout from exceeding viewport height */
-    overflow: hidden; /* Prevent scrolling when content fits */
-
-    // Mobile responsive layout - switch to vertical on narrow screens
+    /* ĐÃ XÓA overflow: hidden ĐỂ MENU VÒNG TRÒN KHÔNG BỊ CẮT */
+    /* max-height: calc(100vh - 80px);  <-- Cũng bỏ dòng này để tránh lỗi cuộn */
+    
+    // Mobile responsive layout
     @media (max-width: 768px) {
       flex-direction: column;
       align-items: center;
       padding: 10px;
-      gap: 15px; // Reduced gap for mobile
-      max-height: none; /* Allow natural height on mobile */
-      overflow: visible; /* Allow scrolling on mobile if needed */
+      gap: 15px;
     }
   }
 
@@ -175,7 +170,7 @@
     flex-direction: column;
     align-items: center;
     padding-top: 20px;
-    max-height: 100%; /* Ensure it doesn't exceed parent height */
+    /* max-height: 100%; <-- Bỏ dòng này để không giới hạn chiều cao */
 
     // On desktop, when position chart is shown, make chessboard smaller
     &.with-chart {
@@ -189,9 +184,7 @@
     @media (max-width: 768px) {
       padding-top: 0;
       width: 100%;
-      max-height: none; /* Allow natural height on mobile */
-
-      // On mobile, disable the scaling when chart is shown
+      
       &.with-chart {
         .chessboard-wrapper {
           transform: none;
