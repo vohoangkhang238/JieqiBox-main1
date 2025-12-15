@@ -43,8 +43,8 @@
             :class="{
               animated: isAnimating && showAnimations,
               inCheck: p.id === checkedKingId,
-              // Ẩn quân đang được chọn để lật, vì popup sẽ đè lên nó
-              'being-flipped': pendingFlip && selectedPiece && p.id === selectedPiece.id
+              // Làm mờ quân gốc khi đang hiển thị vòng tròn lật để đỡ rối mắt
+              'dimmed-piece': pendingFlip && selectedPiece && p.id === selectedPiece.id
             }"
             :style="rcStyle(p.row, p.col, p.zIndex)"
           />
@@ -165,34 +165,23 @@
 
         <div 
           v-if="pendingFlip && selectedPiece" 
-          class="on-board-flip-popup"
+          class="radial-menu-container"
           :style="rcStyle(selectedPiece.row, selectedPiece.col, 2000)"
         >
-          <div class="popup-content">
-            <div class="popup-header">
-              <span class="popup-title">
-                Lật {{ pendingFlip.side === 'red' ? 'Đỏ' : 'Đen' }}
-              </span>
-              <button class="popup-random-btn" @click="handleFlipRandom" title="Chọn ngẫu nhiên">
-                <v-icon icon="mdi-shuffle" size="x-small"></v-icon>
-              </button>
-            </div>
-            
-            <div class="popup-choices">
-              <div 
-                v-for="item in flipSelectionPieces" 
-                :key="item.name" 
-                class="popup-choice-item"
-                @click="handleFlipSelect(item.name)"
-              >
-                <img :src="getPieceImageUrl(item.name)" class="popup-img" />
-                <div class="popup-count-badge">{{ item.count }}</div>
-              </div>
-              
-              <div v-if="flipSelectionPieces.length === 0" class="popup-error">
-                Hết quân!
-              </div>
-            </div>
+          <div class="radial-center-btn" @click="handleFlipRandom" title="Chọn ngẫu nhiên">
+            <v-icon icon="mdi-shuffle-variant" size="24" color="white"></v-icon>
+            <span class="center-label">Ngẫu nhiên</span>
+          </div>
+
+          <div 
+            v-for="(item, index) in flipSelectionPieces" 
+            :key="item.name" 
+            class="radial-item"
+            :style="getRadialItemStyle(index, flipSelectionPieces.length)"
+            @click="handleFlipSelect(item.name)"
+          >
+            <img :src="getPieceImageUrl(item.name)" class="radial-img" />
+            <div class="radial-count">{{ item.count }}</div>
           </div>
         </div>
         <ClearHistoryConfirmDialog :visible="showClearHistoryDialog" :onConfirm="onConfirmClearHistory" :onCancel="onCancelClearHistory" />
@@ -262,7 +251,7 @@
 
   const selectedPiece = computed(() => { if (!unref(selectedPieceId)) return null; return unref(pieces).find((p: Piece) => p.id === unref(selectedPieceId)) })
 
-  // --- LOGIC: FLIP SELECTION ---
+  // --- LOGIC: FLIP SELECTION & RADIAL MENU ---
   const flipSelectionPieces = computed(() => {
     if (!pendingFlip.value) return []
     const requiredSide = pendingFlip.value.side
@@ -276,6 +265,24 @@
         return pieceSide === requiredSide && (item.count as number) > 0
       })
   })
+
+  // Hàm tính toán vị trí cho các item vòng tròn
+  const getRadialItemStyle = (index: number, total: number) => {
+    // Bán kính vòng tròn (đơn vị PX)
+    const radius = 70; 
+    
+    // Chia đều góc (360 độ / tổng số item)
+    // Bắt đầu từ góc trên cùng (-90 độ hoặc -PI/2 radian)
+    const angleStep = (2 * Math.PI) / total;
+    const angle = index * angleStep - (Math.PI / 2);
+
+    const x = Math.round(radius * Math.cos(angle));
+    const y = Math.round(radius * Math.sin(angle));
+
+    return {
+      transform: `translate(${x}px, ${y}px)`
+    };
+  }
 
   const handleFlipSelect = (pieceName: string) => {
     if (pendingFlip.value && pendingFlip.value.callback) {
@@ -572,7 +579,7 @@
     -webkit-tap-highlight-color: transparent;
   }
 
-  /* KHO QUÂN (SIDE PANEL) */
+  /* KHO QUÂN (SIDE PANEL) - NẰM BÊN PHẢI */
   .side-panel {
     display: flex;
     flex-direction: column;
@@ -633,125 +640,115 @@
     word-break: break-word; box-shadow: 0 2px 4px rgba(0,0,0,0.2); max-width: 100%;
   }
 
-  /* --- ON-BOARD FLIP POPUP (CỬA SỔ NỔI TRÊN BÀN CỜ) --- */
-  .on-board-flip-popup {
+  /* --- ON-BOARD RADIAL MENU (VÒNG TRÒN NỔI) --- */
+  .radial-menu-container {
     position: absolute;
-    transform: translate(-50%, -50%); /* Căn giữa vào điểm tọa độ */
-    z-index: 2000; /* Đảm bảo nổi lên trên cùng */
-    animation: popIn 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transform: translate(-50%, -50%); /* Căn giữa vào quân cờ */
+    z-index: 2000;
+    width: 0; height: 0; /* Container ảo, các item sẽ bung ra từ đây */
+    /* Hiệu ứng zoom in */
+    animation: zoomIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   }
 
-  @keyframes popIn {
-    from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
-    to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  @keyframes zoomIn {
+    from { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+    to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
   }
 
-  .popup-content {
-    background: rgba(30, 30, 30, 0.95);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 12px;
-    padding: 8px;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+  /* Nút trung tâm: Ngẫu nhiên */
+  .radial-center-btn {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    /* Gradient xanh hiện đại */
+    background: radial-gradient(circle at 30% 30%, #4facfe, #00f2fe);
+    box-shadow: 0 4px 15px rgba(0, 200, 255, 0.4), inset 0 0 10px rgba(255,255,255,0.3);
+    border: 2px solid rgba(255,255,255,0.8);
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    min-width: 160px;
-  }
-
-  .popup-header {
-    display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding-bottom: 4px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    justify-content: center;
+    cursor: pointer;
+    z-index: 10; /* Nằm trên các quân cờ khác */
+    transition: transform 0.2s;
+
+    &:hover { transform: translate(-50%, -50%) scale(1.1); }
+    &:active { transform: translate(-50%, -50%) scale(0.95); }
   }
 
-  .popup-title {
-    font-size: 13px;
-    font-weight: 600;
-    color: #e0e0e0;
+  .center-label {
+    font-size: 9px;
+    font-weight: bold;
+    color: white;
+    margin-top: -2px;
+    text-transform: uppercase;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
   }
 
-  .popup-random-btn {
-    background: rgba(255, 255, 255, 0.1);
-    border: none;
-    color: #fff;
-    border-radius: 4px;
-    width: 24px;
-    height: 24px;
+  /* Các vệ tinh (Quân cờ) */
+  .radial-item {
+    position: absolute;
+    top: 0; left: 0; /* Vị trí gốc là tâm */
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    /* Background kính mờ tối */
+    background: rgba(40, 40, 40, 0.85);
+    backdrop-filter: blur(4px);
+    border: 2px solid rgba(255,255,255,0.2);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: background 0.2s;
-    
-    &:hover { background: rgba(255, 255, 255, 0.2); }
-  }
-
-  /* Grid lựa chọn quân */
-  .popup-choices {
-    display: flex;
-    flex-wrap: wrap; /* Cho phép xuống dòng nếu quá nhiều */
-    justify-content: center;
-    gap: 8px;
-  }
-
-  .popup-choice-item {
-    position: relative;
-    width: 48px;
-    height: 48px;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.4);
     transition: all 0.2s;
-    
+    /* Căn chỉnh để tâm của item trùng với điểm tính toán */
+    margin-top: -22px; 
+    margin-left: -22px;
+
     &:hover {
-      background: rgba(255, 255, 255, 0.15);
-      border-color: rgba(255, 255, 255, 0.3);
-      transform: scale(1.05);
+      background: rgba(255, 255, 255, 0.2);
+      border-color: #fff;
+      transform: scale(1.15) !important; /* Quan trọng để ghi đè transform gốc khi hover nếu cần, nhưng ở đây ta dùng transform trong style inline nên cần cẩn thận */
+      z-index: 5;
     }
   }
-
-  .popup-img {
-    width: 85%;
-    height: 85%;
-    object-fit: contain;
-    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));
+  
+  /* Fix hover scale conflict with inline style transform:
+     Cách tốt hơn là wrap item trong 1 div con để scale
+  */
+  .radial-item:hover {
+     /* Chỉ thay đổi màu nền/viền, không đổi transform để tránh xung đột vị trí */
+     background: rgba(60, 60, 60, 0.95);
+     border-color: #00d2ff;
+     box-shadow: 0 0 15px rgba(0, 210, 255, 0.6);
   }
 
-  .popup-count-badge {
+  .radial-img {
+    width: 85%; height: 85%;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));
+  }
+
+  .radial-count {
     position: absolute;
-    top: -5px;
-    right: -5px;
-    background: #ff5252;
+    top: -2px; right: -2px;
+    background: #ff3d00;
     color: white;
     font-size: 10px;
     font-weight: bold;
-    min-width: 18px;
-    height: 18px;
-    border-radius: 9px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid #2e2e2e;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid #fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
   }
 
-  .popup-error {
-    color: #ff5252;
-    font-size: 12px;
-    font-weight: bold;
-    padding: 4px;
-  }
-
-  /* Ẩn quân cờ đang được lật đi để popup đè lên */
-  .piece.being-flipped {
-    opacity: 0;
-    pointer-events: none;
+  /* Ẩn/Làm mờ quân đang chọn */
+  .piece.dimmed-piece {
+    opacity: 0.3;
+    filter: grayscale(100%);
   }
 
   /* CÁC STYLE KHÁC GIỮ NGUYÊN */
