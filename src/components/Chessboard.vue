@@ -369,8 +369,9 @@
     margin: auto;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
-    /* QUAN TRỌNG: Để menu vòng tròn không bị cắt khi tràn ra */
+    /* QUAN TRỌNG: Để menu không bị cắt */
     overflow: visible !important;
+    z-index: 1; /* Tạo stacking context mới */
   }
 
   .bg { width: 100%; height: 100%; display: block; }
@@ -405,25 +406,28 @@
   .eval-bottom { width: 100%; transition: height 0.2s; }
   .eval-marker { position: absolute; left: 0; right: 0; height: 2px; background: #fff; }
 
-  /* --- CẤU HÌNH LẬT QUÂN (FIXED) --- */
+  /* --- CẤU HÌNH LẬT QUÂN (FIXED CLICK) --- */
   
-  /* 1. Lớp phủ mờ (Overlay) - Dùng absolute để chỉ phủ bàn cờ, không phủ menu */
-  .flip-overlay-absolute {
-    position: absolute;
-    inset: 0; /* Phủ kín bàn cờ */
-    background: rgba(0, 0, 0, 0.3); /* Màu đen mờ */
-    z-index: 1900; /* Cao hơn quân cờ (20) nhưng thấp hơn Menu (2000) */
-    cursor: not-allowed;
+  /* 1. Lớp phủ mờ: Dùng fixed để đảm bảo phủ toàn bộ viewport, chặn mọi click bên dưới */
+  .flip-overlay-fixed {
+    position: fixed; 
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(0, 0, 0, 0.01); /* Gần như trong suốt để không làm tối quá */
+    z-index: 9998; /* Rất cao */
+    cursor: default;
   }
 
-  /* 2. Menu Vòng Tròn */
+  /* 2. Menu Vòng Tròn: Z-index cao hơn cả Overlay */
   .radial-menu-container {
     position: absolute;
     transform: translate(-50%, -50%);
-    z-index: 2000; /* Cao nhất */
-    animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    z-index: 9999; /* Cao nhất hệ mặt trời */
+    animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     /* Quan trọng: Cho phép nhận click */
     pointer-events: auto; 
+    /* Đảm bảo không bị overflow hidden của cha cắt mất */
+    width: 0; height: 0; 
+    overflow: visible;
   }
 
   @keyframes popIn {
@@ -431,34 +435,41 @@
     to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
   }
 
+  /* Các vệ tinh (Nút bấm) */
   .radial-item {
     position: absolute;
-    transform: translate(-50%, -50%);
-    width: 25%; aspect-ratio: 1;
+    /* Kích thước cố định hoặc theo vw để dễ bấm hơn */
+    width: 45px; height: 45px; 
     border-radius: 50%;
-    background: rgba(30, 30, 30, 0.95);
-    border: 2px solid rgba(255, 255, 255, 0.5);
+    background: rgba(40, 40, 40, 0.95);
+    border: 2px solid rgba(255, 255, 255, 0.6);
     display: flex; align-items: center; justify-content: center;
     cursor: pointer;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-    transition: transform 0.2s, background 0.2s;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+    transition: transform 0.1s, background 0.1s;
     
-    /* Đảm bảo click được */
+    /* BẮT BUỘC ĐỂ CLICK ĐƯỢC */
     pointer-events: auto;
+    
+    /* Căn giữa tâm nút vào vị trí tính toán */
+    margin-left: -22.5px; 
+    margin-top: -22.5px;
 
     &:hover {
-      transform: translate(-50%, -50%) scale(1.2);
+      transform: scale(1.2);
       background: #222;
       border-color: #00d2ff;
-      z-index: 2050;
+      z-index: 10000;
     }
     
     &:active {
-      transform: translate(-50%, -50%) scale(0.95);
+      transform: scale(0.95);
+      background: #000;
     }
   }
 
-  .radial-img { width: 80%; height: 80%; object-fit: contain; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5)); }
+  .radial-img { width: 80%; height: 80%; object-fit: contain; pointer-events: none; }
+  
   .radial-count {
     position: absolute; top: -5px; right: -5px;
     background: #f44336; color: white;
@@ -466,6 +477,7 @@
     width: 18px; height: 18px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     border: 2px solid #fff;
+    pointer-events: none;
   }
 
   .flip-hint-area {
@@ -477,20 +489,18 @@
     font-size: 14px;
   }
 
-  /* KHO QUÂN (SIDE PANEL) */
+  /* KHO QUÂN */
   .side-panel { display: flex; flex-direction: column; justify-content: space-between; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; min-width: 80px; flex: 1; align-self: stretch; }
-  .pool-row { display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.1); margin-bottom: 4px; padding: 4px; border-radius: 4px; }
-  .pool-img { width: 32px; height: 32px; object-fit: contain; }
+  .pool-row { display: flex; align-items: center; background: rgba(255,255,255,0.1); margin-bottom: 4px; padding: 2px; border-radius: 4px; }
+  .pool-img { width: 30px; height: 30px; }
   .pool-controls { display: flex; align-items: center; margin-left: 5px; }
-  .pool-num { color: #fff; font-weight: bold; margin-right: 5px; font-size: 1.1rem; }
+  .pool-num { color: #fff; font-weight: bold; margin-right: 5px; }
   .red-num { color: #ff5252; } .black-num { color: #222; text-shadow: 0 0 2px #fff; }
   .pool-btns { display: flex; flex-direction: column; gap: 1px; }
-  .tiny-btn { width: 14px; height: 12px; line-height: 10px; font-size: 10px; background: #555; color: #fff; border: none; cursor: pointer; border-radius: 2px; display: flex; align-items: center; justify-content: center; }
+  .tiny-btn { width: 16px; height: 16px; line-height: 12px; font-size: 10px; background: #555; color: #fff; border: none; cursor: pointer; }
   
-  /* Các lớp khác (Drawing, Arrow) */
+  /* Các lớp khác */
   .ar, .user-drawings, .board-labels { position: absolute; inset: 0; pointer-events: none; }
   .annotation-layer { position: absolute; inset: 0; pointer-events: none; z-index: 50; }
   .annotation-badge { position: absolute; top: -10px; right: -10px; width: 20px; height: 20px; background: #007bff; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; border: 2px solid #fff; }
-  .board-labels { overflow: visible; .rank-labels span { position: absolute; right: -10px; color: #666; font-weight: bold; } .file-labels span { position: absolute; bottom: -17px; color: #666; font-weight: bold; } }
-  .al { stroke-width: 1; stroke-opacity: 0.9; }
 </style>
