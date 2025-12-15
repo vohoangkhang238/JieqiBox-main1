@@ -168,7 +168,7 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
         analysis.value = analysisLines.filter(Boolean).join('\n')
       }
 
-      // --- XỬ LÝ BESTMOVE (LOGIC MỚI: TIMEOUT & FORCE UI) ---
+      // --- XỬ LÝ BESTMOVE (LOGIC QUAN TRỌNG ĐÃ FIX) ---
       if (ln.startsWith('bestmove')) {
         const parts = ln.split(/\s+/)
         const mv = parts[1] ?? ''
@@ -204,7 +204,7 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
           return
         }
 
-        isThinking.value = false // Engine đã dừng
+        isThinking.value = false 
         const analysisTime = analysisStartTime.value ? Date.now() - analysisStartTime.value : 0
         lastAnalysisTime.value = analysisTime
         analysisStartTime.value = null
@@ -225,7 +225,7 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
             analysis.value = mv ? t('uci.bestMove', { move: mv }) : t('uci.noMoves')
           }
 
-          // === LOGIC XỬ LÝ QUÂN ÚP (SỬ DỤNG SETTIMEOUT ĐỂ TRÁNH UI BLOCK) ===
+          // === LOGIC XỬ LÝ QUÂN ÚP (AI ĐÁNH CỜ ZIGA) ===
           if (mv) {
             const from = { 
               col: mv.charCodeAt(0) - 'a'.charCodeAt(0), 
@@ -240,31 +240,32 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
             const movingPiece = pieces.find((p: any) => p.row === from.row && p.col === from.col)
             const targetPiece = pieces.find((p: any) => p.row === to.row && p.col === to.col)
 
-            console.log(`[AI DECISION] ${mv}`, { moving: movingPiece?.name, target: targetPiece?.name })
+            console.log(`[AI] Intent: ${mv} | Moving: ${movingPiece?.name} -> Target: ${targetPiece?.name || 'Empty'}`)
 
             const doFinalMove = () => {
-              console.log("[AI] Moving on board...")
+              console.log("✅ AI Executing Move")
               gameState.move(from, to)
-              // Reset selection sau khi đi
+              // Reset selection để tắt vòng tròn sau khi đi xong
               gameState.selectedPieceId.value = null 
             }
 
-            // Dùng setTimeout để đợi Vue render lại trạng thái "isThinking = false"
-            // rồi mới bật Popup, tránh bị conflict
-            setTimeout(() => {
-                // 1. Nếu AI cầm quân Úp đi
+            // Sử dụng nextTick để đảm bảo UI không bị lock bởi update trước đó
+            nextTick(() => {
+                
+                // === CASE 1: AI CẦM QUÂN ÚP ĐI ===
                 if (movingPiece && !movingPiece.isKnown) {
-                    console.log("🛑 AI đi quân úp -> Mở bảng chọn")
+                    console.log("🛑 AI moves Hidden Piece. Asking User...")
                     
-                    // Force UI chọn quân này để vẽ vòng tròn
+                    // 1. Force Select quân nguồn để vòng tròn hiện đúng chỗ
                     gameState.selectedPieceId.value = movingPiece.id
                     
-                    // Lấy phe của quân đang đi (AI side)
+                    // 2. Lấy phe của quân đang đi (AI side)
                     const side = movingPiece.name.startsWith('red') ? 'red' : 'black'
 
                     gameState.pendingFlip.value = {
                         side: side,
                         callback: (selectedName: string) => {
+                            // Update logic
                             movingPiece.name = selectedName
                             movingPiece.isKnown = true
                             gameState.adjustUnrevealedCount(gameState.getCharFromPieceName(selectedName), -1)
@@ -272,39 +273,36 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
                             
                             // Check tiếp xem có ăn quân không
                             if (targetPiece && !targetPiece.isKnown) {
-                                // Nested timeout cho chắc ăn
-                                setTimeout(() => {
-                                    handleTargetFlip()
-                                }, 50)
+                                // Delay nhỏ để UI cập nhật xong bước 1
+                                setTimeout(() => handleTargetFlip(), 50)
                             } else {
                                 doFinalMove()
                             }
                         }
                     }
-                    return // Dừng flow tại đây
+                    return // Dừng flow
                 }
 
-                // 2. Nếu AI ăn quân Úp (mà quân nguồn đã biết)
+                // === CASE 2: AI ĂN QUÂN ÚP ===
                 if (targetPiece && !targetPiece.isKnown) {
                     handleTargetFlip()
-                    return // Dừng flow tại đây
+                    return // Dừng flow
                 }
 
-                // 3. Nếu bình thường
+                // === CASE 3: BÌNH THƯỜNG ===
                 doFinalMove()
+            })
 
-            }, 10) // Delay 10ms
-
-            // Hàm xử lý lật quân đích (tách ra để tái sử dụng)
+            // Hàm xử lý lật quân đích (bị ăn)
             const handleTargetFlip = () => {
-                console.log("🛑 AI ăn quân úp -> Mở bảng chọn")
+                console.log("🛑 AI captures Hidden Piece. Asking User...")
                 
-                // Force UI chọn quân bị ăn để vẽ vòng tròn tại đó
+                // 1. Force Select quân BỊ ĂN để vòng tròn hiện ở đó
                 gameState.selectedPieceId.value = targetPiece.id
 
-                // Lấy phe của quân BỊ ĂN.
-                // Nếu AI (đang đi) là Red thì quân bị ăn là Black (và ngược lại)
-                // Ta lấy 'sideToMove' hiện tại (là phe AI)
+                // 2. Lấy phe của quân BỊ ĂN
+                // Logic: Quân bị ăn luôn khác phe với quân đang đi (AI)
+                // Lấy phe của AI hiện tại
                 const aiSide = gameState.sideToMove.value // 'red' or 'black'
                 const targetSide = aiSide === 'red' ? 'black' : 'red'
 
@@ -479,7 +477,6 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
     const searchMovesStr = searchmoves.length > 0 ? ` searchmoves ${searchmoves.join(' ')}` : ''
     let goCommand = ''
     if (finalSettings.analysisMode === 'advanced') {
-      // ... (Advanced script logic giữ nguyên)
       if (finalSettings.movetime > 0) goCommand = `go movetime ${finalSettings.movetime}${searchMovesStr}`
       else goCommand = `go infinite${searchMovesStr}`
     } else {
@@ -522,7 +519,6 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
       const allMoves = [...moves, expectedMove]
       const pos = `position fen ${fenForEngine}${allMoves.length ? ' moves ' + allMoves.join(' ') : ''}`
       send(pos)
-      // ... (Ponder go logic giữ nguyên)
       send('go ponder infinite')
     } else {
       isInfinitePondering.value = true
