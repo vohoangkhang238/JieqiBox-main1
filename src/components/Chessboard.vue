@@ -177,7 +177,7 @@
             </button>
           </div>
           
-          <div class="flip-choices">
+          <div class="flip-choices horizontal-scroll">
             <div 
               v-for="item in flipSelectionPieces" 
               :key="item.name" 
@@ -776,14 +776,15 @@
     }
   }
 
-  .flip-choices {
+  /* CLASS QUAN TRỌNG ĐỂ XẾP NGANG */
+  .flip-choices.horizontal-scroll {
     display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
+    flex-direction: row; /* Hàng ngang */
+    flex-wrap: nowrap; /* Không xuống dòng */
+    overflow-x: auto; /* Cuộn ngang nếu quá dài */
+    justify-content: flex-start; /* Bắt đầu từ trái */
     gap: 12px;
-    overflow-y: auto;
     padding: 4px;
-    /* Custom scrollbar */
     scrollbar-width: thin;
     scrollbar-color: rgba(255,255,255,0.2) transparent;
   }
@@ -802,6 +803,7 @@
     transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
     position: relative;
     min-width: 60px; /* Thẻ rộng hơn */
+    flex-shrink: 0; /* Không co lại khi thiếu chỗ */
 
     &:hover {
       background: rgba(255, 255, 255, 0.2);
