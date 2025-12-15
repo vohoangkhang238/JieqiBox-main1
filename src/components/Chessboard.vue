@@ -60,15 +60,23 @@
       </div>
 
       <div class="last-move-highlights" v-if="lastMovePositions">
+        
         <div
           class="highlight from"
           :class="getAnnotationClass(lastMovePositions)"
-          :style="rcStyle(displayRow(lastMovePositions.from.row), displayCol(lastMovePositions.from.col))"
+          :style="{
+            ...rcStyle(displayRow(lastMovePositions.from.row), displayCol(lastMovePositions.from.col)),
+            width: '3%' 
+          }"
         ></div>
+
         <div
           class="highlight to"
           :class="getAnnotationClass(lastMovePositions)"
-          :style="rcStyle(displayRow(lastMovePositions.to.row), displayCol(lastMovePositions.to.col))"
+          :style="{
+            ...rcStyle(displayRow(lastMovePositions.to.row), displayCol(lastMovePositions.to.col)),
+            width: '12%'
+          }"
         ></div>
       </div>
 
@@ -117,7 +125,7 @@
           class="valid-move-dot"
           :style="{ 
             ...rcStyle(move.row, move.col), 
-            width: '2.5%' /* Ép nhỏ lại */
+            width: '2.5%' 
           }"
         ></div>
       </div>
@@ -440,7 +448,6 @@
   /* HIỆU ỨNG CHẤM NHỎ (SMALL DOT) CHO NƯỚC ĐI HỢP LỆ */
   .valid-move-dot {
     position: absolute;
-    /* Width đã được override trong template thành 2.5% */
     width: 2.5%; 
     aspect-ratio: 1;
     border-radius: 50%;
@@ -453,17 +460,30 @@
     pointer-events: none;
   }
 
-  /* HIỆU ỨNG LAST MOVE (KHUNG VIỀN RỖNG) - KHÔNG CÓ BACKGROUND */
+  /* HIỆU ỨNG LAST MOVE (TÙY CHỈNH THEO TRẠNG THÁI) */
   .highlight {
-    position: absolute; width: 12%; aspect-ratio: 1; 
-    border-radius: 4px; /* Bo góc nhẹ */
+    position: absolute; 
+    /* width sẽ được override inline trong template */
+    aspect-ratio: 1; 
     transform: translate(-50%, -50%);
-    pointer-events: none; z-index: 10;
-    box-sizing: border-box; /* Đảm bảo viền nằm trong khung */
+    pointer-events: none; 
+    z-index: 10;
   }
-  /* Chỉ có border, background transparent */
-  .highlight.from { border: 2px solid #ff6b6b; background: transparent; }
-  .highlight.to { border: 2px solid #4ecdc4; background: transparent; }
+
+  /* FROM: CHẤM TRÒN ĐỎ (NHƯ YÊU CẦU "dấu chấm tròn nhỏ") */
+  .highlight.from { 
+    background-color: rgba(255, 107, 107, 0.8); 
+    border-radius: 50%;
+    box-shadow: 0 0 4px rgba(255, 107, 107, 0.5);
+    border: none;
+  }
+
+  /* TO: KHUNG VUÔNG XANH (Frame bao quanh quân cờ) */
+  .highlight.to { 
+    border: 2px solid #4ecdc4; 
+    background: transparent; 
+    border-radius: 4px; /* Bo góc nhẹ */
+  }
 
   /* --- CÁC STYLE KHÁC GIỮ NGUYÊN --- */
   .chessboard-wrapper { display: flex; flex-direction: row; align-items: flex-start; justify-content: center; gap: 1.5%; width: 100%; max-width: 95vmin; margin: 0 auto; &.has-chart { flex-wrap: wrap; } @media (max-width: 768px) { flex-direction: column; gap: 12px; } }
