@@ -43,7 +43,7 @@
             :class="{
               animated: isAnimating && showAnimations,
               inCheck: p.id === checkedKingId,
-              // Làm mờ quân gốc khi đang hiển thị vòng tròn lật để đỡ rối mắt
+              // Làm mờ quân gốc khi đang lật
               'dimmed-piece': pendingFlip && selectedPiece && p.id === selectedPiece.id
             }"
             :style="rcStyle(p.row, p.col, p.zIndex)"
@@ -164,21 +164,23 @@
         </svg>
 
         <div 
+          v-if="pendingFlip" 
+          class="flip-overlay-fixed" 
+          @click="handleFlipRandom"
+          title="Bấm ra ngoài để lật ngẫu nhiên"
+        ></div>
+
+        <div 
           v-if="pendingFlip && selectedPiece" 
           class="radial-menu-container"
           :style="rcStyle(selectedPiece.row, selectedPiece.col, 2000)"
         >
-          <div class="radial-center-btn" @click="handleFlipRandom" title="Chọn ngẫu nhiên">
-            <v-icon icon="mdi-shuffle-variant" size="24" color="white"></v-icon>
-            <span class="center-label">Ngẫu nhiên</span>
-          </div>
-
           <div 
             v-for="(item, index) in flipSelectionPieces" 
             :key="item.name" 
             class="radial-item"
             :style="getRadialItemStyle(index, flipSelectionPieces.length)"
-            @click="handleFlipSelect(item.name)"
+            @click.stop="handleFlipSelect(item.name)"
           >
             <img :src="getPieceImageUrl(item.name)" class="radial-img" />
             <div class="radial-count">{{ item.count }}</div>
@@ -268,8 +270,8 @@
 
   // Hàm tính toán vị trí cho các item vòng tròn
   const getRadialItemStyle = (index: number, total: number) => {
-    // Bán kính vòng tròn (đơn vị PX)
-    const radius = 70; 
+    // Bán kính vòng tròn (đơn vị PX) - Điều chỉnh độ rộng vòng tại đây
+    const radius = 60; 
     
     // Chia đều góc (360 độ / tổng số item)
     // Bắt đầu từ góc trên cùng (-90 độ hoặc -PI/2 radian)
@@ -542,10 +544,11 @@
     pointer-events: none;
   }
 
-  /* --- LAYOUT CHÍNH --- */
+  /* --- LAYOUT CHÍNH: HÀNG NGANG (ROW) --- */
+  /* Bàn cờ bên trái, Kho quân bên phải */
   .chessboard-wrapper {
     display: flex;
-    flex-direction: row;
+    flex-direction: row; /* Xếp ngang */
     align-items: flex-start;
     justify-content: center;
     gap: 20px;
@@ -554,16 +557,18 @@
     margin: 0 auto;
     
     @media (max-width: 768px) {
-      flex-direction: column;
+      flex-direction: column; /* Mobile thì xếp dọc lại */
       gap: 12px;
     }
   }
 
+  /* CỘT CHÍNH (CHỨA BÀN CỜ + FLIP PROMPT) */
   .main-column {
     display: flex;
-    flex-direction: column;
+    flex-direction: column; /* Bàn cờ trên, Flip Prompt dưới */
     flex: 0 0 auto;
-    width: 80%;
+    width: 80%; /* Bàn cờ chiếm phần lớn */
+    gap: 12px;
     
     @media (max-width: 768px) {
       width: 100%;
@@ -582,7 +587,7 @@
   /* KHO QUÂN (SIDE PANEL) - NẰM BÊN PHẢI */
   .side-panel {
     display: flex;
-    flex-direction: column;
+    flex-direction: column; /* Hai phe Đỏ/Đen xếp dọc */
     justify-content: space-between;
     align-items: center;
     background: rgba(0, 0, 0, 0.2);
@@ -590,54 +595,135 @@
     padding: 8px;
     gap: 10px;
     min-width: 70px;
-    flex: 1;
-    align-self: stretch;
+    flex: 1; /* Chiếm phần còn lại */
+    align-self: stretch; /* Cao bằng bàn cờ */
     
     @media (max-width: 768px) {
       width: 100%;
-      flex-direction: row;
+      flex-direction: row; /* Mobile: kho quân nằm ngang bên dưới */
       min-height: auto;
       align-self: auto;
     }
   }
 
+  /* CÁC STYLE CHO KHO QUÂN */
   .pool-section {
-    display: flex; flex-direction: column; gap: 4px; width: 100%; align-items: center;
-    @media (max-width: 768px) { flex-direction: row; flex-wrap: wrap; justify-content: center; }
+    display: flex;
+    flex-direction: column; /* Các quân xếp dọc */
+    gap: 4px;
+    width: 100%;
+    align-items: center;
+    
+    @media (max-width: 768px) {
+      flex-direction: row; /* Mobile: xếp ngang */
+      flex-wrap: wrap;
+      justify-content: center;
+    }
   }
 
   .pool-row {
-    display: flex; align-items: center; justify-content: center;
-    background: rgba(255, 255, 255, 0.1); border-radius: 4px; padding: 4px;
-    position: relative; gap: 2px; width: 100%;
-    @media (max-width: 768px) { width: auto; min-width: 45px; }
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    padding: 4px;
+    position: relative;
+    gap: 2px;
+    width: 100%;
+    
+    @media (max-width: 768px) {
+      width: auto;
+      min-width: 45px;
+    }
   }
 
-  .pool-img { width: 32px; height: 32px; object-fit: contain; }
-  .pool-controls { display: flex; align-items: center; flex-direction: row; gap: 2px; }
-  .pool-num { font-size: 1.1rem; font-weight: bold; color: #fff; line-height: 1; margin-right: 2px; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+  .pool-img {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+  }
+
+  .pool-controls {
+    display: flex;
+    align-items: center;
+    flex-direction: row;
+    gap: 2px;
+  }
+
+  .pool-num {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #fff;
+    line-height: 1;
+    margin-right: 2px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  }
+
   .red-num { color: #ff5252; }
   .black-num { color: #000000; text-shadow: 0 0 1px #fff; }
+
   .pool-btns {
-    display: flex; flex-direction: column; gap: 1px;
-    @media (max-width: 768px) { display: none; }
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    
+    @media (max-width: 768px) {
+      display: none; /* Ẩn nút trên mobile */
+    }
   }
 
   .tiny-btn {
-    width: 14px; height: 12px; line-height: 10px; font-size: 10px; font-weight: bold;
-    background: #555; color: #fff; border: 1px solid rgba(255,255,255,0.2);
-    border-radius: 2px; cursor: pointer; padding: 0; display: flex;
-    align-items: center; justify-content: center;
+    width: 14px;
+    height: 12px;
+    line-height: 10px;
+    font-size: 10px;
+    font-weight: bold;
+    background: #555;
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 2px;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     &:hover:not(:disabled) { background: #777; }
     &:disabled { opacity: 0.3; cursor: default; border-color: transparent; }
   }
 
-  .pool-divider { flex: 1; display: flex; align-items: center; justify-content: center; width: 100%; }
+  .pool-divider {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+  }
+
   .pool-error {
-    display: flex; flex-direction: column; align-items: center; gap: 2px;
-    background: #ffffff; border: 1px solid #d32f2f; border-radius: 4px; padding: 4px;
-    color: #d32f2f; font-weight: bold; font-size: 10px; text-align: center;
-    word-break: break-word; box-shadow: 0 2px 4px rgba(0,0,0,0.2); max-width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    background: #ffffff;
+    border: 1px solid #d32f2f;
+    border-radius: 4px;
+    padding: 4px;
+    color: #d32f2f;
+    font-weight: bold;
+    font-size: 10px;
+    text-align: center;
+    word-break: break-word;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    max-width: 100%;
+  }
+
+  /* --- OVERLAY TOÀN MÀN HÌNH ĐỂ BẮT SỰ KIỆN CLICK RA NGOÀI --- */
+  .flip-overlay-fixed {
+    position: fixed; /* Hoặc absolute nếu muốn chỉ trong phạm vi bàn cờ */
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    z-index: 1900; /* Nằm dưới menu (2000) nhưng trên mọi thứ khác */
+    cursor: default;
   }
 
   /* --- ON-BOARD RADIAL MENU (VÒNG TRÒN NỔI) --- */
@@ -653,38 +739,6 @@
   @keyframes zoomIn {
     from { transform: translate(-50%, -50%) scale(0); opacity: 0; }
     to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
-  }
-
-  /* Nút trung tâm: Ngẫu nhiên */
-  .radial-center-btn {
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    width: 56px; height: 56px;
-    border-radius: 50%;
-    /* Gradient xanh hiện đại */
-    background: radial-gradient(circle at 30% 30%, #4facfe, #00f2fe);
-    box-shadow: 0 4px 15px rgba(0, 200, 255, 0.4), inset 0 0 10px rgba(255,255,255,0.3);
-    border: 2px solid rgba(255,255,255,0.8);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    z-index: 10; /* Nằm trên các quân cờ khác */
-    transition: transform 0.2s;
-
-    &:hover { transform: translate(-50%, -50%) scale(1.1); }
-    &:active { transform: translate(-50%, -50%) scale(0.95); }
-  }
-
-  .center-label {
-    font-size: 9px;
-    font-weight: bold;
-    color: white;
-    margin-top: -2px;
-    text-transform: uppercase;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
   }
 
   /* Các vệ tinh (Quân cờ) */
@@ -708,21 +762,12 @@
     margin-left: -22px;
 
     &:hover {
-      background: rgba(255, 255, 255, 0.2);
-      border-color: #fff;
-      transform: scale(1.15) !important; /* Quan trọng để ghi đè transform gốc khi hover nếu cần, nhưng ở đây ta dùng transform trong style inline nên cần cẩn thận */
-      z-index: 5;
+      background: rgba(60, 60, 60, 0.95);
+      border-color: #00d2ff;
+      transform: scale(1.15) !important;
+      z-index: 2050;
+      box-shadow: 0 0 15px rgba(0, 210, 255, 0.6);
     }
-  }
-  
-  /* Fix hover scale conflict with inline style transform:
-     Cách tốt hơn là wrap item trong 1 div con để scale
-  */
-  .radial-item:hover {
-     /* Chỉ thay đổi màu nền/viền, không đổi transform để tránh xung đột vị trí */
-     background: rgba(60, 60, 60, 0.95);
-     border-color: #00d2ff;
-     box-shadow: 0 0 15px rgba(0, 210, 255, 0.6);
   }
 
   .radial-img {
