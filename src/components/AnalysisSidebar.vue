@@ -13,6 +13,9 @@
 
       <div class="engine-info-box engine-name">
         <select v-model="selectedEngineId" @change="handleEngineChange" class="pika-select" :disabled="!isEngineLoaded">
+          <option :value="selectedEngineId" selected disabled hidden>
+            {{ currentEngineNameDisplay }}
+          </option>
           <option v-for="eng in managedEngines" :key="eng.id" :value="eng.id">
             {{ eng.name }}
           </option>
@@ -39,9 +42,6 @@
           <option value="256">256 MB</option>
           <option value="512">512 MB</option>
           <option value="1024">1024 MB</option>
-          <option value="2048">2048 MB</option>
-          <option value="4096">4096 MB</option>
-          <option value="8192">8192 MB</option>
         </select>
       </div>
 
@@ -119,7 +119,6 @@ const {
   history, currentMoveIndex, initialFen, generateFen, replayToMove,
 } = gameState
 
-// Đã có uciOptions và setOption từ Bước 1
 const { 
   engineOutput, isEngineLoaded, isEngineLoading, isThinking, 
   loadEngine, unloadEngine, startAnalysis, stopAnalysis, isPondering,
@@ -136,12 +135,22 @@ const moveListElement = ref<HTMLElement | null>(null)
 const isEngineActive = computed(() => isEngineLoaded.value || isThinking.value)
 const isMatchRunning = computed(() => jaiEngine?.isMatchRunning?.value || false)
 
+// --- COMPUTED: TÊN HIỂN THỊ CỐ ĐỊNH ---
+const currentEngineNameDisplay = computed(() => {
+    // Nếu Engine đang tải/chạy, hiển thị tên cố định
+    if (isEngineActive.value || isEngineLoading.value) {
+        return 'Pikafish - JieQ'
+    }
+    // Nếu chưa tải, hiển thị tên của Engine được chọn
+    const selectedEngine = managedEngines.value.find(e => e.id === selectedEngineId.value)
+    return selectedEngine ? selectedEngine.name : 'Chọn Engine...'
+})
+
 // --- COMPUTED: KẾT NỐI THẬT VỚI ENGINE ---
 
 // 1. Threads (Số luồng)
 const actualThreads = computed({
   get: () => {
-    // Tìm option 'Threads' trong danh sách options của engine
     const opt = uciOptions.value.find((o: any) => o.name?.toLowerCase() === 'threads')
     return opt ? parseInt(opt.value) : 1
   },
@@ -295,7 +304,7 @@ watch(parsedLogList, () => {
 </script>
 
 <style lang="scss">
-/* Reset & Base */
+/* Style Reset */
 .sidebar {
     width: 420px;
     height: calc(100vh - 120px); 
@@ -351,7 +360,21 @@ watch(parsedLogList, () => {
   overflow: hidden;
 }
 
-.engine-name { flex-grow: 1; min-width: 100px; }
+.engine-name { 
+    flex-grow: 1; 
+    min-width: 100px;
+}
+
+/* Dropdown styling */
+.engine-name select {
+    width: 100%;
+    /* Dùng background image để ẩn mũi tên dropdown mặc định trên một số trình duyệt */
+    background: transparent;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+}
+
 .threads { width: 50px; }
 .hash { width: 70px; }
 
@@ -364,7 +387,6 @@ watch(parsedLogList, () => {
   background: transparent;
   padding: 0;
   margin: 0;
-  appearance: none; 
 }
 
 .pika-settings-btn {
