@@ -168,8 +168,8 @@
         <div class="flip-prompt-container">
           <div class="flip-prompt-header">
             <span class="flip-prompt-title">
-              <v-icon icon="mdi-help-circle-outline" size="small" class="mr-1"></v-icon>
-              Chọn quân {{ pendingFlip.side === 'red' ? 'Đỏ' : 'Đen' }}
+              <v-icon icon="mdi-cursor-default-click-outline" size="small" class="mr-1"></v-icon>
+              Lật quân {{ pendingFlip.side === 'red' ? 'Đỏ' : 'Đen' }}
             </span>
             <button class="random-btn" @click="handleFlipRandom">
               <v-icon icon="mdi-shuffle-variant" size="small" class="mr-1"></v-icon>
@@ -177,7 +177,7 @@
             </button>
           </div>
           
-          <div class="flip-choices fluid-layout">
+          <div class="flip-choices responsive-row">
             <div 
               v-for="item in flipSelectionPieces" 
               :key="item.name" 
@@ -192,7 +192,7 @@
             
             <div v-if="flipSelectionPieces.length === 0" class="flip-error">
               <v-icon icon="mdi-alert" color="error" class="mr-1"></v-icon>
-              Hết quân loại này!
+              Hết quân!
             </div>
           </div>
         </div>
@@ -709,7 +709,7 @@
     max-width: 100%;
   }
 
-  /* --- FLIP PROMPT AREA (STYLE MỚI ĐẸP HƠN, QUÂN TO HƠN) --- */
+  /* --- FLIP PROMPT AREA (STYLE MỚI - RESPONSIVE & CO GIÃN) --- */
   .flip-prompt-area {
     width: 100%;
     /* Hiệu ứng kính mờ và gradient nhẹ */
@@ -717,8 +717,8 @@
     backdrop-filter: blur(8px);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
-    padding: 12px;
-    min-height: 100px;
+    padding: 8px 12px;
+    min-height: 80px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
     animation: fadeIn 0.2s ease-out;
   }
@@ -732,7 +732,7 @@
     display: flex;
     flex-direction: column;
     width: 100%;
-    gap: 12px;
+    gap: 8px;
   }
 
   .flip-prompt-header {
@@ -746,7 +746,7 @@
   .flip-prompt-title {
     color: #e0e0e0;
     font-weight: 600;
-    font-size: 15px;
+    font-size: 14px;
     display: flex;
     align-items: center;
     text-shadow: 0 1px 2px rgba(0,0,0,0.5);
@@ -780,7 +780,7 @@
   }
 
   /* FLIP CHOICES: SỬ DỤNG FLEX VỚI CÁC THUỘC TÍNH CO GIÃN MẠNH MẼ */
-  .flip-choices.fluid-layout {
+  .flip-choices.responsive-row {
     display: flex;
     flex-direction: row; 
     flex-wrap: nowrap; /* Không xuống dòng */
@@ -799,7 +799,7 @@
     justify-content: center;
     background: rgba(255, 255, 255, 0.08);
     border-radius: 8px;
-    padding: 4px;
+    padding: 6px;
     cursor: pointer;
     border: 1px solid rgba(255,255,255,0.05);
     transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
@@ -833,7 +833,7 @@
     filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3));
     
     /* Giới hạn kích thước tối đa để không quá to trên màn hình lớn */
-    max-width: 60px; 
+    max-width: 64px; 
   }
 
   .flip-count-badge {
