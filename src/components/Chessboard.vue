@@ -82,8 +82,8 @@
           class="radial-menu-container"
           :style="{
             ...rcStyle(
-               pendingFlip.row !== undefined ? pendingFlip.row : (selectedPiece ? selectedPiece.row : 4), 
-               pendingFlip.col !== undefined ? pendingFlip.col : (selectedPiece ? selectedPiece.col : 4), 
+               radialMenuPos.row, 
+               radialMenuPos.col, 
                9999
             ),
             width: '34%', height: 'auto', 'aspect-ratio': '1/1'
@@ -177,6 +177,19 @@
   const selectedPiece = computed(() => { if (!unref(selectedPieceId)) return null; return unref(pieces).find((p: Piece) => p.id === unref(selectedPieceId)) })
 
   // --- LOGIC: FLIP SELECTION & RADIAL MENU ---
+  
+  // FIX: Lưu tọa độ click cuối cùng để menu không bị nhảy về (4,4)
+  const lastClickPos = ref({ row: 4, col: 4 })
+  
+  const radialMenuPos = computed(() => {
+    // Ưu tiên dùng tọa độ click chuột gần nhất
+    if (lastClickPos.value) return lastClickPos.value
+    // Nếu không thì dùng vị trí quân đang chọn
+    if (selectedPiece.value) return { row: selectedPiece.value.row, col: selectedPiece.value.col }
+    // Fallback
+    return { row: 4, col: 4 }
+  })
+
   const flipSelectionPieces = computed(() => {
     if (!pendingFlip.value) return []
     const requiredSide = pendingFlip.value.side
@@ -210,7 +223,6 @@
     if (pendingFlip.value && pendingFlip.value.callback) {
       const pieces = flipSelectionPieces.value
       if (pieces.length === 0) {
-        // Fallback: Nếu không có quân nào để lật, dùng quân tốt
         const side = pendingFlip.value.side
         pendingFlip.value.callback(side === 'red' ? 'red_pawn' : 'black_pawn')
         return
@@ -277,7 +289,15 @@
     const yp = ((e.clientY - rect.top) / rect.height) * 100
     const col = Math.round(((xp - OX) / GX) * (COLS - 1))
     const row = Math.round(((yp - OY) / GY) * (ROWS - 1))
-    const result = handleBoardClick(Math.max(0, Math.min(ROWS - 1, row)), Math.max(0, Math.min(COLS - 1, col)))
+    
+    // Calculate final coordinates
+    const finalRow = Math.max(0, Math.min(ROWS - 1, row))
+    const finalCol = Math.max(0, Math.min(COLS - 1, col))
+    
+    // FIX: Cập nhật vị trí click ngay lập tức
+    lastClickPos.value = { row: finalRow, col: finalCol }
+
+    const result = handleBoardClick(finalRow, finalCol)
     if (result && result.requireClearHistoryConfirm) { pendingMove.value = result.move; showClearHistoryDialog.value = true }
   }
 
@@ -490,12 +510,15 @@
   .radial-img { width: 85%; height: 85%; object-fit: contain; pointer-events: none; }
   .radial-count { position: absolute; top: -5px; right: -5px; background: #f44336; color: white; font-size: 10px; font-weight: bold; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid #fff; pointer-events: none; }
   .radial-error-btn { position: absolute; transform: translate(-50%, -50%); background: #f44336; color: white; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 12px; cursor: pointer; white-space: nowrap; box-shadow: 0 4px 10px rgba(0,0,0,0.5); pointer-events: auto; z-index: 10001; }
+  
+  /* Selection Mark (Bo góc) */
   .selection-mark { position: absolute; width: 12%; aspect-ratio: 1; transform: translate(-50%, -50%); z-index: 30; pointer-events: none; }
   .corner { position: absolute; width: 25%; height: 25%; border: 3px solid #007bff; box-shadow: 0 0 4px rgba(0, 123, 255, 0.6); }
   .top-left { top: 0; left: 0; border-right: none; border-bottom: none; border-top-left-radius: 10px; }
   .top-right { top: 0; right: 0; border-left: none; border-bottom: none; border-top-right-radius: 10px; }
   .bottom-left { bottom: 0; left: 0; border-right: none; border-top: none; border-bottom-left-radius: 10px; }
   .bottom-right { bottom: 0; right: 0; border-left: none; border-top: none; border-bottom-right-radius: 10px; }
+  
   .highlight.from { position: absolute; transform: translate(-50%,-50%); width: 2.5%; aspect-ratio: 1; background: rgba(255,0,0,0.5); border-radius: 50%; pointer-events: none; }
   .highlight.to { position: absolute; transform: translate(-50%,-50%); width: 12%; aspect-ratio: 1; border: 2px solid rgba(0,255,255,0.7); pointer-events: none; border-radius: 8px; }
   .valid-move-dot { position: absolute; transform: translate(-50%,-50%); width: 2.5%; aspect-ratio: 1; background: #4caf50; border-radius: 50%; pointer-events: none; z-index: 15; box-shadow: 0 0 5px #4caf50; }
