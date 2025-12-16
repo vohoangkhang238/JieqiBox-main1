@@ -2,22 +2,22 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 #![allow(clippy::uninlined_format_args)]
 
-use tauri_plugin_shell::ShellExt;
-use tauri_plugin_shell::process::{CommandChild, CommandEvent};
-use tauri::{AppHandle, Emitter};
-use std::sync::{Arc, Mutex};
-use tauri::async_runtime;
-use std::process::Command;
-use encoding_rs::GBK;
-use std::path::Path;
-use std::fs;
 use base64::Engine;
+use clipboard::{ClipboardContext, ClipboardProvider};
+use encoding_rs::GBK;
+use std::fs;
 #[cfg(target_os = "android")]
 use std::os::unix::fs::PermissionsExt;
-use clipboard::{ClipboardContext, ClipboardProvider};
+use std::path::Path;
+use std::process::Command;
+use std::sync::{Arc, Mutex};
+use tauri::async_runtime;
+use tauri::{AppHandle, Emitter};
+use tauri_plugin_shell::process::{CommandChild, CommandEvent};
+use tauri_plugin_shell::ShellExt;
 
 mod opening_book;
-use opening_book::{JieqiOpeningBook, MoveData, OpeningBookStats, AddEntryRequest};
+use opening_book::{AddEntryRequest, JieqiOpeningBook, MoveData, OpeningBookStats};
 
 // -------------------------------------------------------------
 // type definition for the engine process state
@@ -29,12 +29,12 @@ type EngineProcess = Arc<Mutex<Option<CommandChild>>>;
 #[cfg(target_os = "android")]
 fn check_android_engine_file(path: &str) -> Result<(), String> {
     let engine_path = Path::new(path);
-    
+
     // Check if file exists at the given path
     if !engine_path.exists() {
         return Err(format!("Engine file not found: {}", path));
     }
-    
+
     // Check if the path points to a file, not a directory
     if let Ok(metadata) = fs::metadata(engine_path) {
         if !metadata.is_file() {
@@ -50,7 +50,10 @@ fn check_android_engine_file(path: &str) -> Result<(), String> {
 /// Copy a file from a user-accessible directory to the app's internal storage.
 /// Used for the legacy engine scanning mechanism.
 #[cfg(target_os = "android")]
-fn copy_file_to_internal_storage(source_path_str: &str, app_handle: &AppHandle) -> Result<String, String> {
+fn copy_file_to_internal_storage(
+    source_path_str: &str,
+    app_handle: &AppHandle,
+) -> Result<String, String> {
     let source_path = Path::new(source_path_str);
     if !source_path.exists() {
         let error_msg = format!("Source file not found: {}", source_path.display());
@@ -68,14 +71,22 @@ fn copy_file_to_internal_storage(source_path_str: &str, app_handle: &AppHandle) 
     }
 
     // Generate destination path using the original filename
-    let filename = source_path.file_name()
+    let filename = source_path
+        .file_name()
         .ok_or_else(|| "Invalid source path".to_string())?
         .to_str()
         .ok_or_else(|| "Invalid filename encoding".to_string())?;
     let dest_path_str = format!("{}/{}", internal_dir, filename);
     let dest_path = Path::new(&dest_path_str);
 
-    let _ = app_handle.emit("engine-output", format!("[DEBUG] Copying file from {} to {}", source_path.display(), dest_path.display()));
+    let _ = app_handle.emit(
+        "engine-output",
+        format!(
+            "[DEBUG] Copying file from {} to {}",
+            source_path.display(),
+            dest_path.display()
+        ),
+    );
 
     // Copy the file
     if let Err(e) = fs::copy(source_path, dest_path) {
@@ -85,42 +96,55 @@ fn copy_file_to_internal_storage(source_path_str: &str, app_handle: &AppHandle) 
     }
 
     let _ = app_handle.emit("engine-output", "[DEBUG] Setting executable permission...");
-    
+
     // Set executable permissions (rwxr-xr-x) which is crucial on Android/Linux
     match fs::metadata(dest_path) {
         Ok(metadata) => {
             let mut permissions = metadata.permissions();
             // Set permissions to 0o755
-            permissions.set_mode(0o755);   
+            permissions.set_mode(0o755);
 
             if let Err(e) = fs::set_permissions(dest_path, permissions) {
                 let error_msg = format!("Failed to set executable permission: {}", e);
                 let _ = app_handle.emit("engine-output", format!("[DEBUG] {}", error_msg));
                 return Err(error_msg);
             }
-        },
+        }
         Err(e) => {
             let error_msg = format!("Failed to get metadata for setting permissions: {}", e);
             let _ = app_handle.emit("engine-output", format!("[DEBUG] {}", error_msg));
             return Err(error_msg);
         }
     }
-    
-    let _ = app_handle.emit("engine-output", format!("[DEBUG] Successfully copied and made executable: {}", dest_path.display()));
+
+    let _ = app_handle.emit(
+        "engine-output",
+        format!(
+            "[DEBUG] Successfully copied and made executable: {}",
+            dest_path.display()
+        ),
+    );
     Ok(dest_path_str)
 }
 
 /// Save game notation to Android's external, user-accessible storage.
 #[tauri::command]
-async fn save_game_notation(content: String, filename: String, app: AppHandle) -> Result<String, String> {
+async fn save_game_notation(
+    content: String,
+    filename: String,
+    app: AppHandle,
+) -> Result<String, String> {
     if !cfg!(target_os = "android") {
         return Err("This function is only available on Android".to_string());
     }
 
     // Use dynamic bundle identifier for external storage path
     let bundle_identifier = &app.config().identifier;
-    let external_dir = format!("/storage/emulated/0/Android/data/{}/files/notations", bundle_identifier);
-    
+    let external_dir = format!(
+        "/storage/emulated/0/Android/data/{}/files/notations",
+        bundle_identifier
+    );
+
     // Create the "notations" directory if it doesn't exist
     if let Err(e) = fs::create_dir_all(&external_dir) {
         let error_msg = format!("Failed to create notations directory: {}", e);
@@ -142,15 +166,22 @@ async fn save_game_notation(content: String, filename: String, app: AppHandle) -
 
 /// Save chart image to Android's external, user-accessible storage.
 #[tauri::command]
-async fn save_chart_image(content: String, filename: String, app: AppHandle) -> Result<String, String> {
+async fn save_chart_image(
+    content: String,
+    filename: String,
+    app: AppHandle,
+) -> Result<String, String> {
     if !cfg!(target_os = "android") {
         return Err("This function is only available on Android".to_string());
     }
 
     // Use dynamic bundle identifier for external storage path
     let bundle_identifier = &app.config().identifier;
-    let external_dir = format!("/storage/emulated/0/Android/data/{}/files/charts", bundle_identifier);
-    
+    let external_dir = format!(
+        "/storage/emulated/0/Android/data/{}/files/charts",
+        bundle_identifier
+    );
+
     // Create the "charts" directory if it doesn't exist
     if let Err(e) = fs::create_dir_all(&external_dir) {
         let error_msg = format!("Failed to create charts directory: {}", e);
@@ -194,7 +225,10 @@ fn get_autosave_file_path(app: &AppHandle) -> Result<String, String> {
     if cfg!(target_os = "android") {
         // On Android, use the app's private internal data directory
         let bundle_identifier = &app.config().identifier;
-        Ok(format!("/data/data/{}/files/Autosave.json", bundle_identifier))
+        Ok(format!(
+            "/data/data/{}/files/Autosave.json",
+            bundle_identifier
+        ))
     } else {
         // On desktop, use the same directory as the config file
         Ok("Autosave.json".to_string())
@@ -206,7 +240,10 @@ fn get_opening_book_db_path(app: &AppHandle) -> Result<String, String> {
     if cfg!(target_os = "android") {
         // On Android, use the app's private internal data directory
         let bundle_identifier = &app.config().identifier;
-        Ok(format!("/data/data/{}/files/jieqi_openings.jb", bundle_identifier))
+        Ok(format!(
+            "/data/data/{}/files/jieqi_openings.jb",
+            bundle_identifier
+        ))
     } else {
         // On desktop, use the same directory as the config file
         Ok("jieqi_openings.jb".to_string())
@@ -218,12 +255,12 @@ fn get_opening_book_db_path(app: &AppHandle) -> Result<String, String> {
 async fn load_config(app: AppHandle) -> Result<String, String> {
     let config_path = get_config_file_path(&app)?;
     let path = Path::new(&config_path);
-    
+
     if !path.exists() {
         // If the config file doesn't exist, return an empty string, which is valid
         return Ok(String::new());
     }
-    
+
     match fs::read_to_string(path) {
         Ok(content) => Ok(content),
         Err(e) => Err(format!("Failed to read config file: {}", e)),
@@ -235,14 +272,14 @@ async fn load_config(app: AppHandle) -> Result<String, String> {
 async fn save_config(content: String, app: AppHandle) -> Result<(), String> {
     let config_path = get_config_file_path(&app)?;
     let path = Path::new(&config_path);
-    
+
     // Ensure the parent directory exists before writing
     if let Some(parent) = path.parent() {
         if let Err(e) = fs::create_dir_all(parent) {
             return Err(format!("Failed to create config directory: {}", e));
         }
     }
-    
+
     match fs::write(path, content) {
         Ok(_) => Ok(()),
         Err(e) => Err(format!("Failed to write config file: {}", e)),
@@ -254,7 +291,7 @@ async fn save_config(content: String, app: AppHandle) -> Result<(), String> {
 async fn clear_config(app: AppHandle) -> Result<(), String> {
     let config_path = get_config_file_path(&app)?;
     let path = Path::new(&config_path);
-    
+
     if path.exists() {
         match fs::remove_file(path) {
             Ok(_) => Ok(()),
@@ -270,14 +307,14 @@ async fn clear_config(app: AppHandle) -> Result<(), String> {
 async fn save_autosave(content: String, app: AppHandle) -> Result<(), String> {
     let autosave_path = get_autosave_file_path(&app)?;
     let path = Path::new(&autosave_path);
-    
+
     // Ensure the parent directory exists before writing
     if let Some(parent) = path.parent() {
         if let Err(e) = fs::create_dir_all(parent) {
             return Err(format!("Failed to create autosave directory: {}", e));
         }
     }
-    
+
     match fs::write(path, content) {
         Ok(_) => Ok(()),
         Err(e) => Err(format!("Failed to write autosave file: {}", e)),
@@ -289,12 +326,12 @@ async fn save_autosave(content: String, app: AppHandle) -> Result<(), String> {
 async fn load_autosave(app: AppHandle) -> Result<String, String> {
     let autosave_path = get_autosave_file_path(&app)?;
     let path = Path::new(&autosave_path);
-    
+
     if !path.exists() {
         // If the autosave file doesn't exist, return an empty string
         return Ok(String::new());
     }
-    
+
     match fs::read_to_string(path) {
         Ok(content) => Ok(content),
         Err(e) => Err(format!("Failed to read autosave file: {}", e)),
@@ -314,28 +351,55 @@ fn sync_and_list_engines(app_handle: &AppHandle) -> Result<Vec<String>, String> 
     let bundle_identifier = &app_handle.config().identifier;
     let source_dirs = vec![
         get_user_engine_directory(),
-        format!("/storage/emulated/0/Android/data/{}/files/engines", bundle_identifier),
+        format!(
+            "/storage/emulated/0/Android/data/{}/files/engines",
+            bundle_identifier
+        ),
     ];
     let internal_dir_str = format!("/data/data/{}/files/engines", bundle_identifier);
-    
-    let _ = app_handle.emit("engine-output", format!("[DEBUG] Syncing engines. Internal dir: {}. Source dirs: {:?}", internal_dir_str, source_dirs));
-    
+
+    let _ = app_handle.emit(
+        "engine-output",
+        format!(
+            "[DEBUG] Syncing engines. Internal dir: {}. Source dirs: {:?}",
+            internal_dir_str, source_dirs
+        ),
+    );
+
     // Ensure the internal engine directory exists
     if let Err(e) = fs::create_dir_all(&internal_dir_str) {
-        let error_msg = format!("Failed to create internal directory '{}': {}", internal_dir_str, e);
+        let error_msg = format!(
+            "Failed to create internal directory '{}': {}",
+            internal_dir_str, e
+        );
         let _ = app_handle.emit("engine-output", format!("[DEBUG] {}", error_msg));
         return Err(error_msg);
     } else {
-        let _ = app_handle.emit("engine-output", format!("[DEBUG] Internal directory created/exists: {}", internal_dir_str));
+        let _ = app_handle.emit(
+            "engine-output",
+            format!(
+                "[DEBUG] Internal directory created/exists: {}",
+                internal_dir_str
+            ),
+        );
     }
 
     // Iterate over all possible source directories
     for user_dir in &source_dirs {
-        let _ = app_handle.emit("engine-output", format!("[DEBUG] Checking source directory: {}", user_dir));
+        let _ = app_handle.emit(
+            "engine-output",
+            format!("[DEBUG] Checking source directory: {}", user_dir),
+        );
         let user_path = Path::new(user_dir);
 
         if !user_path.exists() {
-            let _ = app_handle.emit("engine-output", format!("[DEBUG] Source directory does not exist, skipping: {}", user_dir));
+            let _ = app_handle.emit(
+                "engine-output",
+                format!(
+                    "[DEBUG] Source directory does not exist, skipping: {}",
+                    user_dir
+                ),
+            );
             continue;
         }
 
@@ -344,8 +408,13 @@ fn sync_and_list_engines(app_handle: &AppHandle) -> Result<Vec<String>, String> 
                 if let Ok(entry) = entry_result {
                     let path = entry.path();
                     if path.is_file() {
-                        if let Err(e) = copy_file_to_internal_storage(path.to_str().unwrap_or(""), app_handle) {
-                            let _ = app_handle.emit("engine-output", format!("[DEBUG] Failed to copy file {}: {}", path.display(), e));
+                        if let Err(e) =
+                            copy_file_to_internal_storage(path.to_str().unwrap_or(""), app_handle)
+                        {
+                            let _ = app_handle.emit(
+                                "engine-output",
+                                format!("[DEBUG] Failed to copy file {}: {}", path.display(), e),
+                            );
                         }
                     }
                 }
@@ -365,8 +434,14 @@ fn sync_and_list_engines(app_handle: &AppHandle) -> Result<Vec<String>, String> 
             }
         }
     }
-    
-    let _ = app_handle.emit("engine-output", format!("[DEBUG] Available internal engines: {:?}", available_engines));
+
+    let _ = app_handle.emit(
+        "engine-output",
+        format!(
+            "[DEBUG] Available internal engines: {:?}",
+            available_engines
+        ),
+    );
     Ok(available_engines)
 }
 
@@ -388,36 +463,44 @@ async fn spawn_engine(
     process_state: tauri::State<'_, EngineProcess>,
 ) -> Result<(), String> {
     if cfg!(target_os = "android") {
-        let _ = app.emit("engine-output", format!("[DEBUG] Spawning engine: Path={}, Args={:?}", path, args));
+        let _ = app.emit(
+            "engine-output",
+            format!("[DEBUG] Spawning engine: Path={}, Args={:?}", path, args),
+        );
     }
-    
+
     // The path must be an absolute, accessible file path
     let final_path = path;
 
     #[cfg(target_os = "android")]
     {
         if let Err(e) = check_android_engine_file(&final_path) {
-            let _ = app.emit("engine-output", format!("[DEBUG] Engine file validation failed: {}", e));
+            let _ = app.emit(
+                "engine-output",
+                format!("[DEBUG] Engine file validation failed: {}", e),
+            );
             return Err(e);
         }
         let _ = app.emit("engine-output", "[DEBUG] Engine file validation passed.");
     }
-    
+
     // Ensure any previous engine process is terminated before starting a new one
     kill_engine(process_state.clone()).await.ok();
-    
+
     // The engine's working directory should be its parent directory
     let engine_dir = Path::new(&final_path)
         .parent()
         .ok_or_else(|| "Failed to get engine directory".to_string())?
         .to_str()
         .ok_or_else(|| "Failed to convert engine directory to string".to_string())?;
-    
+
     // Spawn the new process
-    let (mut rx, child) = match app.shell().command(&final_path)
+    let (mut rx, child) = match app
+        .shell()
+        .command(&final_path)
         .args(args)
         .current_dir(engine_dir)
-        .spawn() 
+        .spawn()
     {
         Ok(result) => result,
         Err(e) => {
@@ -431,7 +514,7 @@ async fn spawn_engine(
 
     // Store the new child process in the shared state
     *process_state.lock().unwrap() = Some(child);
-    
+
     // Spawn an async task to listen for the engine's stdout/stderr
     let app_clone = app.clone();
     async_runtime::spawn(async move {
@@ -503,13 +586,21 @@ async fn scan_android_engines(app: AppHandle) -> Result<Vec<String>, String> {
 /// Emits an event to the Android native side to request a file via SAF.
 #[cfg(target_os = "android")]
 #[tauri::command]
-async fn request_saf_file_selection(name: String, args: String, has_nnue: bool, app: AppHandle) -> Result<(), String> {
+async fn request_saf_file_selection(
+    name: String,
+    args: String,
+    has_nnue: bool,
+    app: AppHandle,
+) -> Result<(), String> {
     // This command's only job is to forward the request to the native layer
-    let _ = app.emit("request-saf-file-selection", serde_json::json!({
-        "name": name,
-        "args": args,
-        "has_nnue": has_nnue
-    }));
+    let _ = app.emit(
+        "request-saf-file-selection",
+        serde_json::json!({
+            "name": name,
+            "args": args,
+            "has_nnue": has_nnue
+        }),
+    );
     Ok(())
 }
 
@@ -525,7 +616,13 @@ async fn handle_saf_file_result(
     has_nnue: bool,
     app: AppHandle,
 ) -> Result<(), String> {
-    let _ = app.emit("engine-output", format!("[DEBUG] SAF result for engine '{}': TempPath={}, Filename={}", name, temp_file_path, filename));
+    let _ = app.emit(
+        "engine-output",
+        format!(
+            "[DEBUG] SAF result for engine '{}': TempPath={}, Filename={}",
+            name, temp_file_path, filename
+        ),
+    );
 
     if temp_file_path.is_empty() {
         return Err("SAF file processing failed: temporary path is empty.".to_string());
@@ -538,7 +635,10 @@ async fn handle_saf_file_result(
 
     // Define the final destination directory for the engine using the unique ID.
     let bundle_identifier = &app.config().identifier;
-    let engine_base_dir = format!("/data/data/{}/files/engines/{}", bundle_identifier, &engine_instance_id);
+    let engine_base_dir = format!(
+        "/data/data/{}/files/engines/{}",
+        bundle_identifier, &engine_instance_id
+    );
 
     // Create the engine-specific directory
     if let Err(e) = fs::create_dir_all(&engine_base_dir) {
@@ -546,19 +646,22 @@ async fn handle_saf_file_result(
         let _ = app.emit("engine-output", format!("[DEBUG] {}", error_msg));
         return Err(error_msg);
     }
-    
+
     // Define the final path for the engine executable
     let final_path_str = format!("{}/{}", engine_base_dir, &filename);
 
     // Move the file from the temporary location to the final destination
     if let Err(e) = fs::rename(&temp_file_path, &final_path_str) {
-        let error_msg = format!("Failed to move engine file from temp to final destination: {}", e);
+        let error_msg = format!(
+            "Failed to move engine file from temp to final destination: {}",
+            e
+        );
         let _ = app.emit("engine-output", format!("[DEBUG] {}", error_msg));
         // Fallback to copy if rename fails (e.g., cross-device link)
         if let Err(copy_err) = fs::copy(&temp_file_path, &final_path_str) {
-             let copy_error_msg = format!("Fallback copy also failed: {}", copy_err);
-             let _ = app.emit("engine-output", format!("[DEBUG] {}", copy_error_msg));
-             return Err(copy_error_msg);
+            let copy_error_msg = format!("Fallback copy also failed: {}", copy_err);
+            let _ = app.emit("engine-output", format!("[DEBUG] {}", copy_error_msg));
+            return Err(copy_error_msg);
         } else {
             // Copy succeeded, remove the original temp file
             let _ = fs::remove_file(&temp_file_path);
@@ -567,14 +670,19 @@ async fn handle_saf_file_result(
 
     // Set executable permission on the final file
     let final_path = Path::new(&final_path_str);
-    let mut perms = fs::metadata(final_path).map_err(|e| e.to_string())?.permissions();
+    let mut perms = fs::metadata(final_path)
+        .map_err(|e| e.to_string())?
+        .permissions();
     perms.set_mode(0o755);
     fs::set_permissions(final_path, perms).map_err(|e| e.to_string())?;
 
     // Handle NNUE file if requested
     if has_nnue {
-        let _ = app.emit("engine-output", "[DEBUG] Engine requires NNUE file, requesting file selection...");
-        
+        let _ = app.emit(
+            "engine-output",
+            "[DEBUG] Engine requires NNUE file, requesting file selection...",
+        );
+
         // Request NNUE file selection from the frontend
         let nnue_request_data = serde_json::json!({
             "engine_name": name,
@@ -582,9 +690,10 @@ async fn handle_saf_file_result(
             "args": args,
             "engine_instance_id": engine_instance_id
         });
-        
+
         // Store the engine data temporarily and request NNUE file
-        app.emit("request-nnue-file", nnue_request_data).map_err(|e| e.to_string())?;
+        app.emit("request-nnue-file", nnue_request_data)
+            .map_err(|e| e.to_string())?;
         return Ok(());
     }
 
@@ -597,8 +706,9 @@ async fn handle_saf_file_result(
     });
 
     // Notify the frontend that the engine has been successfully added
-    app.emit("android-engine-added", new_engine_data).map_err(|e| e.to_string())?;
-    
+    app.emit("android-engine-added", new_engine_data)
+        .map_err(|e| e.to_string())?;
+
     Ok(())
 }
 
@@ -614,7 +724,13 @@ async fn handle_nnue_file_result(
     engine_instance_id: String,
     app: AppHandle,
 ) -> Result<(), String> {
-    let _ = app.emit("engine-output", format!("[DEBUG] NNUE file result for engine '{}': TempPath={}, Filename={}", engine_name, temp_file_path, filename));
+    let _ = app.emit(
+        "engine-output",
+        format!(
+            "[DEBUG] NNUE file result for engine '{}': TempPath={}, Filename={}",
+            engine_name, temp_file_path, filename
+        ),
+    );
 
     if temp_file_path.is_empty() {
         return Err("NNUE file processing failed: temporary path is empty.".to_string());
@@ -622,27 +738,39 @@ async fn handle_nnue_file_result(
 
     // Get the engine directory path
     let bundle_identifier = &app.config().identifier;
-    let engine_base_dir = format!("/data/data/{}/files/engines/{}", bundle_identifier, &engine_instance_id);
+    let engine_base_dir = format!(
+        "/data/data/{}/files/engines/{}",
+        bundle_identifier, &engine_instance_id
+    );
 
     // Define the final path for the NNUE file in the same directory as the engine
     let final_nnue_path_str = format!("{}/{}", engine_base_dir, &filename);
 
     // Move the NNUE file from the temporary location to the final destination
     if let Err(e) = fs::rename(&temp_file_path, &final_nnue_path_str) {
-        let error_msg = format!("Failed to move NNUE file from temp to final destination: {}", e);
+        let error_msg = format!(
+            "Failed to move NNUE file from temp to final destination: {}",
+            e
+        );
         let _ = app.emit("engine-output", format!("[DEBUG] {}", error_msg));
         // Fallback to copy if rename fails (e.g., cross-device link)
         if let Err(copy_err) = fs::copy(&temp_file_path, &final_nnue_path_str) {
-             let copy_error_msg = format!("Fallback copy also failed: {}", copy_err);
-             let _ = app.emit("engine-output", format!("[DEBUG] {}", copy_error_msg));
-             return Err(copy_error_msg);
+            let copy_error_msg = format!("Fallback copy also failed: {}", copy_err);
+            let _ = app.emit("engine-output", format!("[DEBUG] {}", copy_error_msg));
+            return Err(copy_error_msg);
         } else {
             // Copy succeeded, remove the original temp file
             let _ = fs::remove_file(&temp_file_path);
         }
     }
 
-    let _ = app.emit("engine-output", format!("[DEBUG] NNUE file successfully copied to: {}", final_nnue_path_str));
+    let _ = app.emit(
+        "engine-output",
+        format!(
+            "[DEBUG] NNUE file successfully copied to: {}",
+            final_nnue_path_str
+        ),
+    );
 
     // Create the ManagedEngine object to send back to the frontend
     let new_engine_data = serde_json::json!({
@@ -653,8 +781,9 @@ async fn handle_nnue_file_result(
     });
 
     // Notify the frontend that the engine has been successfully added
-    app.emit("android-engine-added", new_engine_data).map_err(|e| e.to_string())?;
-    
+    app.emit("android-engine-added", new_engine_data)
+        .map_err(|e| e.to_string())?;
+
     Ok(())
 }
 
@@ -676,7 +805,7 @@ async fn open_external_url(url: String, app: AppHandle) -> Result<(), String> {
 
     match result {
         Ok(_) => Ok(()),
-        Err(e) => Err(format!("Failed to open URL: {}", e))
+        Err(e) => Err(format!("Failed to open URL: {}", e)),
     }
 }
 
@@ -684,14 +813,10 @@ async fn open_external_url(url: String, app: AppHandle) -> Result<(), String> {
 
 /// Add an entry to the opening book
 #[tauri::command]
-async fn opening_book_add_entry(
-    request: AddEntryRequest,
-    app: AppHandle,
-) -> Result<bool, String> {
+async fn opening_book_add_entry(request: AddEntryRequest, app: AppHandle) -> Result<bool, String> {
     let db_path = get_opening_book_db_path(&app)?;
     let book = JieqiOpeningBook::new(db_path).map_err(|e| e.to_string())?;
-    book.add_entry(&request)
-        .map_err(|e| e.to_string())
+    book.add_entry(&request).map_err(|e| e.to_string())
 }
 
 /// Delete an entry from the opening book
@@ -769,7 +894,10 @@ async fn opening_book_import_entries(
             };
             match book.add_entry(&request) {
                 Ok(_) => imported += 1,
-                Err(e) => errors.push(format!("Failed to import move {}: {}", move_data.uci_move, e)),
+                Err(e) => errors.push(format!(
+                    "Failed to import move {}: {}",
+                    move_data.uci_move, e
+                )),
             }
         }
     }
@@ -796,7 +924,11 @@ async fn opening_book_import_db(source_path: String, app: AppHandle) -> Result<(
 /// Save game notation with a file dialog (for desktop platforms)
 /// On Android, this delegates to the existing save_game_notation function
 #[tauri::command]
-async fn save_game_notation_with_dialog(content: String, default_filename: String, app: AppHandle) -> Result<String, String> {
+async fn save_game_notation_with_dialog(
+    content: String,
+    default_filename: String,
+    app: AppHandle,
+) -> Result<String, String> {
     #[cfg(target_os = "android")]
     {
         // On Android, use the existing save_game_notation logic
@@ -806,9 +938,10 @@ async fn save_game_notation_with_dialog(content: String, default_filename: Strin
     #[cfg(not(target_os = "android"))]
     {
         use tauri_plugin_dialog::{DialogExt, FilePath};
-        
+
         // Show save file dialog
-        let file_path = app.dialog()
+        let file_path = app
+            .dialog()
             .file()
             .set_file_name(&default_filename)
             .add_filter("JSON files", &["json"])
@@ -818,17 +951,12 @@ async fn save_game_notation_with_dialog(content: String, default_filename: Strin
         match file_path {
             Some(FilePath::Path(path)) => {
                 // Write content to the selected file
-                fs::write(&path, content)
-                    .map_err(|e| format!("Failed to write file: {}", e))?;
-                
+                fs::write(&path, content).map_err(|e| format!("Failed to write file: {}", e))?;
+
                 Ok(path.to_string_lossy().to_string())
-            },
-            Some(FilePath::Url(_)) => {
-                Err("URL paths are not supported".to_string())
-            },
-            None => {
-                Err("Save dialog was cancelled".to_string())
             }
+            Some(FilePath::Url(_)) => Err("URL paths are not supported".to_string()),
+            None => Err("Save dialog was cancelled".to_string()),
         }
     }
 }
@@ -836,8 +964,8 @@ async fn save_game_notation_with_dialog(content: String, default_filename: Strin
 /// Copy text to clipboard
 #[tauri::command]
 async fn copy_to_clipboard(text: String, _app: AppHandle) -> Result<(), String> {
-    let mut ctx: ClipboardContext = ClipboardProvider::new()
-        .map_err(|e| format!("Failed to access clipboard: {}", e))?;
+    let mut ctx: ClipboardContext =
+        ClipboardProvider::new().map_err(|e| format!("Failed to access clipboard: {}", e))?;
     ctx.set_contents(text)
         .map_err(|e| format!("Failed to copy to clipboard: {}", e))
 }
@@ -845,8 +973,8 @@ async fn copy_to_clipboard(text: String, _app: AppHandle) -> Result<(), String> 
 /// Paste text from clipboard
 #[tauri::command]
 async fn paste_from_clipboard(_app: AppHandle) -> Result<String, String> {
-    let mut ctx: ClipboardContext = ClipboardProvider::new()
-        .map_err(|e| format!("Failed to access clipboard: {}", e))?;
+    let mut ctx: ClipboardContext =
+        ClipboardProvider::new().map_err(|e| format!("Failed to access clipboard: {}", e))?;
     ctx.get_contents()
         .map_err(|e| format!("Failed to paste from clipboard: {}", e))
 }
@@ -855,13 +983,14 @@ async fn paste_from_clipboard(_app: AppHandle) -> Result<String, String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_os::init())
         .manage(Arc::new(Mutex::new(None)) as EngineProcess)
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
-            spawn_engine, 
+            spawn_engine,
             kill_engine,
-            send_to_engine, 
+            send_to_engine,
             open_external_url,
             save_game_notation,
             save_chart_image,

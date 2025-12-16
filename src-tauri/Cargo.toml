@@ -31,3 +31,4 @@ base64 = "0.22"
 rusqlite = { version = "0.37.0", features = ["bundled"] }
 sha2 = "0.10"
 hex = "0.4"
+tauri-plugin-os = "2"

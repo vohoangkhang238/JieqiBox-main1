@@ -113,7 +113,7 @@ impl JieqiOpeningBook {
 
         let affected_rows = self.conn.execute(
             "DELETE FROM openings WHERE key = ?1 AND move = ?2",
-            rusqlite::params![ &key_blob, move_int ],
+            rusqlite::params![&key_blob, move_int],
         )?;
 
         Ok(affected_rows > 0)
@@ -126,7 +126,7 @@ impl JieqiOpeningBook {
             "SELECT move, priority, wins, draws, losses, allowed, comment FROM openings WHERE key = ?1 ORDER BY priority DESC"
         )?;
 
-        let move_iter = stmt.query_map(rusqlite::params![ key_blob ], |row| {
+        let move_iter = stmt.query_map(rusqlite::params![key_blob], |row| {
             Ok(MoveData {
                 uci_move: int_to_uci(row.get::<_, i32>(0)? as u16),
                 priority: row.get(1)?,
@@ -155,7 +155,7 @@ impl JieqiOpeningBook {
         let mut stmt = self.conn.prepare(
             "SELECT COUNT(DISTINCT key), COUNT(*), COALESCE(SUM(CASE WHEN allowed = 1 THEN 1 ELSE 0 END), 0), COALESCE(SUM(CASE WHEN allowed = 0 THEN 1 ELSE 0 END), 0) FROM openings"
         )?;
-        
+
         let stats = stmt.query_row([], |row| {
             Ok(OpeningBookStats {
                 total_positions: row.get(0)?,
@@ -176,7 +176,9 @@ impl JieqiOpeningBook {
     pub fn export_all(&self) -> Result<Vec<OpeningBookEntry>> {
         let mut entries: HashMap<String, OpeningBookEntry> = HashMap::new();
 
-        let mut stmt = self.conn.prepare("SELECT key, move, priority, wins, draws, losses, allowed, comment FROM openings")?;
+        let mut stmt = self.conn.prepare(
+            "SELECT key, move, priority, wins, draws, losses, allowed, comment FROM openings",
+        )?;
         let entry_iter = stmt.query_map([], |row| {
             let key_blob: Vec<u8> = row.get(0)?;
             let key_hex = hex::encode(key_blob);
@@ -194,11 +196,13 @@ impl JieqiOpeningBook {
 
         for entry_result in entry_iter {
             let (key, move_data) = entry_result?;
-            let entry = entries.entry(key.clone()).or_insert_with(|| OpeningBookEntry {
-                key: key.clone(),
-                fen: String::new(), // We don't store original FEN, only key
-                moves: Vec::new(),
-            });
+            let entry = entries
+                .entry(key.clone())
+                .or_insert_with(|| OpeningBookEntry {
+                    key: key.clone(),
+                    fen: String::new(), // We don't store original FEN, only key
+                    moves: Vec::new(),
+                });
             entry.moves.push(move_data);
         }
 
@@ -215,20 +219,20 @@ impl JieqiOpeningBook {
 fn parse_pool_string(pool_str: &str) -> (HashMap<char, i32>, HashMap<char, i32>) {
     let mut red_pool = HashMap::new();
     let mut black_pool = HashMap::new();
-    
+
     let chars: Vec<char> = pool_str.chars().collect();
     let mut i = 0;
-    
+
     while i < chars.len() {
         if chars[i].is_alphabetic() {
             let piece = chars[i];
             let mut count = 1;
-            
+
             if i + 1 < chars.len() && chars[i + 1].is_ascii_digit() {
                 count = chars[i + 1].to_digit(10).unwrap_or(1) as i32;
                 i += 1;
             }
-            
+
             if piece.is_uppercase() {
                 *red_pool.entry(piece).or_insert(0) += count;
             } else {
@@ -237,7 +241,7 @@ fn parse_pool_string(pool_str: &str) -> (HashMap<char, i32>, HashMap<char, i32>)
         }
         i += 1;
     }
-    
+
     (red_pool, black_pool)
 }
 
@@ -246,17 +250,25 @@ fn calculate_gcd(pool: &HashMap<char, i32>) -> i32 {
     if values.is_empty() {
         return 1;
     }
-    
+
     let mut result = values[0];
     for &value in &values[1..] {
         result = gcd(result, value);
     }
-    
-    if result == 0 { 1 } else { result }
+
+    if result == 0 {
+        1
+    } else {
+        result
+    }
 }
 
 fn gcd(a: i32, b: i32) -> i32 {
-    if b == 0 { a } else { gcd(b, a % b) }
+    if b == 0 {
+        a
+    } else {
+        gcd(b, a % b)
+    }
 }
 
 fn format_pool(pool: &HashMap<char, i32>, order: &str) -> String {
@@ -279,53 +291,69 @@ fn normalize_fen(fen: &str) -> String {
     if parts.len() < 4 {
         return fen.to_string();
     }
-    
+
     let board = parts[0];
     let side_to_move = parts[1];
     let dark_pool_str = parts[2];
-    
+
     // Check which side has dark pieces
     let red_has_dark_pieces = board.contains('X');
     let black_has_dark_pieces = board.contains('x');
     let red_dark_count_on_board = board.chars().filter(|&c| c == 'X').count();
     let black_dark_count_on_board = board.chars().filter(|&c| c == 'x').count();
-    
+
     let (mut red_dark, mut black_dark) = if dark_pool_str != "-" {
         let (temp_red, temp_black) = parse_pool_string(dark_pool_str);
         (
-            if red_has_dark_pieces { temp_red } else { HashMap::new() },
-            if black_has_dark_pieces { temp_black } else { HashMap::new() }
+            if red_has_dark_pieces {
+                temp_red
+            } else {
+                HashMap::new()
+            },
+            if black_has_dark_pieces {
+                temp_black
+            } else {
+                HashMap::new()
+            },
         )
     } else {
         (HashMap::new(), HashMap::new())
     };
-    
+
     // Normalize by GCD when and only when that side has exactly one dark piece
-    let gcd_red_dark = if red_dark_count_on_board == 1 { calculate_gcd(&red_dark) } else { 1 };
+    let gcd_red_dark = if red_dark_count_on_board == 1 {
+        calculate_gcd(&red_dark)
+    } else {
+        1
+    };
     if gcd_red_dark > 1 {
         for value in red_dark.values_mut() {
             *value /= gcd_red_dark;
         }
     }
-    
-    let gcd_black_dark = if black_dark_count_on_board == 1 { calculate_gcd(&black_dark) } else { 1 };
+
+    let gcd_black_dark = if black_dark_count_on_board == 1 {
+        calculate_gcd(&black_dark)
+    } else {
+        1
+    };
     if gcd_black_dark > 1 {
         for value in black_dark.values_mut() {
             *value /= gcd_black_dark;
         }
     }
-    
+
     // Format pools
     let red_order = "RNBACP";
     let black_order = "rnbacp";
-    
+
     let mut final_dark_pool = format_pool(&red_dark, red_order);
     final_dark_pool.push_str(&format_pool(&black_dark, black_order));
-    
+
     if final_dark_pool.is_empty() {
         final_dark_pool = "-".to_string();
     }
-    
+
     format!("{} {} {} -", board, side_to_move, final_dark_pool)
 }
 
@@ -334,19 +362,19 @@ fn flip_board(fen_string: &str) -> String {
     if parts.len() < 4 {
         return fen_string.to_string();
     }
-    
+
     let board = parts[0];
     let side = parts[1];
     let dark_pool = parts[2];
-    
+
     let rows: Vec<&str> = board.split('/').collect();
     let mut flipped_rows = Vec::new();
-    
+
     for row in rows {
         let flipped_row: String = row.chars().rev().collect();
         flipped_rows.push(flipped_row);
     }
-    
+
     let flipped_board = flipped_rows.join("/");
     format!("{} {} {} -", flipped_board, side, dark_pool)
 }
@@ -356,57 +384,59 @@ fn swap_colors_fen(normalized_fen: &str) -> String {
     if parts.len() < 4 {
         return normalized_fen.to_string();
     }
-    
+
     let board = parts[0];
     let side_to_move = parts[1];
     let dark_pool_str = parts[2];
-    
+
     // 1. Swap piece cases and flip board vertically
-    let swapped_case_board: String = board.chars().map(|c| {
-        if c.is_lowercase() && c.is_alphabetic() {
-            c.to_uppercase().next().unwrap_or(c)
-        } else if c.is_uppercase() && c.is_alphabetic() {
-            c.to_lowercase().next().unwrap_or(c)
-        } else {
-            c
-        }
-    }).collect();
-    
+    let swapped_case_board: String = board
+        .chars()
+        .map(|c| {
+            if c.is_lowercase() && c.is_alphabetic() {
+                c.to_uppercase().next().unwrap_or(c)
+            } else if c.is_uppercase() && c.is_alphabetic() {
+                c.to_lowercase().next().unwrap_or(c)
+            } else {
+                c
+            }
+        })
+        .collect();
+
     // Vertically flip the board (reverse row order)
     let rows: Vec<&str> = swapped_case_board.split('/').collect();
     let reversed_rows: Vec<&str> = rows.into_iter().rev().collect();
     let swapped_board = reversed_rows.join("/");
-    
+
     // 2. Swap side to move
     let swapped_side = if side_to_move == "w" { "b" } else { "w" };
-    
+
     // 3. Swap dark pool only
     let (red_dark_orig, black_dark_orig) = parse_pool_string(dark_pool_str);
-    
+
     let mut new_red_dark = HashMap::new();
     for (&piece, &count) in &black_dark_orig {
         new_red_dark.insert(piece.to_uppercase().next().unwrap_or(piece), count);
     }
-    
+
     let mut new_black_dark = HashMap::new();
     for (&piece, &count) in &red_dark_orig {
         new_black_dark.insert(piece.to_lowercase().next().unwrap_or(piece), count);
     }
-    
+
     let red_order = "RNBACP";
     let black_order = "rnbacp";
-    
+
     let mut swapped_dark_pool = format_pool(&new_red_dark, red_order);
     swapped_dark_pool.push_str(&format_pool(&new_black_dark, black_order));
-    
+
     if swapped_dark_pool.is_empty() {
         swapped_dark_pool = "-".to_string();
     }
-    
+
     // Always use "-" for captured pool to ignore it in key calculation
     format!("{} {} {} -", swapped_board, swapped_side, swapped_dark_pool)
 }
-
 
 // Compute key value, also return the transformation index used
 // Transformation index definitions:
@@ -493,27 +523,27 @@ fn uci_to_int(uci: &str) -> u16 {
     if uci.len() != 4 {
         return 0;
     }
-    
+
     let chars: Vec<char> = uci.chars().collect();
     let from_x = (chars[0] as u8).wrapping_sub(b'a') as u16;
     let from_y = chars[1].to_digit(10).unwrap_or(0) as u16;
     let to_x = (chars[2] as u8).wrapping_sub(b'a') as u16;
     let to_y = chars[3].to_digit(10).unwrap_or(0) as u16;
-    
+
     let from_coord = from_y * 9 + from_x;
     let to_coord = to_y * 9 + to_x;
-    
+
     (from_coord << 8) | to_coord
 }
 
 fn int_to_uci(move_int: u16) -> String {
     let from_coord = (move_int >> 8) & 0xff;
     let to_coord = move_int & 0xff;
-    
+
     let from_x = char::from(b'a' + (from_coord % 9) as u8);
     let from_y = char::from_digit((from_coord / 9) as u32, 10).unwrap_or('0');
     let to_x = char::from(b'a' + (to_coord % 9) as u8);
     let to_y = char::from_digit((to_coord / 9) as u32, 10).unwrap_or('0');
-    
+
     format!("{}{}{}{}", from_x, from_y, to_x, to_y)
 }
