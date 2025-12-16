@@ -163,7 +163,7 @@
 
         <ClearHistoryConfirmDialog :visible="showClearHistoryDialog" :onConfirm="onConfirmClearHistory" :onCancel="onCancelClearHistory" />
 
-        <div v-if="pendingFlip" class="flip-prompt-area">
+        <div v-if="pendingFlip" class="flip-prompt-area" @click.stop>
           <div class="flip-prompt-container">
             <div class="flip-prompt-header">
               <span class="flip-prompt-title">
@@ -181,7 +181,7 @@
                 v-for="item in flipSelectionPieces" 
                 :key="item.name" 
                 class="flip-choice-item"
-                @click="handleFlipSelect(item.name)"
+                @click.stop="handleFlipSelect(item.name)"
               >
                 <div class="img-wrapper">
                   <img :src="getPieceImageUrl(item.name)" class="flip-img" />
@@ -553,13 +553,15 @@
     }
   }
 
-  /* CỘT CHÍNH (CHỨA BÀN CỜ) */
+  /* CỘT CHÍNH (CHỨA BÀN CỜ) - Cập nhật Z-index để nổi lên trên side-panel */
   .main-column {
     display: flex;
     flex-direction: column;
     flex: 0 0 auto;
     width: 80%; /* Bàn cờ chiếm phần lớn */
     gap: 12px;
+    position: relative; /* Quan trọng */
+    z-index: 100; /* Nổi lên trên các thành phần khác */
     
     @media (max-width: 768px) {
       width: 100%;
@@ -709,7 +711,7 @@
     max-width: 100%;
   }
 
-  /* --- FLIP PROMPT AREA (STYLE MỚI ĐÃ ĐƯỢC CHỈNH SỬA: TOP 100% ĐỂ XUỐNG DƯỚI) --- */
+  /* --- FLIP PROMPT AREA --- */
   .flip-prompt-area {
     /* Đặt absolute: top 100% để nằm ngay sát đáy container và đẩy ra ngoài */
     position: absolute;
