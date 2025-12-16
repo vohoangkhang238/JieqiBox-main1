@@ -7,7 +7,6 @@
   import AnalysisSidebar from './components/AnalysisSidebar.vue'
   import FenInputDialog from './components/FenInputDialog.vue'
   import GameEndDialog from './components/GameEndDialog.vue'
-  import FlipPromptDialog from './components/FlipPromptDialog.vue'
 
   import { useChessGame } from './composables/useChessGame'
   import { useUciEngine } from './composables/useUciEngine'
@@ -131,7 +130,6 @@
         :game-result="game.gameEndResult.value"
         :on-close="() => (game.isGameEndDialogVisible.value = false)"
       />
-      <FlipPromptDialog />
     </div>
   </div>
 </template>
@@ -140,40 +138,58 @@
   .app-container {
     display: flex;
     flex-direction: column;
-    height: 100vh; /* Cố định chiều cao bằng màn hình */
-    overflow: hidden; /* Ngăn cuộn trang chính */
+    min-height: 100vh;
     background-color: rgb(var(--v-theme-background));
   }
 
   .main-layout {
     display: flex;
     flex-direction: row;
-    flex: 1; /* Chiếm toàn bộ không gian còn lại dưới Toolbar */
+    align-items: flex-start;
+    justify-content: center;
+    flex: 1;
     width: 100%;
-    padding: 10px;
-    gap: 10px;
+    padding: 20px;
+    gap: 20px;
     box-sizing: border-box;
-    overflow: hidden; /* Quan trọng để nội dung con không phá vỡ bố cục */
-
+    background-color: rgb(var(--v-theme-background));
+    /* ĐÃ XÓA overflow: hidden ĐỂ MENU VÒNG TRÒN KHÔNG BỊ CẮT */
+    /* max-height: calc(100vh - 80px);  <-- Cũng bỏ dòng này để tránh lỗi cuộn */
+    
     // Mobile responsive layout
     @media (max-width: 768px) {
       flex-direction: column;
-      overflow-y: auto; /* Trên mobile cho phép cuộn dọc */
-      padding: 5px;
+      align-items: center;
+      padding: 10px;
+      gap: 15px;
     }
   }
 
   .chessboard-area {
-    flex: 1; /* Tự động chiếm không gian còn thừa */
     display: flex;
-    justify-content: center;
-    align-items: flex-start; /* Căn lên trên để bàn cờ không bị lơ lửng giữa màn hình */
-    overflow: auto; /* Cho phép cuộn nếu bàn cờ quá lớn so với màn hình nhỏ */
-    min-width: 0; /* Fix lỗi flexbox không co lại được */
-    
-    /* XÓA BỎ class .with-chart cũ dùng transform: scale */
+    flex-direction: column;
+    align-items: center;
+    padding-top: 20px;
+    /* max-height: 100%; <-- Bỏ dòng này để không giới hạn chiều cao */
+
+    // On desktop, when position chart is shown, make chessboard smaller
     &.with-chart {
-      /* Không cần style gì đặc biệt, flexbox sẽ tự chia lại không gian */
+      .chessboard-wrapper {
+        transform: scale(0.75);
+        transform-origin: top center;
+      }
+    }
+
+    // Mobile responsive adjustments
+    @media (max-width: 768px) {
+      padding-top: 0;
+      width: 100%;
+      
+      &.with-chart {
+        .chessboard-wrapper {
+          transform: none;
+        }
+      }
     }
   }
 </style>
