@@ -1,4 +1,5 @@
 <template>
+  <!-- Custom draggable dialog overlay -->
   <div
     v-if="isDialogVisible"
     class="custom-dialog-overlay"
@@ -246,7 +247,7 @@
 
   function getPieceImageUrl(pieceName: string): string {
     const imageName = pieceName || 'dark_piece'
-    return new URL(`../assets/${imageName}.png`, import.meta.url).href
+    return new URL(`../assets/${imageName}.svg`, import.meta.url).href
   }
 </script>
 
@@ -267,14 +268,13 @@
 
   /* Custom draggable dialog */
   .custom-draggable-dialog {
-    background-color: rgb(var(--v-theme-surface)); /* Removed opacity to be solid */
+    background-color: rgba(var(--v-theme-surface), 0.75);
     border-radius: 8px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
     max-width: 500px;
     width: 100%;
     user-select: none;
     overflow: hidden;
-    border: 1px solid rgba(var(--v-border-color), 0.5);
   }
 
   /* Dialog title bar */
@@ -283,7 +283,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background-color: rgba(var(--v-theme-surface-variant), 0.5);
+    background-color: rgba(var(--v-theme-surface), 0.75);
     border-bottom: 1px solid
       rgba(var(--v-border-color), var(--v-border-opacity));
     padding: 16px 20px;
@@ -301,7 +301,7 @@
   /* Dialog content */
   .dialog-content {
     padding: 20px;
-    background-color: rgb(var(--v-theme-surface));
+    background-color: rgba(var(--v-theme-surface), 0.75);
   }
 
   /* Pieces grid */
@@ -333,7 +333,6 @@
   .piece-image {
     width: 40px;
     height: 40px;
-    object-fit: contain;
     display: block;
     margin: 0 auto 5px;
   }
@@ -351,7 +350,7 @@
     justify-content: flex-end;
     padding: 16px 20px;
     border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-    background-color: rgb(var(--v-theme-surface));
+    background-color: rgba(var(--v-theme-surface), 0.75);
   }
 
   .spacer {
@@ -359,7 +358,7 @@
   }
 
   .cancel-btn {
-    background-color: rgba(var(--v-theme-surface-variant), 0.5);
+    background-color: rgba(var(--v-theme-surface), 0.75);
     color: rgb(var(--v-theme-on-surface));
     border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
     padding: 8px 16px;
