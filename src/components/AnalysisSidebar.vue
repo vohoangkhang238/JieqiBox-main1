@@ -70,27 +70,27 @@
       </template>
       
       <div 
-        class="pikafish-log-container" 
-        ref="logContainer"
-        :style="{ height: logHeight + 'px' }"
-      >
-        <div v-if="!isEngineActive && parsedLogList.length === 0" class="log-placeholder">
-          Động cơ chưa được kích hoạt
-        </div>
-        
-        <div v-for="(line, index) in parsedLogList" :key="index" class="log-entry">
-          <div class="log-header">
-            <span class="p-item">Độ sâu:{{ line.depth }}</span>
-            <span class="p-item">Điểm:{{ line.scoreText }}</span>
-            <span class="p-item">Thời gian:{{ line.timeText }}</span>
-            <span class="p-item">NPS:{{ line.npsText }}</span>
-            <span class="p-item" v-if="line.wdlText">{{ line.wdlText }}</span>
-          </div>
-          <div class="log-pv">
-            {{ line.chinesePv }}
-          </div>
-        </div>
-      </div>
+  class="pikafish-log-container" 
+  ref="logContainer"
+  :style="{ height: logHeight + 'px' }"
+>
+  <div v-if="!isEngineActive && parsedLogList.length === 0" class="log-placeholder">
+    CHƯA CÓ ENGINE
+  </div>
+  
+  <div v-for="(line, index) in parsedLogList" :key="index" class="log-entry">
+    <div class="log-header">
+      <span class="p-item">Độ sâu:{{ line.depth }}</span>
+      <span class="p-item">Điểm:{{ line.scoreText }}</span>
+      <span class="p-item">Thời gian:{{ line.timeText }}</span>
+      <span class="p-item">NPS:{{ line.npsText }}</span>
+      <span class="p-item" v-if="line.wdlText">{{ line.wdlText }}</span>
+    </div>
+    <div class="log-pv">
+      {{ line.chinesePv }}
+    </div>
+  </div>
+</div>
       
       <div class="resize-handle-bottom" @mousedown.prevent="startResizeHeight">
         <div class="handle-grip"></div>
