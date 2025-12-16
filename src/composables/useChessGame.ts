@@ -754,7 +754,7 @@ export function useChessGame() {
       : unrevealedPieceCounts.value
 
     let hiddenStr = ''
-    const hiddenOrder = 'RNBAKCP'
+    const hiddenOrder = 'RNBAKCP rnbakcp'
     hiddenOrder.split('').forEach(char => {
       const redCount = currentCounts[char] || 0
       const blackCount = currentCounts[char.toLowerCase()] || 0
@@ -2056,7 +2056,8 @@ export function useChessGame() {
     piece: Piece,
     targetRow: number,
     targetCol: number,
-    skipFlipLogic: boolean = false
+    skipFlipLogic: boolean = false,
+    preResolvedCapturedChar: string | null = null
   ) => {
     console.log(
       `[DEBUG] movePiece: Entered for piece ${piece.id} to ${targetRow},${targetCol}.`
@@ -2134,7 +2135,40 @@ export function useChessGame() {
       to: { row: targetRow, col: targetCol },
     }
 
-    let capturedHiddenChar: string | null = null
+    // --- XỬ LÝ CHẾ ĐỘ LẬT TỰ DO KHI ĂN QUÂN ÚP ---
+    // Nếu ăn phải quân úp trong chế độ Free, ta cần hiện bảng chọn để xác định quân bị ăn là gì
+    if (
+      targetPiece &&
+      !targetPiece.isKnown &&
+      flipMode.value === 'free' &&
+      !isMatchMode &&
+      !preResolvedCapturedChar
+    ) {
+      const targetSide = getPieceSide(targetPiece)
+      console.log(
+        `[DEBUG] movePiece: Capture Dark Piece in Free Mode. Asking identity.`
+      )
+
+      pendingFlip.value = {
+        pieceToMove: targetPiece, // Mượn biến pieceToMove để hiển thị quân bị ăn
+        uciMove: uciMove,
+        side: targetSide,
+        callback: chosenCapturedName => {
+          const char = getCharFromPieceName(chosenCapturedName)
+          if ((unrevealedPieceCounts.value[char] || 0) <= 0) {
+            alert(`Lỗi: Hết quân ${chosenCapturedName} trong kho!`)
+            return
+          }
+          // Gọi đệ quy lại movePiece với thông tin quân bị ăn đã được xác định
+          movePiece(piece, targetRow, targetCol, skipFlipLogic, char)
+        },
+      }
+      return // Dừng lại ở đây để chờ người dùng chọn
+    }
+    // ---------------------------------------------
+
+    let capturedHiddenChar: string | null = preResolvedCapturedChar || null
+
     if (targetPiece) {
       // In free flip mode, capturing opponent's hidden piece should not affect their unrevealed pool
       // Only in random flip mode and not in match mode, we randomly remove a piece from opponent's pool
@@ -2158,6 +2192,15 @@ export function useChessGame() {
           capturedHiddenChar = charToRemove
         }
       }
+
+      // Logic cập nhật pool cho chế độ Free sau khi đã xác định được quân (preResolvedCapturedChar)
+      if (preResolvedCapturedChar) {
+        unrevealedPieceCounts.value[preResolvedCapturedChar]--
+        capturedUnrevealedPieceCounts.value[preResolvedCapturedChar] =
+          (capturedUnrevealedPieceCounts.value[preResolvedCapturedChar] || 0) +
+          1
+      }
+
       pieces.value = pieces.value.filter(p => p.id !== targetPiece.id)
     }
 

@@ -162,41 +162,41 @@
         </svg>
 
         <ClearHistoryConfirmDialog :visible="showClearHistoryDialog" :onConfirm="onConfirmClearHistory" :onCancel="onCancelClearHistory" />
-      </div>
 
-      <div v-if="pendingFlip" class="flip-prompt-area">
-        <div class="flip-prompt-container">
-          <div class="flip-prompt-header">
-            <span class="flip-prompt-title">
-              <v-icon icon="mdi-help-circle-outline" size="small" class="mr-1"></v-icon>
-              Chọn quân {{ pendingFlip.side === 'red' ? 'Đỏ' : 'Đen' }}
-            </span>
-            <button class="random-btn" @click="handleFlipRandom">
-              <v-icon icon="mdi-shuffle-variant" size="small" class="mr-1"></v-icon>
-              Ngẫu nhiên
-            </button>
-          </div>
-          
-          <div class="flip-choices fluid-layout">
-            <div 
-              v-for="item in flipSelectionPieces" 
-              :key="item.name" 
-              class="flip-choice-item"
-              @click="handleFlipSelect(item.name)"
-            >
-              <div class="img-wrapper">
-                <img :src="getPieceImageUrl(item.name)" class="flip-img" />
-              </div>
-              <div class="flip-count-badge">{{ item.count }}</div>
+        <div v-if="pendingFlip" class="flip-prompt-area">
+          <div class="flip-prompt-container">
+            <div class="flip-prompt-header">
+              <span class="flip-prompt-title">
+                <v-icon icon="mdi-help-circle-outline" size="small" class="mr-1"></v-icon>
+                Chọn quân {{ pendingFlip.side === 'red' ? 'Đỏ' : 'Đen' }}
+              </span>
+              <button class="random-btn" @click="handleFlipRandom">
+                <v-icon icon="mdi-shuffle-variant" size="small" class="mr-1"></v-icon>
+                Ngẫu nhiên
+              </button>
             </div>
             
-            <div v-if="flipSelectionPieces.length === 0" class="flip-error">
-              <v-icon icon="mdi-alert" color="error" class="mr-1"></v-icon>
-              Hết quân loại này!
+            <div class="flip-choices fluid-layout">
+              <div 
+                v-for="item in flipSelectionPieces" 
+                :key="item.name" 
+                class="flip-choice-item"
+                @click="handleFlipSelect(item.name)"
+              >
+                <div class="img-wrapper">
+                  <img :src="getPieceImageUrl(item.name)" class="flip-img" />
+                </div>
+                <div class="flip-count-badge">{{ item.count }}</div>
+              </div>
+              
+              <div v-if="flipSelectionPieces.length === 0" class="flip-error">
+                <v-icon icon="mdi-alert" color="error" class="mr-1"></v-icon>
+                Hết quân loại này!
+              </div>
             </div>
           </div>
         </div>
-      </div>
+        </div>
     </div>
 
     <div class="side-panel">
@@ -553,10 +553,10 @@
     }
   }
 
-  /* CỘT CHÍNH (CHỨA BÀN CỜ + FLIP PROMPT) */
+  /* CỘT CHÍNH (CHỨA BÀN CỜ) */
   .main-column {
     display: flex;
-    flex-direction: column; /* Bàn cờ trên, Flip Prompt dưới */
+    flex-direction: column;
     flex: 0 0 auto;
     width: 80%; /* Bàn cờ chiếm phần lớn */
     gap: 12px;
@@ -709,22 +709,32 @@
     max-width: 100%;
   }
 
-  /* --- FLIP PROMPT AREA (STYLE MỚI ĐẸP HƠN, QUÂN TO HƠN) --- */
+  /* --- FLIP PROMPT AREA (STYLE MỚI ĐÃ ĐƯỢC CHỈNH SỬA: TOP 100% ĐỂ XUỐNG DƯỚI) --- */
   .flip-prompt-area {
+    /* Đặt absolute: top 100% để nằm ngay sát đáy container và đẩy ra ngoài */
+    position: absolute;
+    top: 100%; 
+    left: 0;
     width: 100%;
+    z-index: 2000; /* Cao hơn các quân cờ */
+
+    /* Thêm khoảng cách nhỏ */
+    margin-top: 10px; 
+
     /* Hiệu ứng kính mờ và gradient nhẹ */
-    background: rgba(30, 30, 30, 0.85); 
+    background: rgba(30, 30, 30, 0.95); 
     backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 12px;
+
     padding: 12px;
-    min-height: 100px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-    animation: fadeIn 0.2s ease-out;
+    min-height: auto;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    animation: slideUp 0.25s cubic-bezier(0.19, 1, 0.22, 1);
   }
 
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-5px); }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
   }
 
