@@ -349,87 +349,98 @@
   .chessboard-wrapper {
     display: flex;
     flex-direction: row;
-    align-items: stretch; /* Side-panel cao bằng bàn cờ */
+    /* Căn giữa và giới hạn chiều cao tối đa là 95% màn hình */
+    align-items: center; 
     justify-content: center;
-    gap: 15px; /* Tăng khoảng cách giữa bàn cờ và kho quân một chút */
     width: 100%;
-    max-width: 98vmin; /* Nới rộng tối đa một chút để chứa kho quân to hơn */
+    height: 95vh; /* Bắt buộc chiều cao wrapper theo màn hình */
+    max-height: 95vh;
+    gap: 1vh; /* Khoảng cách cũng tính theo chiều cao màn hình */
     margin: 0 auto;
-    padding: 20px;
+    padding: 10px;
+    box-sizing: border-box;
     
     @media (max-width: 768px) {
       flex-direction: column;
-      align-items: center;
-      gap: 12px;
-      padding: 10px;
+      height: auto;
+      max-height: none;
     }
   }
 
   .main-column {
     display: flex;
     flex-direction: column;
-    flex: 1; /* Tự động co giãn */
-    width: 100%; 
+    height: 100%; /* Ăn theo wrapper */
+    justify-content: center;
+    /* Quan trọng: để bàn cờ quyết định width dựa trên aspect-ratio */
+    width: auto; 
+    aspect-ratio: 9/10;
   }
 
   .chessboard-container {
     position: relative;
     width: 100%;
+    height: 100%; /* Full chiều cao của main-column */
     aspect-ratio: 9/10;
     margin: auto;
     user-select: none;
-    overflow: visible !important;
-    z-index: 1;
     box-shadow: 0 5px 15px rgba(0,0,0,0.3);
   }
 
-  /* --- SIDE PANEL / KHO QUÂN ÚP (Đã chỉnh TO HƠN) --- */
+  /* --- SIDE PANEL / KHO QUÂN ÚP (CO GIÃN THEO CHIỀU CAO) --- */
   .side-panel {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     
-    /* --- THAY ĐỔI CHÍNH Ở ĐÂY: Tăng chiều rộng --- */
-    width: 150px;  /* Tăng từ 100px lên 150px */
-    min-width: 130px;
+    /* Chiều cao bằng đúng bàn cờ */
+    height: 100%; 
+    max-height: 100%;
     
-    height: auto; 
+    /* Width tương đối */
+    width: 14vh; 
+    min-width: 80px;
+    
     background: rgba(0,0,0,0.25);
-    padding: 12px; /* Tăng padding cho thoáng */
+    /* Padding tính theo vh để co giãn */
+    padding: 1vh; 
     border-radius: 12px;
     backdrop-filter: blur(5px);
     
+    /* Nếu màn hình quá bé, cho phép cuộn để không vỡ layout */
+    overflow-y: auto; 
+
     @media (max-width: 768px) {
       width: 100%;
-      flex-direction: row;
       height: auto;
+      flex-direction: row;
       overflow-x: auto;
-      padding: 8px;
+      padding: 5px;
     }
   }
 
   .pool-section {
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    gap: 4px; /* Tăng khoảng cách giữa các dòng */
-    flex: 1;
+    flex: 1; 
+    justify-content: space-evenly; /* Chia đều khoảng cách */
+    gap: 0.5vh; /* Gap co giãn */
     
     @media (max-width: 768px) {
       flex-direction: row;
       flex-wrap: wrap;
-      gap: 2px;
+      justify-content: center;
     }
   }
   
   .top-pool {
     border-bottom: 1px solid rgba(255,255,255,0.15);
-    padding-bottom: 8px;
-    margin-bottom: 8px;
+    padding-bottom: 0.5vh;
+    margin-bottom: 0.5vh;
     @media (max-width: 768px) {
       border-bottom: none;
-      border-right: 1px solid rgba(255,255,255,0.1);
       padding-bottom: 0; margin-bottom: 0;
+      border-right: 1px solid rgba(255,255,255,0.15);
       padding-right: 5px; margin-right: 5px;
     }
   }
@@ -439,35 +450,41 @@
     align-items: center;
     justify-content: space-between;
     background: rgba(255,255,255,0.1);
-    padding: 4px 8px; /* Tăng padding trong mỗi dòng */
-    border-radius: 8px;
-    transition: background 0.2s;
-    height: 100%;
-    max-height: 55px; /* Cho phép dòng cao hơn */
-    gap: 8px; /* Khoảng cách giữa ảnh và cụm điều khiển */
+    
+    /* Chiều cao dòng tính theo vh */
+    height: 4.5vh; 
+    /* Giới hạn min/max pixel để không quá xấu */
+    min-height: 25px; 
+    
+    padding: 0 0.8vh;
+    border-radius: 6px;
     
     &:hover { background: rgba(255,255,255,0.2); }
     @media (max-width: 768px) {
-       width: 48%; padding: 2px 4px; gap: 2px;
+       width: 48%; height: 35px; margin-bottom: 2px;
     }
   }
 
-  /* --- THAY ĐỔI CHÍNH: Icon quân cờ to hơn --- */
+  /* ẢNH QUÂN CỜ: Dùng vh để scale */
   .pool-img {
-    width: 36px; height: 36px; /* Tăng từ 24px lên 36px */
+    height: 80%; /* 80% của dòng */
+    width: auto;
+    aspect-ratio: 1/1;
     object-fit: contain;
-    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3)); /* Thêm bóng nhẹ cho nổi */
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));
   }
 
   .pool-controls {
-    display: flex; align-items: center; gap: 6px; /* Tăng gap */
+    display: flex; align-items: center; gap: 0.5vh; height: 100%;
   }
   
-  /* --- THAY ĐỔI CHÍNH: Số lượng to rõ hơn --- */
+  /* SỐ LƯỢNG: Dùng vh để scale chữ */
   .pool-num {
     color: #fff; font-weight: bold; 
-    font-size: 1.25rem; /* Tăng font size từ 0.9 lên 1.25rem */
-    min-width: 22px; text-align: center;
+    /* Cực kỳ quan trọng: Font size ăn theo chiều cao màn hình */
+    font-size: 2.2vh; 
+    line-height: 1;
+    min-width: 2vh; text-align: center;
     text-shadow: 0 1px 2px rgba(0,0,0,0.5);
   }
   
@@ -475,28 +492,37 @@
   .black-num { color: #eee; }
 
   .pool-btns {
-    display: flex; flex-direction: column; gap: 2px;
+    display: flex; flex-direction: column; 
+    justify-content: center;
+    gap: 1px;
+    height: 100%; 
   }
 
-  /* Nút bấm cũng cho to lên một chút cho cân đối */
   .tiny-btn {
-    width: 18px; height: 16px; line-height: 14px; /* Tăng kích thước nút */
-    font-size: 11px; font-weight: bold;
+    height: 40%; 
+    aspect-ratio: 1.2/1;
+    display: flex; align-items: center; justify-content: center;
+    /* Font nút bấm cũng scale */
+    font-size: 1.2vh; 
+    font-weight: bold;
     background: rgba(0,0,0,0.5);
     color: #fff; border: 1px solid rgba(255,255,255,0.2);
-    cursor: pointer; border-radius: 3px;
+    cursor: pointer; border-radius: 2px;
     &:hover:not(:disabled) { background: #007bff; border-color: #007bff; }
     &:disabled { opacity: 0.3; cursor: default; }
   }
 
   .pool-divider {
+    flex: 0 0 auto;
     display: flex; align-items: center; justify-content: center;
-    min-height: 15px;
+    min-height: 1vh;
   }
   .pool-error {
-    display: flex; align-items: center; gap: 4px;
-    font-size: 11px; color: #ff5252; text-align: center;
-    line-height: 1.1; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;
+    display: flex; align-items: center; gap: 0.5vh;
+    font-size: 1.5vh; 
+    color: #ff5252; text-align: center;
+    line-height: 1; background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
   }
 
   /* --- CÁC PHẦN KHÁC GIỮ NGUYÊN --- */
@@ -510,15 +536,12 @@
   .radial-img { width: 85%; height: 85%; object-fit: contain; pointer-events: none; }
   .radial-count { position: absolute; top: -5px; right: -5px; background: #f44336; color: white; font-size: 10px; font-weight: bold; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid #fff; pointer-events: none; }
   .radial-error-btn { position: absolute; transform: translate(-50%, -50%); background: #f44336; color: white; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 12px; cursor: pointer; white-space: nowrap; box-shadow: 0 4px 10px rgba(0,0,0,0.5); pointer-events: auto; z-index: 10001; }
-  
-  /* Selection Mark (Bo góc) */
   .selection-mark { position: absolute; width: 12%; aspect-ratio: 1; transform: translate(-50%, -50%); z-index: 30; pointer-events: none; }
   .corner { position: absolute; width: 25%; height: 25%; border: 3px solid #007bff; box-shadow: 0 0 4px rgba(0, 123, 255, 0.6); }
   .top-left { top: 0; left: 0; border-right: none; border-bottom: none; border-top-left-radius: 10px; }
   .top-right { top: 0; right: 0; border-left: none; border-bottom: none; border-top-right-radius: 10px; }
   .bottom-left { bottom: 0; left: 0; border-right: none; border-top: none; border-bottom-left-radius: 10px; }
   .bottom-right { bottom: 0; right: 0; border-left: none; border-top: none; border-bottom-right-radius: 10px; }
-  
   .highlight.from { position: absolute; transform: translate(-50%,-50%); width: 2.5%; aspect-ratio: 1; background: rgba(255,0,0,0.5); border-radius: 50%; pointer-events: none; }
   .highlight.to { position: absolute; transform: translate(-50%,-50%); width: 12%; aspect-ratio: 1; border: 2px solid rgba(0,255,255,0.7); pointer-events: none; border-radius: 8px; }
   .valid-move-dot { position: absolute; transform: translate(-50%,-50%); width: 2.5%; aspect-ratio: 1; background: #4caf50; border-radius: 50%; pointer-events: none; z-index: 15; box-shadow: 0 0 5px #4caf50; }
