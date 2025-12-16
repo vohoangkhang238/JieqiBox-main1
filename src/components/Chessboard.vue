@@ -329,18 +329,17 @@
   .chessboard-wrapper {
     display: flex;
     flex-direction: row;
-    /* QUAN TRỌNG: stretch giúp side-panel tự động cao bằng main-column (bàn cờ) */
-    align-items: stretch; 
+    align-items: stretch; /* Side-panel cao bằng bàn cờ */
     justify-content: center;
-    gap: 12px;
+    gap: 15px; /* Tăng khoảng cách giữa bàn cờ và kho quân một chút */
     width: 100%;
-    max-width: 95vmin; /* Giới hạn tổng thể để không quá to */
+    max-width: 98vmin; /* Nới rộng tối đa một chút để chứa kho quân to hơn */
     margin: 0 auto;
     padding: 20px;
     
     @media (max-width: 768px) {
       flex-direction: column;
-      align-items: center; /* Mobile thì căn giữa */
+      align-items: center;
       gap: 12px;
       padding: 10px;
     }
@@ -349,18 +348,14 @@
   .main-column {
     display: flex;
     flex-direction: column;
-    /* Chiếm phần lớn diện tích, flex-grow 1 để đẩy side-panel sang phải */
-    flex: 1; 
+    flex: 1; /* Tự động co giãn */
     width: 100%; 
-    @media (max-width: 768px) {
-      width: 100%;
-    }
   }
 
   .chessboard-container {
     position: relative;
     width: 100%;
-    aspect-ratio: 9/10; /* Tỷ lệ chuẩn bàn cờ */
+    aspect-ratio: 9/10;
     margin: auto;
     user-select: none;
     overflow: visible !important;
@@ -368,49 +363,49 @@
     box-shadow: 0 5px 15px rgba(0,0,0,0.3);
   }
 
-  /* --- SIDE PANEL / KHO QUÂN ÚP (Đã chỉnh Full Height) --- */
+  /* --- SIDE PANEL / KHO QUÂN ÚP (Đã chỉnh TO HƠN) --- */
   .side-panel {
     display: flex;
     flex-direction: column;
-    justify-content: space-between; /* Đẩy 2 phe về 2 cực trên/dưới */
+    justify-content: space-between;
     
-    /* Chiều rộng cố định hoặc linh hoạt tuỳ ý, ở đây set vừa đủ */
-    width: 100px; 
-    min-width: 90px;
+    /* --- THAY ĐỔI CHÍNH Ở ĐÂY: Tăng chiều rộng --- */
+    width: 150px;  /* Tăng từ 100px lên 150px */
+    min-width: 130px;
     
-    /* QUAN TRỌNG: Height auto để stretch theo cha, max-height 100% để không lòi ra */
     height: auto; 
-    
     background: rgba(0,0,0,0.25);
-    padding: 8px;
+    padding: 12px; /* Tăng padding cho thoáng */
     border-radius: 12px;
     backdrop-filter: blur(5px);
     
     @media (max-width: 768px) {
-      width: 100%; /* Mobile thì nằm ngang full width */
-      flex-direction: row; /* Xếp ngang trên mobile */
+      width: 100%;
+      flex-direction: row;
       height: auto;
       overflow-x: auto;
+      padding: 8px;
     }
   }
 
   .pool-section {
     display: flex;
     flex-direction: column;
-    justify-content: center; /* Căn giữa nội bộ từng phe */
-    gap: 2px;
-    flex: 1; /* Chia đều không gian: Đỏ 1 nửa, Đen 1 nửa */
+    justify-content: center;
+    gap: 4px; /* Tăng khoảng cách giữa các dòng */
+    flex: 1;
     
     @media (max-width: 768px) {
-      flex-direction: row; /* Mobile xếp ngang */
+      flex-direction: row;
       flex-wrap: wrap;
+      gap: 2px;
     }
   }
   
   .top-pool {
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-    padding-bottom: 5px;
-    margin-bottom: 5px;
+    border-bottom: 1px solid rgba(255,255,255,0.15);
+    padding-bottom: 8px;
+    margin-bottom: 8px;
     @media (max-width: 768px) {
       border-bottom: none;
       border-right: 1px solid rgba(255,255,255,0.1);
@@ -424,65 +419,70 @@
     align-items: center;
     justify-content: space-between;
     background: rgba(255,255,255,0.1);
-    padding: 2px 4px; /* Padding nhỏ để tiết kiệm diện tích dọc */
-    border-radius: 6px;
+    padding: 4px 8px; /* Tăng padding trong mỗi dòng */
+    border-radius: 8px;
     transition: background 0.2s;
-    height: 100%; /* Giúp fill khoảng trống nếu màn hình cao */
-    max-height: 40px; /* Giới hạn chiều cao mỗi dòng quân */
+    height: 100%;
+    max-height: 55px; /* Cho phép dòng cao hơn */
+    gap: 8px; /* Khoảng cách giữa ảnh và cụm điều khiển */
     
     &:hover { background: rgba(255,255,255,0.2); }
     @media (max-width: 768px) {
-       width: 48%; /* Mobile chia 2 cột nhỏ */
+       width: 48%; padding: 2px 4px; gap: 2px;
     }
   }
 
+  /* --- THAY ĐỔI CHÍNH: Icon quân cờ to hơn --- */
   .pool-img {
-    width: 24px; height: 24px;
+    width: 36px; height: 36px; /* Tăng từ 24px lên 36px */
     object-fit: contain;
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3)); /* Thêm bóng nhẹ cho nổi */
   }
 
   .pool-controls {
-    display: flex; align-items: center; gap: 3px;
+    display: flex; align-items: center; gap: 6px; /* Tăng gap */
   }
   
+  /* --- THAY ĐỔI CHÍNH: Số lượng to rõ hơn --- */
   .pool-num {
-    color: #fff; font-weight: bold; font-size: 0.9rem;
-    min-width: 12px; text-align: center;
+    color: #fff; font-weight: bold; 
+    font-size: 1.25rem; /* Tăng font size từ 0.9 lên 1.25rem */
+    min-width: 22px; text-align: center;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
   }
   
   .red-num { color: #ff6b6b; }
-  .black-num { color: #eee; text-shadow: 0 0 2px #000; }
+  .black-num { color: #eee; }
 
   .pool-btns {
-    display: flex; flex-direction: column; gap: 1px;
+    display: flex; flex-direction: column; gap: 2px;
   }
 
+  /* Nút bấm cũng cho to lên một chút cho cân đối */
   .tiny-btn {
-    width: 12px; height: 10px; line-height: 8px;
-    font-size: 8px; background: rgba(0,0,0,0.4);
-    color: #fff; border: none; cursor: pointer;
-    border-radius: 2px;
-    &:hover:not(:disabled) { background: #007bff; }
+    width: 18px; height: 16px; line-height: 14px; /* Tăng kích thước nút */
+    font-size: 11px; font-weight: bold;
+    background: rgba(0,0,0,0.5);
+    color: #fff; border: 1px solid rgba(255,255,255,0.2);
+    cursor: pointer; border-radius: 3px;
+    &:hover:not(:disabled) { background: #007bff; border-color: #007bff; }
     &:disabled { opacity: 0.3; cursor: default; }
   }
 
   .pool-divider {
-    /* Vùng giữa dùng để hiển thị lỗi nếu có, height auto */
     display: flex; align-items: center; justify-content: center;
-    min-height: 10px;
+    min-height: 15px;
   }
   .pool-error {
     display: flex; align-items: center; gap: 4px;
-    font-size: 10px; color: #ff5252; text-align: center;
-    line-height: 1.1;
+    font-size: 11px; color: #ff5252; text-align: center;
+    line-height: 1.1; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;
   }
 
-  /* --- CÁC PHẦN CÒN LẠI GIỮ NGUYÊN --- */
+  /* --- CÁC PHẦN KHÁC GIỮ NGUYÊN --- */
   .bg { width: 100%; height: 100%; display: block; }
   .pieces { position: absolute; inset: 0; z-index: 20; }
   .piece { position: absolute; aspect-ratio: 1; pointer-events: none; &.animated { transition: all 0.2s ease; } &.inCheck { transform: translate(-50%, -50%) scale(1.1); filter: drop-shadow(0 0 10px red); z-index: 100; } &.being-flipped { opacity: 0.3; filter: grayscale(1); } }
-  
-  /* Radial Menu */
   .flip-overlay-fixed { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.3); z-index: 9000; cursor: not-allowed; }
   .radial-menu-container { position: absolute; transform: translate(-50%, -50%); z-index: 9999; animation: popIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: auto; width: 0; height: 0; overflow: visible; }
   @keyframes popIn { from { transform: translate(-50%, -50%) scale(0); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
@@ -490,16 +490,12 @@
   .radial-img { width: 85%; height: 85%; object-fit: contain; pointer-events: none; }
   .radial-count { position: absolute; top: -5px; right: -5px; background: #f44336; color: white; font-size: 10px; font-weight: bold; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid #fff; pointer-events: none; }
   .radial-error-btn { position: absolute; transform: translate(-50%, -50%); background: #f44336; color: white; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 12px; cursor: pointer; white-space: nowrap; box-shadow: 0 4px 10px rgba(0,0,0,0.5); pointer-events: auto; z-index: 10001; }
-
-  /* Selection Mark (Bo góc) */
   .selection-mark { position: absolute; width: 12%; aspect-ratio: 1; transform: translate(-50%, -50%); z-index: 30; pointer-events: none; }
   .corner { position: absolute; width: 25%; height: 25%; border: 3px solid #007bff; box-shadow: 0 0 4px rgba(0, 123, 255, 0.6); }
   .top-left { top: 0; left: 0; border-right: none; border-bottom: none; border-top-left-radius: 10px; }
   .top-right { top: 0; right: 0; border-left: none; border-bottom: none; border-top-right-radius: 10px; }
   .bottom-left { bottom: 0; left: 0; border-right: none; border-top: none; border-bottom-left-radius: 10px; }
   .bottom-right { bottom: 0; right: 0; border-left: none; border-top: none; border-bottom-right-radius: 10px; }
-
-  /* Highlight & Indicators */
   .highlight.from { position: absolute; transform: translate(-50%,-50%); width: 2.5%; aspect-ratio: 1; background: rgba(255,0,0,0.5); border-radius: 50%; pointer-events: none; }
   .highlight.to { position: absolute; transform: translate(-50%,-50%); width: 12%; aspect-ratio: 1; border: 2px solid rgba(0,255,255,0.7); pointer-events: none; border-radius: 8px; }
   .valid-move-dot { position: absolute; transform: translate(-50%,-50%); width: 2.5%; aspect-ratio: 1; background: #4caf50; border-radius: 50%; pointer-events: none; z-index: 15; box-shadow: 0 0 5px #4caf50; }
@@ -507,10 +503,7 @@
   .eval-top { width: 100%; transition: height 0.5s ease-in-out; }
   .eval-bottom { width: 100%; transition: height 0.5s ease-in-out; }
   .eval-marker { position: absolute; left: 0; right: 0; height: 2px; background: #fff; box-shadow: 0 0 2px #000; }
-  
   .flip-hint-area { margin-top: 10px; background: rgba(0,0,0,0.7); color: #fff; padding: 8px; border-radius: 6px; text-align: center; font-size: 14px; backdrop-filter: blur(4px); }
-
-  /* SVG & Layers */
   .ar, .user-drawings, .board-labels { position: absolute; inset: 0; pointer-events: none; }
   .annotation-layer { position: absolute; inset: 0; pointer-events: none; z-index: 50; }
   .annotation-badge { position: absolute; top: -10px; right: -10px; width: 22px; height: 22px; background: #007bff; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
