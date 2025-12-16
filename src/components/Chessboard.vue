@@ -114,22 +114,15 @@
     </div>
 
     <div class="side-panel">
-      <div class="pool-box top-pool">
-        <div class="pool-header" :class="isRedOnTop ? 'red-header' : 'black-header'">
-          {{ isRedOnTop ? 'Quân Đỏ' : 'Quân Đen' }}
-        </div>
-        <div class="pool-grid">
-          <div v-for="item in (isRedOnTop ? redPool : blackPool)" :key="item.char" class="pool-item">
-            <div class="piece-wrapper">
-              <img :src="getPieceImageUrl(item.name)" class="pool-img" />
-              <span class="count-badge" v-if="item.count > 0">x{{ item.count }}</span>
-              <span class="empty-mark" v-else>0</span>
-              
-              <div class="hover-controls">
-                 <button class="ctrl-btn inc" @click.stop="adjustUnrevealedCount(item.char, 1)" :disabled="item.count >= item.max">+</button>
-                 <button class="ctrl-btn dec" @click.stop="adjustUnrevealedCount(item.char, -1)" :disabled="item.count <= 0">-</button>
-              </div>
-            </div>
+      <div class="pool-section top-pool">
+        <div v-for="item in (isRedOnTop ? redPool : blackPool)" :key="item.char" class="pool-row">
+          <img :src="getPieceImageUrl(item.name)" class="pool-img" />
+          <div class="pool-controls">
+             <span class="pool-num" :class="isRedOnTop ? 'red-num' : 'black-num'">{{ item.count }}</span>
+             <div class="pool-btns">
+                <button class="tiny-btn" @click="adjustUnrevealedCount(item.char, 1)" :disabled="item.count >= item.max">+</button>
+                <button class="tiny-btn" @click="adjustUnrevealedCount(item.char, -1)" :disabled="item.count <= 0">-</button>
+             </div>
           </div>
         </div>
       </div>
@@ -141,22 +134,15 @@
         </div>
       </div>
 
-      <div class="pool-box bottom-pool">
-        <div class="pool-header" :class="isRedOnTop ? 'black-header' : 'red-header'">
-          {{ isRedOnTop ? 'Quân Đen' : 'Quân Đỏ' }}
-        </div>
-        <div class="pool-grid">
-          <div v-for="item in (isRedOnTop ? blackPool : redPool)" :key="item.char" class="pool-item">
-            <div class="piece-wrapper">
-              <img :src="getPieceImageUrl(item.name)" class="pool-img" />
-              <span class="count-badge" v-if="item.count > 0">x{{ item.count }}</span>
-              <span class="empty-mark" v-else>0</span>
-
-              <div class="hover-controls">
-                 <button class="ctrl-btn inc" @click.stop="adjustUnrevealedCount(item.char, 1)" :disabled="item.count >= item.max">+</button>
-                 <button class="ctrl-btn dec" @click.stop="adjustUnrevealedCount(item.char, -1)" :disabled="item.count <= 0">-</button>
-              </div>
-            </div>
+      <div class="pool-section bottom-pool">
+        <div v-for="item in (isRedOnTop ? blackPool : redPool)" :key="item.char" class="pool-row">
+          <img :src="getPieceImageUrl(item.name)" class="pool-img" />
+          <div class="pool-controls">
+             <span class="pool-num" :class="isRedOnTop ? 'black-num' : 'red-num'">{{ item.count }}</span>
+             <div class="pool-btns">
+                <button class="tiny-btn" @click="adjustUnrevealedCount(item.char, 1)" :disabled="item.count >= item.max">+</button>
+                <button class="tiny-btn" @click="adjustUnrevealedCount(item.char, -1)" :disabled="item.count <= 0">-</button>
+             </div>
           </div>
         </div>
       </div>
