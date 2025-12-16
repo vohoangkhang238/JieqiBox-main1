@@ -26,5 +26,9 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+    // THÊM DÒNG DƯỚI ĐÂY:
+    "resources": [
+      "resources/engine/*"
+    ]
   }
 }

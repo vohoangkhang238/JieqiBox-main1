@@ -1,3 +1,6 @@
+// Thêm resolveResource và platform
+import { resolveResource } from '@tauri-apps/api/path'
+import { platform } from '@tauri-apps/plugin-os'
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
