@@ -16,20 +16,9 @@
         <label for="engine-switch" :title="isEngineActive ? $t('analysis.unloadEngine') : $t('analysis.loadEngine')"></label>
       </div>
 
-      <div class="engine-info-box engine-name">
-        <select v-model="selectedEngineId" @change="handleEngineChange" class="pika-select" :disabled="!isEngineLoaded && isEngineLoading">
-          <option 
-            v-if="isEngineActive && selectedEngineId" 
-            :value="selectedEngineId" 
-            class="custom-display-name"
-          >
-            Pikafish - JieQ
-          </option>
-          
-          <option v-for="eng in managedEngines" :key="eng.id" :value="eng.id">
-            {{ eng.name }}
-          </option>
-        </select>
+      <div class="engine-info-box engine-name static-name">
+        <v-icon icon="mdi-robot" size="16" color="#555" class="mr-1"></v-icon>
+        <span class="custom-display-name">Pikafish</span>
       </div>
 
       <div class="engine-info-box threads" title="Số luồng (Threads)">
@@ -57,10 +46,7 @@
         </select>
       </div>
 
-      <button class="pika-settings-btn" @click="showEngineManager = true" :title="$t('analysis.manageEngines')">
-        <v-icon icon="mdi-cog" size="18" color="#666"></v-icon>
-      </button>
-    </div>
+      </div>
 
     <DraggablePanel panel-id="engine-log" class="mt-2" :no-resize="true">
       <template #header>
@@ -148,15 +134,13 @@
       </div>
     </DraggablePanel>
 
-    <EngineManagerDialog v-model="showEngineManager" />
-  </div>
+    </div>
 </template>
 
 <script setup lang="ts">
 import { computed, inject, ref, watch, nextTick, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useConfigManager } from '@/composables/useConfigManager'
-import EngineManagerDialog from './EngineManagerDialog.vue'
 import DraggablePanel from './DraggablePanel.vue'
 import { uciToChineseMoves } from '@/utils/chineseNotation'
 
@@ -171,7 +155,7 @@ const jaiEngine = inject('jai-engine-state') as any
 const { 
   engineOutput, isEngineLoaded, isEngineLoading, isThinking, 
   loadEngine, unloadEngine, startAnalysis, stopAnalysis, 
-  uciOptions, setOption 
+  uciOptions, setOption, currentEngine 
 } = engineState
 
 const { 
@@ -179,9 +163,6 @@ const {
 } = gameState
 
 // --- State UI ---
-const showEngineManager = ref(false)
-const managedEngines = ref<any[]>([])
-const selectedEngineId = ref<string | null>(null)
 const moveListElement = ref<HTMLElement | null>(null)
 
 // --- KÍCH THƯỚC ĐỘNG ---
@@ -246,10 +227,9 @@ const formattedHistory = computed(() => {
   return moves
 })
 
-// --- TỰ ĐỘNG CUỘN BIÊN BẢN (AUTO SCROLL NOTATION) ---
+// --- TỰ ĐỘNG CUỘN BIÊN BẢN ---
 watch(currentMoveIndex, () => {
   nextTick(() => {
-    // Tìm phần tử đang active (current-move)
     const activeEl = document.querySelector('.col-move.current-move')
     if (activeEl) {
       activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
@@ -280,34 +260,32 @@ const actualHash = computed({
   }
 })
 
+// Hàm bật tắt Engine đã được đơn giản hóa vì chỉ có 1 engine
 const toggleEngineState = async (e: Event) => {
   const isChecked = (e.target as HTMLInputElement).checked
   if (isChecked) {
-    if (!selectedEngineId.value) {
-      if (managedEngines.value.length > 0) selectedEngineId.value = managedEngines.value[0].id
-      else return alert('Vui lòng thêm engine trước')
-    }
-    const engineToLoad = managedEngines.value.find((e: any) => e.id === selectedEngineId.value)
-    if (engineToLoad) {
-      if (!isEngineLoaded.value) await loadEngine(engineToLoad)
-      const currentFen = generateFen()
-      startAnalysis({ movetime: 0, analysisMode: 'infinite' }, [], currentFen, [])
+    // Logic Auto-load engine đã nằm trong useUciEngine.ts
+    // Ở đây ta chỉ cần gọi load nếu chưa load, nhưng thực tế app sẽ tự load khi mở.
+    // Nếu người dùng tắt rồi bật lại:
+    if (!isEngineLoaded.value) {
+       // Thử gọi lại autoLoadLastEngine hoặc autoLoadBuiltInEngine từ state nếu có
+       // Tuy nhiên, đơn giản nhất là thông báo người dùng hoặc trigger lại flow
+       // Vì useUciEngine đã handle việc này, ở đây ta giả định engine luôn sẵn sàng 
+       // hoặc sẽ tự load lại nếu cần.
+       
+       // Tạm thời nếu engine chưa load, ta không làm gì cả (vì auto-load chạy ở background)
+       // Hoặc reload window để kích hoạt lại auto-load
+       alert("Engine sẽ tự động tải lại...")
+       window.location.reload()
+    } else {
+        const currentFen = generateFen()
+        startAnalysis({ movetime: 0, analysisMode: 'infinite' }, [], currentFen, [])
     }
   } else {
     if (isThinking.value) stopAnalysis({ playBestMoveOnStop: false })
+    // Không unload hoàn toàn process để tránh phải load lại, chỉ stop phân tích
+    // Nhưng nếu muốn tắt hẳn:
     if (isEngineLoaded.value) await unloadEngine()
-  }
-}
-
-const handleEngineChange = async () => {
-  if (selectedEngineId.value) configManager.setLastSelectedEngineId(selectedEngineId.value)
-  if (isEngineActive.value) {
-    if (isThinking.value) stopAnalysis({ playBestMoveOnStop: false })
-    await unloadEngine()
-    nextTick(() => {
-        const event = { target: { checked: true } } as any
-        toggleEngineState(event)
-    })
   }
 }
 
@@ -367,10 +345,6 @@ const parsedLogList = computed(() => {
 
 onMounted(async () => {
   await configManager.loadConfig()
-  managedEngines.value = configManager.getEngines()
-  const lastSelectedId = configManager.getLastSelectedEngineId()
-  if (lastSelectedId) selectedEngineId.value = lastSelectedId
-  else if (managedEngines.value.length > 0) selectedEngineId.value = managedEngines.value[0].id
 })
 
 watch(parsedLogList, () => {
@@ -429,6 +403,13 @@ watch(parsedLogList, () => {
   background: white; border: 1px solid #aaa; padding: 2px 4px; font-size: 13px;
   height: 24px; display: flex; align-items: center; overflow: hidden;
 }
+/* Style cho tên Engine tĩnh */
+.engine-info-box.static-name {
+  background-color: #e0e0e0;
+  border: 1px solid #bbb;
+  cursor: default;
+}
+
 .engine-name { flex-grow: 1; min-width: 100px; }
 .threads { width: 50px; }
 .hash { width: 70px; }
@@ -436,9 +417,7 @@ watch(parsedLogList, () => {
   border: none; width: 100%; outline: none; font-family: inherit; font-size: 12px;
   background: transparent; padding: 0; margin: 0;
 }
-.custom-display-name { font-weight: bold; color: #000; background-color: #e0e0e0; }
-.pika-settings-btn { background: none; border: none; cursor: pointer; padding: 2px; min-width: 24px; }
-.pika-settings-btn:hover { background: #ddd; border-radius: 4px; }
+.custom-display-name { font-weight: bold; color: #333; font-size: 13px; }
 
 /* --- Log Display --- */
 .pikafish-log-container {
