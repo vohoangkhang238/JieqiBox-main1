@@ -1,7 +1,7 @@
 <template>
   <v-dialog 
     v-model="isVisible" 
-    max-width="600px" 
+    max-width="650px" 
     persistent
     class="engine-manager-dialog"
     transition="dialog-bottom-transition"
@@ -10,10 +10,12 @@
       
       <div class="dialog-header">
         <div class="header-left">
-          <v-icon icon="mdi-server-network" color="primary" class="mr-2"></v-icon>
+          <div class="header-icon-bg">
+            <v-icon icon="mdi-server-network" color="primary" size="20"></v-icon>
+          </div>
           <span class="header-title">{{ $t('engineManager.title') }}</span>
         </div>
-        <v-btn icon variant="text" density="comfortable" @click="closeDialog">
+        <v-btn icon variant="text" density="comfortable" color="grey-darken-1" @click="closeDialog">
           <v-icon>mdi-close</v-icon>
         </v-btn>
       </div>
@@ -21,7 +23,8 @@
       <div class="dialog-body">
         <div v-if="engines.length === 0" class="empty-state">
           <v-icon icon="mdi-robot-off" size="64" color="grey-lighten-2" class="mb-3"></v-icon>
-          <div class="text-grey-darken-1">{{ $t('engineManager.noEngines') || 'Chưa có Engine nào' }}</div>
+          <div class="text-grey-darken-1 font-weight-medium">{{ $t('engineManager.noEngines') || 'Chưa có Engine nào' }}</div>
+          <div class="text-caption text-grey">Thêm Engine mới để bắt đầu phân tích</div>
         </div>
 
         <div v-else class="engine-list">
@@ -31,32 +34,33 @@
             class="engine-item-card"
           >
             <div class="engine-icon-box">
-              <v-icon icon="mdi-cpu-64-bit" color="blue-grey-darken-2"></v-icon>
+              <v-icon icon="mdi-chess-knight" color="white" size="24"></v-icon>
             </div>
 
             <div class="engine-info">
               <div class="engine-name">{{ item.name }}</div>
               <div class="engine-path" :title="item.path">
+                <v-icon size="12" class="mr-1" color="grey">mdi-folder-outline</v-icon>
                 {{ truncatePath(item.path) }}
               </div>
               <div v-if="item.args" class="engine-args">
-                <v-icon size="10" class="mr-1">mdi-code-tags</v-icon> {{ item.args }}
+                <span class="args-label">Args:</span> {{ item.args }}
               </div>
             </div>
 
             <div class="engine-actions">
               <v-tooltip location="top" text="Cấu hình UCI">
                 <template v-slot:activator="{ props }">
-                  <v-btn v-bind="props" icon variant="text" density="comfortable" color="blue-darken-2" @click="openUciOptionsEditor(item)">
-                    <v-icon>mdi-cog</v-icon>
+                  <v-btn v-bind="props" icon variant="text" density="comfortable" color="blue-darken-1" @click="openUciOptionsEditor(item)">
+                    <v-icon>mdi-tune</v-icon>
                   </v-btn>
                 </template>
               </v-tooltip>
 
-              <v-tooltip location="top" text="Sửa thông tin">
+              <v-tooltip location="top" text="Sửa">
                 <template v-slot:activator="{ props }">
-                  <v-btn v-bind="props" icon variant="text" density="comfortable" color="orange-darken-2" @click="editEngine(item)">
-                    <v-icon>mdi-pencil</v-icon>
+                  <v-btn v-bind="props" icon variant="text" density="comfortable" color="grey-darken-2" @click="editEngine(item)">
+                    <v-icon>mdi-pencil-outline</v-icon>
                   </v-btn>
                 </template>
               </v-tooltip>
@@ -80,7 +84,7 @@
           prepend-icon="mdi-android"
           variant="flat"
           @click="addEngineAndroid"
-          class="text-none font-weight-bold"
+          class="add-btn"
         >
           {{ $t('engineManager.addEngineAndroid') }}
         </v-btn>
@@ -91,154 +95,164 @@
           prepend-icon="mdi-plus"
           variant="flat"
           @click="addEngineDesktop"
-          class="text-none font-weight-bold"
+          class="add-btn"
         >
           {{ $t('engineManager.addEngine') }}
-        </v-btn>
-
-        <v-spacer></v-spacer>
-        
-        <v-btn variant="outlined" color="grey-darken-1" @click="closeDialog" class="text-none">
-          {{ $t('common.close') }}
         </v-btn>
       </div>
 
     </div>
 
-    <v-dialog v-model="editDialog" max-width="500px" persistent>
-      <v-card class="rounded-lg">
-        <v-card-title class="bg-grey-lighten-4 pa-4 d-flex align-center">
+    <v-dialog v-model="editDialog" max-width="450px" persistent>
+      <v-card class="rounded-lg elevation-4">
+        <v-card-title class="pa-4 d-flex align-center border-bottom">
           <span class="text-subtitle-1 font-weight-bold">{{ formTitle }}</span>
         </v-card-title>
-        <v-card-text class="pa-4">
+        <v-card-text class="pa-4 pt-5">
           <v-text-field
             v-model="editedEngine.name"
             :label="$t('engineManager.engineName')"
             :rules="[rules.required, rules.unique]"
-            variant="outlined" density="compact" class="mb-2"
-            prepend-inner-icon="mdi-label"
+            variant="outlined" density="compact" color="primary" class="mb-3"
+            prepend-inner-icon="mdi-label-outline"
           ></v-text-field>
           <v-text-field
             v-model="editedEngine.path"
             :label="$t('engineManager.enginePath')"
-            disabled variant="outlined" density="compact" class="mb-2"
-            prepend-inner-icon="mdi-folder"
+            disabled variant="filled" density="compact" class="mb-3"
+            prepend-inner-icon="mdi-folder-outline"
           ></v-text-field>
           <v-text-field
             v-model="editedEngine.args"
             :label="$t('engineManager.arguments')"
-            variant="outlined" density="compact"
-            prepend-inner-icon="mdi-code-greater-than"
+            variant="outlined" density="compact" color="primary"
+            prepend-inner-icon="mdi-code-braces"
+            hint="Ví dụ: --threads 4" persistent-hint
           ></v-text-field>
         </v-card-text>
         <v-card-actions class="pa-4 pt-0">
           <v-spacer></v-spacer>
-          <v-btn variant="text" @click="closeEditDialog">{{ $t('common.cancel') }}</v-btn>
-          <v-btn color="primary" variant="flat" @click="saveEngine">{{ $t('common.save') }}</v-btn>
+          <v-btn variant="text" color="grey-darken-1" @click="closeEditDialog">{{ $t('common.cancel') }}</v-btn>
+          <v-btn color="primary" variant="flat" @click="saveEngine" class="px-6">{{ $t('common.save') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
-    <v-dialog v-model="uciDialogVisible" max-width="700px" scrollable>
-      <v-card class="rounded-lg d-flex flex-column" style="max-height: 80vh;">
-        <v-card-title class="bg-blue-grey-lighten-5 pa-3 d-flex justify-space-between align-center">
-          <span class="text-subtitle-2 font-weight-bold text-uppercase text-blue-grey-darken-3">
-            UCI: {{ selectedEngineForOptions?.name }}
-          </span>
-          <v-btn icon="mdi-close" variant="text" density="compact" @click="closeUciDialog"></v-btn>
-        </v-card-title>
+    <v-dialog v-model="uciDialogVisible" max-width="700px" scrollable transition="dialog-bottom-transition">
+      <div class="custom-dialog-card uci-dialog">
         
-        <v-card-text class="pa-0 flex-grow-1 overflow-y-auto bg-grey-lighten-5">
-          <div v-if="uciRows.length === 0" class="d-flex flex-column align-center justify-center py-10 text-grey">
-             <v-icon icon="mdi-tune-vertical" size="40" class="mb-2"></v-icon>
-             <span>{{ $t('uciEditor.noSaved') }}</span>
+        <div class="dialog-header bg-blue-grey-lighten-5">
+          <div class="header-left">
+            <v-icon icon="mdi-tune-vertical" color="blue-grey-darken-1" class="mr-2"></v-icon>
+            <div class="d-flex flex-column">
+              <span class="header-title text-blue-grey-darken-3">Cấu hình UCI</span>
+              <span class="text-caption text-blue-grey">{{ selectedEngineForOptions?.name }}</span>
+            </div>
+          </div>
+          <v-btn icon variant="text" density="compact" @click="closeUciDialog">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </div>
+        
+        <div class="dialog-body bg-grey-lighten-5 pa-2">
+          
+          <div v-if="uciRows.length === 0" class="d-flex flex-column align-center justify-center py-12 text-grey">
+             <v-icon icon="mdi-cogs" size="48" class="mb-3 opacity-50"></v-icon>
+             <span class="text-body-2">{{ $t('uciEditor.noSaved') || 'Chưa có tùy chỉnh nào' }}</span>
+             <v-btn variant="text" color="primary" class="mt-2" @click="addUciRow">Thêm tham số đầu tiên</v-btn>
           </div>
 
-          <div class="pa-3">
+          <div class="uci-options-grid">
              <div
               v-for="(row, idx) in uciRows"
               :key="idx"
-              class="uci-row-card"
+              class="uci-option-card"
             >
-              <div class="d-flex align-center gap-2 mb-2">
-                <v-text-field
-                  v-model="row.key"
-                  :label="$t('uciEditor.optionName')"
-                  density="compact" variant="outlined" hide-details bg-color="white"
-                  style="max-width: 200px"
-                  class="font-weight-bold"
-                ></v-text-field>
-                <v-select
-                  v-model="row.type"
-                  :items="typeItems"
-                  item-title="label" item-value="value"
-                  :label="$t('uciEditor.type')"
-                  density="compact" variant="outlined" hide-details bg-color="white"
-                  style="max-width: 120px"
-                ></v-select>
-                <v-btn icon="mdi-delete" variant="text" color="grey" density="compact" @click="removeUciRow(idx)"></v-btn>
+              <div class="uci-card-header">
+                <div class="uci-key-input">
+                  <input type="text" v-model="row.key" :placeholder="$t('uciEditor.optionName')" class="clean-input font-weight-bold" />
+                </div>
+                
+                <div class="uci-meta-controls">
+                  <div class="uci-type-select">
+                    <select v-model="row.type">
+                      <option v-for="t in typeItems" :key="t.value" :value="t.value">{{ t.label }}</option>
+                    </select>
+                    <v-icon icon="mdi-chevron-down" size="12" class="select-arrow"></v-icon>
+                  </div>
+                  <button class="uci-delete-btn" @click="removeUciRow(idx)">
+                    <v-icon icon="mdi-close" size="14"></v-icon>
+                  </button>
+                </div>
               </div>
               
-              <div class="uci-value-area">
-                <v-text-field
-                  v-if="row.type === 'string' || row.type === 'number'"
-                  v-model="row.value"
-                  :type="row.type === 'number' ? 'number' : 'text'"
-                  :label="$t('uciEditor.optionValue')"
-                  density="compact" variant="outlined" hide-details bg-color="white"
-                />
-                <v-select
-                  v-else-if="row.type === 'combo'"
-                  v-model="row.value"
-                  :items="row.vars || []"
-                  :label="$t('uciEditor.optionValue')"
-                  density="compact" variant="outlined" hide-details bg-color="white"
-                />
-                <v-switch
-                  v-else-if="row.type === 'boolean'"
-                  v-model="row.value"
-                  color="primary" hide-details density="compact"
-                  :label="row.value ? 'ON' : 'OFF'"
-                  class="ma-0"
-                />
+              <div class="uci-card-body">
+                
+                <div v-if="row.type === 'string' || row.type === 'number'" class="uci-input-wrapper">
+                  <input 
+                    v-model="row.value" 
+                    :type="row.type === 'number' ? 'number' : 'text'" 
+                    :placeholder="$t('uciEditor.optionValue')"
+                    class="clean-input value-input"
+                  />
+                </div>
+
+                <div v-else-if="row.type === 'combo'" class="uci-select-wrapper">
+                  <select v-model="row.value" class="clean-select">
+                    <option v-for="opt in (row.vars || [])" :key="opt" :value="opt">{{ opt }}</option>
+                  </select>
+                  <v-icon icon="mdi-menu-down" class="select-icon"></v-icon>
+                </div>
+
+                <div v-else-if="row.type === 'boolean'" class="uci-switch-wrapper">
+                  <label class="modern-toggle">
+                    <input type="checkbox" v-model="row.value">
+                    <span class="slider round"></span>
+                  </label>
+                  <span class="switch-label">{{ row.value ? 'ON' : 'OFF' }}</span>
+                </div>
+
                 <v-btn
                   v-else-if="row.type === 'button'"
-                  variant="tonal" color="primary" block density="compact"
+                  variant="tonal" color="primary" block density="compact" height="32"
                   @click="toggleButtonFlag(row)"
+                  class="text-none"
                 >
+                  <v-icon icon="mdi-play-circle-outline" class="mr-1" size="16"></v-icon>
                   {{ row.value ? $t('uciEditor.willExecute') : $t('uciEditor.noExecute') }}
                 </v-btn>
+
               </div>
             </div>
           </div>
-        </v-card-text>
+        </div>
 
-        <v-divider></v-divider>
-        <v-card-actions class="bg-white pa-3">
-          <v-btn color="primary" variant="tonal" prepend-icon="mdi-plus" @click="addUciRow">
+        <div class="dialog-footer bg-white border-top">
+          <v-btn color="primary" variant="text" prepend-icon="mdi-plus" @click="addUciRow" class="text-none">
              {{ $t('uciEditor.addOption') }}
           </v-btn>
           <v-spacer></v-spacer>
-          <v-btn color="error" variant="text" @click="onClearUciOptions">{{ $t('uciOptions.clearSettings') }}</v-btn>
-          <v-btn color="primary" variant="flat" class="px-6" @click="saveUciOptions">{{ $t('common.save') }}</v-btn>
-        </v-card-actions>
-      </v-card>
+          <v-btn color="error" variant="text" class="text-none mr-2" @click="onClearUciOptions">
+            {{ $t('uciOptions.clearSettings') }}
+          </v-btn>
+          <v-btn color="blue-grey-darken-3" variant="flat" class="px-6 text-none font-weight-bold" @click="saveUciOptions">
+            {{ $t('common.save') }}
+          </v-btn>
+        </div>
+      </div>
     </v-dialog>
 
     <v-dialog v-model="confirmDeleteDialog" max-width="400px">
-      <v-card class="rounded-lg">
-        <v-card-title class="text-h6 pt-4 px-4">
-          <v-icon icon="mdi-alert-circle-outline" color="warning" class="mr-2"></v-icon>
-          {{ $t('engineManager.confirmDeleteTitle') }}
-        </v-card-title>
-        <v-card-text class="px-4 py-2 text-body-1">
+      <v-card class="rounded-lg text-center pa-4">
+        <v-icon icon="mdi-alert-circle-outline" color="error" size="48" class="mb-2"></v-icon>
+        <div class="text-h6 font-weight-bold">{{ $t('engineManager.confirmDeleteTitle') }}</div>
+        <div class="text-body-2 text-grey-darken-1 my-3">
           {{ $t('engineManager.confirmDeleteMessage', { name: engineToDelete?.name }) }}
-        </v-card-text>
-        <v-card-actions class="px-4 pb-4">
-          <v-spacer></v-spacer>
-          <v-btn variant="text" @click="cancelDelete">{{ $t('common.cancel') }}</v-btn>
-          <v-btn color="error" variant="flat" @click="confirmDelete">{{ $t('common.delete') }}</v-btn>
-        </v-card-actions>
+        </div>
+        <div class="d-flex justify-center gap-2 mt-2">
+          <v-btn variant="outlined" color="grey" @click="cancelDelete" class="px-6">{{ $t('common.cancel') }}</v-btn>
+          <v-btn color="error" variant="flat" @click="confirmDelete" class="px-6">{{ $t('common.delete') }}</v-btn>
+        </div>
       </v-card>
     </v-dialog>
 
@@ -257,7 +271,6 @@
   import type { UnlistenFn } from '@tauri-apps/api/event'
   import { isAndroidPlatform as checkAndroidPlatform } from '../utils/platform'
 
-  // --- LOGIC GIỮ NGUYÊN 100% ---
   const props = defineProps<{ modelValue: boolean }>()
   const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>()
 
@@ -277,7 +290,9 @@
 
   const uciDialogVisible = ref(false)
   const selectedEngineForOptions = ref<ManagedEngine | null>(null)
+  
   type RowType = 'string' | 'number' | 'boolean' | 'combo' | 'button'
+  
   interface UciRow {
     key: string
     value: any
@@ -285,13 +300,14 @@
     vars?: string[]
     varsCsv?: string
   }
+  
   const uciRows = ref<UciRow[]>([])
   const typeItems = [
-    { label: t('uciEditor.typeString'), value: 'string' },
-    { label: t('uciEditor.typeNumber'), value: 'number' },
-    { label: t('uciEditor.typeSwitch'), value: 'boolean' },
-    { label: t('uciEditor.typeCombo'), value: 'combo' },
-    { label: t('uciEditor.typeButton'), value: 'button' },
+    { label: 'String', value: 'string' },
+    { label: 'Number', value: 'number' },
+    { label: 'Switch', value: 'boolean' },
+    { label: 'Combo', value: 'combo' },
+    { label: 'Button', value: 'button' },
   ]
 
   const isVisible = computed({
@@ -312,7 +328,6 @@
     },
   }
 
-  // --- Utility mới để cắt ngắn đường dẫn ---
   const truncatePath = (path: string) => {
     if (!path) return ''
     if (path.length > 40) return '...' + path.substring(path.length - 37)
@@ -504,7 +519,6 @@
     loadEnginesFromConfig()
     if (engines.value.length === 0) configManager.clearLastSelectedEngineId()
     
-    // Android Listener Logic kept same...
     if (isAndroidPlatform.value) {
       const { listen } = await import('@tauri-apps/api/event')
       unlistenAndroidAdd = listen('android-engine-added', event => {
@@ -514,12 +528,9 @@
         alert(t('engineManager.engineAddedSuccess', { name: payload.name }))
       })
       unlistenNnueRequest = listen('request-nnue-file', event => {
-         // Logic NNUE kept same (omitted for brevity in display, but assume it is here as in your source)
          const payload = event.payload as any
          if (confirm(t('engineManager.promptNnueFile'))) {
-             // ... Call handle_nnue_file_result
-         } else {
-             // ... Add without NNUE
+             // Logic NNUE
          }
       })
     }
@@ -539,96 +550,123 @@
 </script>
 
 <style scoped lang="scss">
-/* --- MAIN DIALOG STYLING --- */
+/* --- SHARED DIALOG STYLES --- */
 .custom-dialog-card {
   background: white;
   display: flex; flex-direction: column;
   height: 100%;
-  max-height: 80vh;
+  max-height: 85vh;
   overflow: hidden;
-  border-radius: 8px; /* Bo góc nhẹ */
-  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.2);
 }
 
-/* Header */
 .dialog-header {
-  padding: 16px 20px;
-  background-color: #f5f5f5;
-  border-bottom: 1px solid #e0e0e0;
+  padding: 12px 20px;
+  background-color: #fff;
+  border-bottom: 1px solid #f0f0f0;
   display: flex; justify-content: space-between; align-items: center;
 }
-.header-left { display: flex; align-items: center; }
-.header-title { font-size: 1.1rem; font-weight: 600; color: #37474F; }
-
-/* Body */
-.dialog-body {
-  flex-grow: 1;
-  overflow-y: auto;
-  padding: 16px;
-  background-color: #fafafa;
+.header-left { display: flex; align-items: center; gap: 12px; }
+.header-icon-bg {
+  width: 36px; height: 36px; background: #e3f2fd; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
 }
+.header-title { font-size: 1.1rem; font-weight: 700; color: #1a237e; letter-spacing: 0.5px; }
 
-/* Engine List - Thay thế v-data-table */
-.engine-list {
-  display: flex; flex-direction: column; gap: 10px;
-}
+.dialog-body { flex-grow: 1; overflow-y: auto; padding: 16px; background-color: #fafafa; }
+.dialog-footer { padding: 12px 24px; border-top: 1px solid #f0f0f0; background-color: white; display: flex; align-items: center; gap: 10px; }
 
+/* --- ENGINE LIST --- */
+.engine-list { display: flex; flex-direction: column; gap: 12px; }
 .engine-item-card {
   display: flex; align-items: center;
-  background: white;
-  border: 1px solid #eee;
-  border-radius: 6px;
-  padding: 12px;
-  transition: all 0.2s;
+  background: white; border: 1px solid #e0e0e0;
+  border-radius: 10px; padding: 12px 16px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  &:hover {
+    border-color: #2196f3; box-shadow: 0 4px 12px rgba(33, 150, 243, 0.15); transform: translateY(-2px);
+  }
 }
-
-.engine-item-card:hover {
-  border-color: #b0bec5;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-  transform: translateY(-1px);
-}
-
 .engine-icon-box {
-  width: 40px; height: 40px;
-  background-color: #eceff1;
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  margin-right: 16px;
+  width: 44px; height: 44px; background: linear-gradient(135deg, #607d8b, #455a64);
+  border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-right: 16px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
 }
-
 .engine-info { flex-grow: 1; overflow: hidden; }
-.engine-name { font-weight: 600; font-size: 1rem; color: #263238; margin-bottom: 2px; }
-.engine-path { font-size: 0.8rem; color: #78909c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: monospace; }
-.engine-args { font-size: 0.75rem; color: #546e7a; margin-top: 2px; background: #eceff1; display: inline-block; padding: 2px 6px; border-radius: 4px; }
+.engine-name { font-weight: 700; font-size: 1rem; color: #263238; margin-bottom: 2px; }
+.engine-path { font-size: 0.8rem; color: #78909c; display: flex; align-items: center; }
+.engine-args { margin-top: 4px; font-size: 0.75rem; color: #546e7a; background: #eceff1; display: inline-block; padding: 2px 8px; border-radius: 4px; font-family: monospace; }
+.engine-actions { display: flex; gap: 4px; }
+.add-btn { box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3); }
 
-.engine-actions {
-  display: flex; gap: 4px; opacity: 0.8;
+/* --- UCI OPTIONS EDITOR STYLES --- */
+.uci-dialog { height: 100%; }
+.uci-options-grid {
+  display: grid; grid-template-columns: 1fr; gap: 12px;
+  /* On desktop, maybe 2 cols if wide enough */
+  @media (min-width: 600px) { grid-template-columns: 1fr 1fr; }
 }
-.engine-item-card:hover .engine-actions { opacity: 1; }
+
+.uci-option-card {
+  background: white; border: 1px solid #e0e0e0;
+  border-radius: 8px; overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  display: flex; flex-direction: column;
+}
+
+.uci-card-header {
+  padding: 8px 12px; background: #f5f7fa; border-bottom: 1px solid #edf2f7;
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+}
+
+.uci-key-input input {
+  width: 100%; border: none; background: transparent; outline: none;
+  font-size: 0.9rem; color: #37474f; font-family: 'Roboto Mono', monospace;
+}
+
+.uci-meta-controls { display: flex; align-items: center; gap: 6px; }
+
+/* Mini Select for Type */
+.uci-type-select { position: relative; }
+.uci-type-select select {
+  appearance: none; background: #e0e0e0; border: none; border-radius: 12px;
+  padding: 2px 18px 2px 8px; font-size: 0.7rem; color: #424242; outline: none; cursor: pointer;
+}
+.select-arrow { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); pointer-events: none; opacity: 0.6; }
+
+.uci-delete-btn {
+  background: transparent; border: none; cursor: pointer; color: #b0bec5;
+  display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%;
+  &:hover { background: #ffebee; color: #ef5350; }
+}
+
+.uci-card-body { padding: 12px; }
+
+/* Input Styles */
+.clean-input {
+  width: 100%; border: 1px solid #e0e0e0; border-radius: 4px; padding: 6px 10px;
+  font-size: 0.9rem; color: #424242; transition: border 0.2s;
+  &:focus { border-color: #2196f3; outline: none; }
+}
+
+.clean-select {
+  width: 100%; appearance: none; border: 1px solid #e0e0e0; border-radius: 4px;
+  padding: 6px 10px; background: white; font-size: 0.9rem; outline: none;
+}
+.uci-select-wrapper { position: relative; }
+.select-icon { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); pointer-events: none; color: #757575; }
+
+/* Modern Toggle Switch */
+.uci-switch-wrapper { display: flex; align-items: center; gap: 10px; }
+.modern-toggle { position: relative; display: inline-block; width: 40px; height: 20px; }
+.modern-toggle input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; inset: 0; background-color: #ccc; transition: .4s; border-radius: 20px; }
+.slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
+input:checked + .slider { background-color: #2196f3; }
+input:checked + .slider:before { transform: translateX(20px); }
+.switch-label { font-size: 0.85rem; font-weight: 600; color: #546e7a; }
 
 /* Empty State */
-.empty-state {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  height: 200px;
-}
-
-/* Footer */
-.dialog-footer {
-  padding: 12px 20px;
-  border-top: 1px solid #e0e0e0;
-  background-color: white;
-  display: flex; align-items: center;
-}
-
-/* UCI Rows */
-.uci-row-card {
-  border: 1px solid #e0e0e0;
-  background: #fff;
-  padding: 10px;
-  border-radius: 4px;
-  margin-bottom: 8px;
-}
-.uci-value-area {
-  margin-top: 8px;
-}
+.empty-state { text-align: center; }
 </style>
