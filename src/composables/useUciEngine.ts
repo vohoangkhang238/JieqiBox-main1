@@ -154,9 +154,9 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
 
       // Aggressive cleanup: limit engine output to prevent memory issues
       if (engineOutput.value.length > 1000) {
-        console.log(
-          '[DEBUG] UCI_ENGINE: Clearing engine output to prevent memory issues'
-        )
+        // console.log(
+        //   '[DEBUG] UCI_ENGINE: Clearing engine output to prevent memory issues'
+        // )
         engineOutput.value = engineOutput.value.slice(-500) // Keep last 500 lines
       }
 
@@ -525,6 +525,37 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
       }
     } else {
       console.log(`[DEBUG] Auto-loading: No last selected engine ID found`)
+    }
+  }
+
+  /* ---------- Auto Load Built-in Engine (NEW LOGIC) ---------- */
+  const autoLoadBuiltInEngine = async () => {
+    try {
+      // 1. Xác định tên file dựa trên hệ điều hành
+      const currentPlatform = await platform();
+      const exeName = currentPlatform === 'windows' ? 'pikafish.exe' : 'pikafish';
+      
+      // 2. Lấy đường dẫn thực tế của file trong resources
+      const resourcePath = `resources/engine/${exeName}`;
+      const fullPath = await resolveResource(resourcePath);
+
+      console.log(`[DEBUG] Auto-loading built-in engine at: ${fullPath}`);
+
+      // 3. Tạo cấu hình engine giả lập
+      const builtInEngine: ManagedEngine = {
+        id: 'builtin-pikafish',
+        name: 'Pikafish (Mặc định)',
+        path: fullPath,
+        args: '' // Thêm tham số nếu cần, ví dụ: 'bench'
+      };
+
+      // 4. Load engine
+      await loadEngine(builtInEngine);
+      
+    } catch (error) {
+      console.warn('[DEBUG] Failed to load built-in engine:', error);
+      // Nếu không tìm thấy engine mặc định, quay lại logic cũ (load cái cũ user từng chọn)
+      autoLoadLastEngine();
     }
   }
 
@@ -1127,7 +1158,7 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
     // Central listener for all engine output for logging/display
     unlisten = await listen<string>('engine-output', ev => {
       const raw_ln = ev.payload
-      console.log(`[DEBUG] ENGINE_RAW_OUTPUT: ${raw_ln}`)
+      // console.log(`[DEBUG] ENGINE_RAW_OUTPUT: ${raw_ln}`) // Tắt log đỡ rối
       queueOutputLine(raw_ln)
     })
 
@@ -1146,7 +1177,8 @@ export function useUciEngine(generateFen: () => string, gameState: any) {
     // In match mode, JAI engine should be loaded instead
     const isMatchMode = (window as any).__MATCH_MODE__ || false
     if (!isMatchMode) {
-      autoLoadLastEngine()
+      // ƯU TIÊN LOAD ENGINE MẶC ĐỊNH
+      await autoLoadBuiltInEngine()
     } else {
       console.log('[DEBUG] useUciEngine: Skipping auto-load in match mode')
     }
