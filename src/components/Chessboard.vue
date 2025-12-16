@@ -16,6 +16,7 @@
                :class="{ 
                  animated: isAnimating && showAnimations, 
                  inCheck: p.id === checkedKingId,
+                 // Hiệu ứng mờ quân cờ khi đang hiện menu vòng tròn bên trên
                  'being-flipped': pendingFlip && ( (pendingFlip.row === p.row && pendingFlip.col === p.col) || (selectedPiece && p.id === selectedPiece.id) )
                }" 
                :style="rcStyle(p.row, p.col, p.zIndex)" />
@@ -177,23 +178,15 @@
 
   // --- LOGIC: FLIP SELECTION & RADIAL MENU ---
   
-  // Biến lưu tọa độ click (dùng cho Người chơi)
-  const lastClickPos = ref<{row: number, col: number} | null>(null)
+  // FIX: Lưu tọa độ click cuối cùng để menu không bị nhảy về (4,4)
+  const lastClickPos = ref({ row: 4, col: 4 })
   
-  // FIX: Logic vị trí thông minh hơn cho cả AI và Người chơi
   const radialMenuPos = computed(() => {
-    // ƯU TIÊN 1: Nếu sự kiện flip (pendingFlip) có chứa tọa độ (AI thường gửi cái này)
-    if (pendingFlip.value && typeof pendingFlip.value.row === 'number' && typeof pendingFlip.value.col === 'number') {
-      return { row: pendingFlip.value.row, col: pendingFlip.value.col }
-    }
-
-    // ƯU TIÊN 2: Nếu click tay (Người chơi)
+    // Ưu tiên dùng tọa độ click chuột gần nhất
     if (lastClickPos.value) return lastClickPos.value
-    
-    // ƯU TIÊN 3: Dùng vị trí quân đang chọn
+    // Nếu không thì dùng vị trí quân đang chọn
     if (selectedPiece.value) return { row: selectedPiece.value.row, col: selectedPiece.value.col }
-
-    // Fallback: Giữa bàn
+    // Fallback
     return { row: 4, col: 4 }
   })
 
