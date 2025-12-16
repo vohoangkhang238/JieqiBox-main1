@@ -162,41 +162,7 @@
         </svg>
 
         <ClearHistoryConfirmDialog :visible="showClearHistoryDialog" :onConfirm="onConfirmClearHistory" :onCancel="onCancelClearHistory" />
-
-        <div v-if="pendingFlip" class="flip-prompt-area" @click.stop>
-          <div class="flip-prompt-container">
-            <div class="flip-prompt-header">
-              <span class="flip-prompt-title">
-                <v-icon icon="mdi-help-circle-outline" size="small" class="mr-1"></v-icon>
-                Chọn quân {{ pendingFlip.side === 'red' ? 'Đỏ' : 'Đen' }}
-              </span>
-              <button class="random-btn" @click="handleFlipRandom">
-                <v-icon icon="mdi-shuffle-variant" size="small" class="mr-1"></v-icon>
-                Ngẫu nhiên
-              </button>
-            </div>
-            
-            <div class="flip-choices fluid-layout">
-              <div 
-                v-for="item in flipSelectionPieces" 
-                :key="item.name" 
-                class="flip-choice-item"
-                @click.stop="handleFlipSelect(item.name)"
-              >
-                <div class="img-wrapper">
-                  <img :src="getPieceImageUrl(item.name)" class="flip-img" />
-                </div>
-                <div class="flip-count-badge">{{ item.count }}</div>
-              </div>
-              
-              <div v-if="flipSelectionPieces.length === 0" class="flip-error">
-                <v-icon icon="mdi-alert" color="error" class="mr-1"></v-icon>
-                Hết quân loại này!
-              </div>
-            </div>
-          </div>
-        </div>
-        </div>
+      </div>
     </div>
 
     <div class="side-panel">
@@ -261,45 +227,6 @@
   const { pieces, selectedPieceId, handleBoardClick, isAnimating, lastMovePositions, registerArrowClearCallback, history, currentMoveIndex, unrevealedPieceCounts, adjustUnrevealedCount, getPieceNameFromChar, validationStatus, pendingFlip } = gs
 
   const selectedPiece = computed(() => { if (!unref(selectedPieceId)) return null; return unref(pieces).find((p: Piece) => p.id === unref(selectedPieceId)) })
-
-  // --- LOGIC: FLIP SELECTION ---
-  const flipSelectionPieces = computed(() => {
-    if (!pendingFlip.value) return []
-    const requiredSide = pendingFlip.value.side
-    return Object.entries(unrevealedPieceCounts.value)
-      .map(([char, count]) => {
-        const name = getPieceNameFromChar(char)
-        return { name, char, count }
-      })
-      .filter(item => {
-        const pieceSide = item.name.startsWith('red') ? 'red' : 'black'
-        return pieceSide === requiredSide && (item.count as number) > 0
-      })
-  })
-
-  const handleFlipSelect = (pieceName: string) => {
-    if (pendingFlip.value && pendingFlip.value.callback) {
-      pendingFlip.value.callback(pieceName)
-    }
-  }
-
-  const handleFlipRandom = () => {
-    if (pendingFlip.value && pendingFlip.value.callback) {
-      const pieces = flipSelectionPieces.value
-      if (pieces.length === 0) return
-      const pool: string[] = []
-      pieces.forEach((p: any) => {
-        for(let i=0; i < (p.count as number); i++) {
-          pool.push(p.name)
-        }
-      })
-      if (pool.length > 0) {
-        const randomIndex = Math.floor(Math.random() * pool.length)
-        pendingFlip.value.callback(pool[randomIndex])
-      }
-    }
-  }
-  // -------------------------
 
   const poolErrorMessage = computed(() => {
     if (!validationStatus.value) return null
@@ -553,15 +480,13 @@
     }
   }
 
-  /* CỘT CHÍNH (CHỨA BÀN CỜ) - Cập nhật Z-index để nổi lên trên side-panel */
+  /* CỘT CHÍNH (CHỨA BÀN CỜ) */
   .main-column {
     display: flex;
     flex-direction: column;
     flex: 0 0 auto;
     width: 80%; /* Bàn cờ chiếm phần lớn */
     gap: 12px;
-    position: relative; /* Quan trọng */
-    z-index: 100; /* Nổi lên trên các thành phần khác */
     
     @media (max-width: 768px) {
       width: 100%;
@@ -709,175 +634,6 @@
     word-break: break-word;
     box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     max-width: 100%;
-  }
-
-  /* --- FLIP PROMPT AREA --- */
-  .flip-prompt-area {
-    /* Đặt absolute: top 100% để nằm ngay sát đáy container và đẩy ra ngoài */
-    position: absolute;
-    top: 100%; 
-    left: 0;
-    width: 100%;
-    z-index: 2000; /* Cao hơn các quân cờ */
-
-    /* Thêm khoảng cách nhỏ */
-    margin-top: 10px; 
-
-    /* Hiệu ứng kính mờ và gradient nhẹ */
-    background: rgba(30, 30, 30, 0.95); 
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 12px;
-
-    padding: 12px;
-    min-height: auto;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-    animation: slideUp 0.25s cubic-bezier(0.19, 1, 0.22, 1);
-  }
-
-  @keyframes slideUp {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .flip-prompt-container {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    gap: 12px;
-  }
-
-  .flip-prompt-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 4px;
-    margin-bottom: 2px;
-  }
-
-  .flip-prompt-title {
-    color: #e0e0e0;
-    font-weight: 600;
-    font-size: 15px;
-    display: flex;
-    align-items: center;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-  }
-
-  .random-btn {
-    /* Style nút hiện đại hơn */
-    background: linear-gradient(135deg, #007bff, #0056b3);
-    color: white;
-    border: none;
-    border-radius: 20px; /* Bo tròn kiểu pill */
-    padding: 6px 14px;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-    transition: all 0.2s ease;
-    
-    &:hover { 
-      transform: translateY(-1px);
-      box-shadow: 0 4px 8px rgba(0,0,0,0.4);
-      filter: brightness(1.1);
-    }
-    
-    &:active {
-      transform: translateY(0);
-      box-shadow: 0 1px 2px rgba(0,0,0,0.3);
-    }
-  }
-
-  /* FLIP CHOICES: SỬ DỤNG FLEX VỚI CÁC THUỘC TÍNH CO GIÃN MẠNH MẼ */
-  .flip-choices.fluid-layout {
-    display: flex;
-    flex-direction: row; 
-    flex-wrap: nowrap; /* Không xuống dòng */
-    justify-content: space-between; /* Chia đều không gian */
-    align-items: center;
-    width: 100%;
-    gap: 8px; /* Khoảng cách nhỏ */
-    padding: 4px;
-    overflow: hidden; /* Không cuộn, chỉ co lại */
-  }
-
-  .flip-choice-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: rgba(255, 255, 255, 0.08);
-    border-radius: 8px;
-    padding: 4px;
-    cursor: pointer;
-    border: 1px solid rgba(255,255,255,0.05);
-    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
-    position: relative;
-    
-    /* Quan trọng để co giãn: flex-grow=1, flex-shrink=1, basis=0 */
-    flex: 1 1 0px; 
-    min-width: 0; /* Cho phép co nhỏ hơn nội dung */
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.2);
-      border-color: rgba(255, 255, 255, 0.4);
-      transform: translateY(-3px);
-      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-    }
-  }
-
-  .img-wrapper {
-    /* Wrapper để giữ tỉ lệ ảnh */
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-
-  .flip-img {
-    /* Quân cờ tự động scale theo chiều rộng của item cha */
-    width: 100%;
-    height: auto;
-    object-fit: contain;
-    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3));
-    
-    /* Giới hạn kích thước tối đa để không quá to trên màn hình lớn */
-    max-width: 60px; 
-  }
-
-  .flip-count-badge {
-    /* Badge số lượng ở góc */
-    position: absolute;
-    top: -4px;
-    right: -4px;
-    background: #ff5252;
-    color: white;
-    font-size: 10px;
-    font-weight: bold;
-    min-width: 18px;
-    height: 18px;
-    border-radius: 9px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid #2e2e2e; /* Viền để tách biệt với nền tối */
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    z-index: 2;
-  }
-
-  .flip-error {
-    color: #ff5252;
-    font-size: 14px;
-    margin: auto;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    padding: 10px;
-    background: rgba(255, 82, 82, 0.1);
-    border-radius: 8px;
   }
 
   /* CÁC STYLE KHÁC GIỮ NGUYÊN */

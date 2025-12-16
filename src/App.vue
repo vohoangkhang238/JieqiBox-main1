@@ -7,6 +7,7 @@
   import AnalysisSidebar from './components/AnalysisSidebar.vue'
   import FenInputDialog from './components/FenInputDialog.vue'
   import GameEndDialog from './components/GameEndDialog.vue'
+  import FlipPromptDialog from './components/FlipPromptDialog.vue'
 
   import { useChessGame } from './composables/useChessGame'
   import { useUciEngine } from './composables/useUciEngine'
@@ -130,6 +131,7 @@
         :game-result="game.gameEndResult.value"
         :on-close="() => (game.isGameEndDialogVisible.value = false)"
       />
+      <FlipPromptDialog />
     </div>
   </div>
 </template>
