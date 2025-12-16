@@ -348,74 +348,69 @@
   /* --- LAYOUT CHÍNH --- */
   .chessboard-wrapper {
     display: flex;
-    flex-direction: row;
-    /* Căn giữa và giới hạn chiều cao tối đa là 95% màn hình */
-    align-items: center; 
+    flex-direction: row; /* Luôn xếp ngang để giống ảnh bạn gửi */
+    align-items: stretch; /* Kéo dãn chiều cao side-panel bằng bàn cờ */
     justify-content: center;
-    width: 100%;
-    height: 95vh; /* Bắt buộc chiều cao wrapper theo màn hình */
-    max-height: 95vh;
-    gap: 1vh; /* Khoảng cách cũng tính theo chiều cao màn hình */
+    
+    /* --- THẦN CHÚ: vmin --- */
+    /* Chiều cao tổng thể khối = 85% cạnh nhỏ nhất của màn hình */
+    /* Đảm bảo luôn lọt lòng màn hình dù dọc hay ngang */
+    height: 85vmin; 
+    
+    gap: 2vmin; /* Khoảng cách cũng co giãn */
     margin: 0 auto;
     padding: 10px;
     box-sizing: border-box;
     
-    @media (max-width: 768px) {
-      flex-direction: column;
+    /* Xử lý riêng cho màn hình điện thoại dọc quá hẹp nếu cần */
+    @media (orientation: portrait) {
+      flex-direction: column; /* Chuyển thành dọc nếu là điện thoại dọc */
       height: auto;
-      max-height: none;
+      max-width: 95vw;
     }
   }
 
   .main-column {
     display: flex;
     flex-direction: column;
-    height: 100%; /* Ăn theo wrapper */
-    justify-content: center;
-    /* Quan trọng: để bàn cờ quyết định width dựa trên aspect-ratio */
-    width: auto; 
-    aspect-ratio: 9/10;
+    height: 100%; /* Ăn theo chiều cao 85vmin của wrapper */
+    width: auto;
+    /* Bàn cờ sẽ tự tính toán chiều rộng dựa trên tỷ lệ 9/10 */
+    aspect-ratio: 9/10; 
   }
 
   .chessboard-container {
     position: relative;
     width: 100%;
-    height: 100%; /* Full chiều cao của main-column */
-    aspect-ratio: 9/10;
+    height: 100%;
     margin: auto;
     user-select: none;
     box-shadow: 0 5px 15px rgba(0,0,0,0.3);
   }
 
-  /* --- SIDE PANEL / KHO QUÂN ÚP (CO GIÃN THEO CHIỀU CAO) --- */
+  /* --- SIDE PANEL / KHO QUÂN ÚP --- */
   .side-panel {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     
-    /* Chiều cao bằng đúng bàn cờ */
-    height: 100%; 
-    max-height: 100%;
+    /* Chiều rộng tính theo vmin để luôn cân đối với bàn cờ */
+    width: 18vmin; 
+    min-width: 60px; /* Không cho bé quá mức đọc không được */
     
-    /* Width tương đối */
-    width: 14vh; 
-    min-width: 80px;
+    height: 100%; /* Cao bằng bàn cờ */
     
     background: rgba(0,0,0,0.25);
-    /* Padding tính theo vh để co giãn */
-    padding: 1vh; 
+    padding: 1vmin; /* Padding co giãn */
     border-radius: 12px;
     backdrop-filter: blur(5px);
     
-    /* Nếu màn hình quá bé, cho phép cuộn để không vỡ layout */
-    overflow-y: auto; 
-
-    @media (max-width: 768px) {
+    @media (orientation: portrait) {
+      /* Cấu hình cho điện thoại dọc: Panel nằm ngang bên dưới */
       width: 100%;
       height: auto;
       flex-direction: row;
-      overflow-x: auto;
-      padding: 5px;
+      min-height: 12vmin; /* Đủ cao để chứa quân */
     }
   }
 
@@ -423,25 +418,26 @@
     display: flex;
     flex-direction: column;
     flex: 1; 
-    justify-content: space-evenly; /* Chia đều khoảng cách */
-    gap: 0.5vh; /* Gap co giãn */
+    justify-content: space-evenly; 
+    gap: 0.5vmin;
     
-    @media (max-width: 768px) {
+    @media (orientation: portrait) {
       flex-direction: row;
       flex-wrap: wrap;
       justify-content: center;
+      gap: 2vw;
     }
   }
   
   .top-pool {
     border-bottom: 1px solid rgba(255,255,255,0.15);
-    padding-bottom: 0.5vh;
-    margin-bottom: 0.5vh;
-    @media (max-width: 768px) {
+    padding-bottom: 0.5vmin;
+    margin-bottom: 0.5vmin;
+    @media (orientation: portrait) {
       border-bottom: none;
       padding-bottom: 0; margin-bottom: 0;
       border-right: 1px solid rgba(255,255,255,0.15);
-      padding-right: 5px; margin-right: 5px;
+      padding-right: 2vw; margin-right: 2vw;
     }
   }
 
@@ -451,23 +447,21 @@
     justify-content: space-between;
     background: rgba(255,255,255,0.1);
     
-    /* Chiều cao dòng tính theo vh */
-    height: 4.5vh; 
-    /* Giới hạn min/max pixel để không quá xấu */
-    min-height: 25px; 
-    
-    padding: 0 0.8vh;
+    /* Chiều cao dòng cũng co giãn theo vmin */
+    height: 4.5vmin; 
     border-radius: 6px;
+    padding: 0 0.5vmin;
     
     &:hover { background: rgba(255,255,255,0.2); }
-    @media (max-width: 768px) {
-       width: 48%; height: 35px; margin-bottom: 2px;
+    @media (orientation: portrait) {
+       width: 45%; 
+       height: 8vmin; /* To hơn chút trên điện thoại */
+       margin-bottom: 1vw;
     }
   }
 
-  /* ẢNH QUÂN CỜ: Dùng vh để scale */
   .pool-img {
-    height: 80%; /* 80% của dòng */
+    height: 85%; /* Ảnh chiếm 85% chiều cao dòng */
     width: auto;
     aspect-ratio: 1/1;
     object-fit: contain;
@@ -475,17 +469,18 @@
   }
 
   .pool-controls {
-    display: flex; align-items: center; gap: 0.5vh; height: 100%;
+    display: flex; align-items: center; gap: 0.5vmin; height: 100%;
   }
   
-  /* SỐ LƯỢNG: Dùng vh để scale chữ */
+  /* SỐ LƯỢNG: Font chữ co giãn theo vmin */
   .pool-num {
     color: #fff; font-weight: bold; 
-    /* Cực kỳ quan trọng: Font size ăn theo chiều cao màn hình */
-    font-size: 2.2vh; 
+    font-size: 2.2vmin; /* Chữ to nhỏ theo màn hình */
     line-height: 1;
-    min-width: 2vh; text-align: center;
+    min-width: 2vmin; text-align: center;
     text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    
+    @media (orientation: portrait) { font-size: 4vw; }
   }
   
   .red-num { color: #ff6b6b; }
@@ -499,33 +494,34 @@
   }
 
   .tiny-btn {
-    height: 40%; 
+    height: 45%; 
     aspect-ratio: 1.2/1;
     display: flex; align-items: center; justify-content: center;
-    /* Font nút bấm cũng scale */
-    font-size: 1.2vh; 
+    font-size: 1.2vmin; /* Font nút bấm co giãn */
     font-weight: bold;
     background: rgba(0,0,0,0.5);
     color: #fff; border: 1px solid rgba(255,255,255,0.2);
     cursor: pointer; border-radius: 2px;
     &:hover:not(:disabled) { background: #007bff; border-color: #007bff; }
     &:disabled { opacity: 0.3; cursor: default; }
+    
+    @media (orientation: portrait) { font-size: 2.5vw; }
   }
 
   .pool-divider {
     flex: 0 0 auto;
     display: flex; align-items: center; justify-content: center;
-    min-height: 1vh;
+    min-height: 1vmin;
   }
   .pool-error {
-    display: flex; align-items: center; gap: 0.5vh;
-    font-size: 1.5vh; 
+    display: flex; align-items: center; gap: 0.5vmin;
+    font-size: 1.5vmin; 
     color: #ff5252; text-align: center;
     line-height: 1; background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
   }
 
-  /* --- CÁC PHẦN KHÁC GIỮ NGUYÊN --- */
+  /* --- GIỮ NGUYÊN CÁC PHẦN CÒN LẠI --- */
   .bg { width: 100%; height: 100%; display: block; }
   .pieces { position: absolute; inset: 0; z-index: 20; }
   .piece { position: absolute; aspect-ratio: 1; pointer-events: none; &.animated { transition: all 0.2s ease; } &.inCheck { transform: translate(-50%, -50%) scale(1.1); filter: drop-shadow(0 0 10px red); z-index: 100; } &.being-flipped { opacity: 0.3; filter: grayscale(1); } }
