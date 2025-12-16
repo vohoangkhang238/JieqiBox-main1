@@ -142,42 +142,24 @@
           </div>
         </div>
 
-       <svg class="ar" viewBox="0 0 90 100" preserveAspectRatio="none" v-if="showArrows">
-  <defs>
-    <marker 
-      v-for="(color, idx) in arrowColors" 
-      :key="`marker-${idx}`" 
-      :id="`ah-${idx}`" 
-      markerWidth="3.5" 
-      markerHeight="3.5" 
-      refX="3.0" 
-      refY="1.75" 
-      orient="auto"
-      markerUnits="strokeWidth"
-    >
-      <polygon points="0 0, 3.5 1.75, 0 3.5" :fill="color" />
-    </marker>
-
-    <marker id="ah-selected" markerWidth="3.5" markerHeight="3.5" refX="3.0" refY="1.75" orient="auto" markerUnits="strokeWidth">
-      <polygon points="0 0, 3.5 1.75, 0 3.5" fill="#e53935" />
-    </marker>
-  </defs>
-
-  <template v-for="(a, idx) in arrs" :key="`arrow-${idx}`">
-    <line 
-      :x1="a.x1" :y1="a.y1" :x2="a.x2" :y2="a.y2" 
-      :style="{ stroke: arrowColor(idx) }" 
-      :marker-end="`url(#ah-${idx % arrowColors.length})`" 
-      class="al" 
-    />
-    <text v-if="arrs.length > 1" :x="(a.x1 + a.x2) / 2" :y="(a.y1 + a.y2) / 2" :fill="arrowColor(idx)" class="arrow-label">{{ a.pv }}</text>
-  </template>
-  
-  <template v-if="selectedPvArrow">
-    <line :x1="selectedPvArrow.x1" :y1="selectedPvArrow.y1" :x2="selectedPvArrow.x2" :y2="selectedPvArrow.y2" marker-end="url(#ah-selected)" class="al selected-arrow-shadow" />
-    <line :x1="selectedPvArrow.x1" :y1="selectedPvArrow.y1" :x2="selectedPvArrow.x2" :y2="selectedPvArrow.y2" marker-end="url(#ah-selected)" class="al selected-arrow" />
-  </template>
-</svg>
+        <svg class="ar" viewBox="0 0 90 100" preserveAspectRatio="none" v-if="showArrows">
+          <defs>
+            <marker v-for="(color, idx) in arrowColors" :key="`marker-${idx}`" :id="`ah-${idx}`" markerWidth="2.5" markerHeight="2.5" refX="1.5" refY="1.25" orient="auto">
+              <polygon points="0 0, 2.5 1.25, 0 2.5" :fill="color" />
+            </marker>
+            <marker id="ah-selected" markerWidth="2.5" markerHeight="2.5" refX="1.5" refY="1.25" orient="auto">
+              <polygon points="0 0, 2.5 1.25, 0 2.5" fill="#e53935" />
+            </marker>
+          </defs>
+          <template v-for="(a, idx) in arrs" :key="`arrow-${idx}`">
+            <line :x1="a.x1" :y1="a.y1" :x2="a.x2" :y2="a.y2" :style="{ stroke: arrowColor(idx) }" :marker-end="`url(#ah-${idx % arrowColors.length})`" class="al" />
+            <text v-if="arrs.length > 1" :x="(a.x1 + a.x2) / 2" :y="(a.y1 + a.y2) / 2" :fill="arrowColor(idx)" class="arrow-label">{{ a.pv }}</text>
+          </template>
+          <template v-if="selectedPvArrow">
+            <line :x1="selectedPvArrow.x1" :y1="selectedPvArrow.y1" :x2="selectedPvArrow.x2" :y2="selectedPvArrow.y2" marker-end="url(#ah-selected)" class="al selected-arrow-shadow" />
+            <line :x1="selectedPvArrow.x1" :y1="selectedPvArrow.y1" :x2="selectedPvArrow.x2" :y2="selectedPvArrow.y2" marker-end="url(#ah-selected)" class="al selected-arrow" />
+          </template>
+        </svg>
 
         <ClearHistoryConfirmDialog :visible="showClearHistoryDialog" :onConfirm="onConfirmClearHistory" :onCancel="onCancelClearHistory" />
       </div>
