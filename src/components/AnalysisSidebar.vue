@@ -6,127 +6,121 @@
     <div class="resize-handle-left" @mousedown.prevent="startResizeWidth"></div>
 
     <div class="pikafish-toolbar">
-      <div class="engine-toggle-wrapper">
+      <div class="engine-toggle">
         <input 
           type="checkbox" 
           id="engine-switch" 
           :checked="isEngineActive" 
           @change="toggleEngineState"
-          class="custom-switch"
         />
-        <label for="engine-switch" class="switch-label" :title="isEngineActive ? $t('analysis.unloadEngine') : $t('analysis.loadEngine')"></label>
+        <label for="engine-switch" :title="isEngineActive ? $t('analysis.unloadEngine') : $t('analysis.loadEngine')"></label>
       </div>
 
-      <div class="control-group expanded">
-        <select v-model="selectedEngineId" @change="handleEngineChange" class="styled-input engine-select" :disabled="!isEngineLoaded && isEngineLoading">
+      <div class="engine-info-box engine-name">
+        <select v-model="selectedEngineId" @change="handleEngineChange" class="pika-select" :disabled="!isEngineLoaded && isEngineLoading">
           <option 
             v-if="isEngineActive && selectedEngineId" 
             :value="selectedEngineId" 
-            class="active-engine-option"
+            class="custom-display-name"
           >
-            ⚡ Pikafish
+            Pikafish - JieQ
           </option>
+          
           <option v-for="eng in managedEngines" :key="eng.id" :value="eng.id">
             {{ eng.name }}
           </option>
         </select>
-        <v-icon icon="mdi-chevron-down" size="12" class="select-arrow"></v-icon>
       </div>
 
-      <div class="control-group small" title="Số luồng (Threads)">
-        <span class="input-label">Th</span>
+      <div class="engine-info-box threads" title="Số luồng (Threads)">
         <input 
           type="number" 
           v-model.lazy="actualThreads" 
           min="1" 
           max="128" 
-          class="styled-input" 
+          class="pika-input" 
           :disabled="!isEngineLoaded"
         />
       </div>
 
-      <div class="control-group medium" title="Bộ nhớ Hash (MB)">
-         <span class="input-label">Ha</span>
-        <select v-model="actualHash" class="styled-input" :disabled="!isEngineLoaded">
-          <option value="16">16M</option>
-          <option value="64">64M</option>
-          <option value="128">128M</option>
-          <option value="256">256M</option>
-          <option value="512">512M</option>
-          <option value="1024">1G</option>
-          <option value="2048">2G</option>
-          <option value="4096">4G</option>
-          <option value="8192">8G</option>
+      <div class="engine-info-box hash" title="Bộ nhớ Hash (MB)">
+        <select v-model="actualHash" class="pika-select-small" :disabled="!isEngineLoaded">
+          <option value="16">16 MB</option>
+          <option value="64">64 MB</option>
+          <option value="128">128 MB</option>
+          <option value="256">256 MB</option>
+          <option value="512">512 MB</option>
+          <option value="1024">1024 MB</option>
+          <option value="2048">2048 MB</option>
+          <option value="4096">4096 MB</option>
+          <option value="8192">8192 MB</option>
         </select>
-        <v-icon icon="mdi-chevron-down" size="12" class="select-arrow"></v-icon>
       </div>
 
-      <button class="settings-btn" @click="showEngineManager = true" :title="$t('analysis.manageEngines')">
-        <v-icon icon="mdi-cog" size="18"></v-icon>
+      <button class="pika-settings-btn" @click="showEngineManager = true" :title="$t('analysis.manageEngines')">
+        <v-icon icon="mdi-cog" size="18" color="#666"></v-icon>
       </button>
     </div>
 
-    <DraggablePanel panel-id="engine-log" class="panel-container mt-2" :no-resize="true">
+    <DraggablePanel panel-id="engine-log" class="mt-2" :no-resize="true">
       <template #header>
-        <div class="panel-header">
-          <v-icon icon="mdi-text-box-search-outline" size="16" class="mr-1"></v-icon>
+        <div class="panel-title-text">
           <h3>{{ $t('analysis.engineAnalysis') }}</h3>
         </div>
       </template>
       
       <div 
-        class="log-content custom-scrollbar" 
+        class="pikafish-log-container" 
         ref="logContainer"
         :style="{ height: logHeight + 'px' }"
       >
         <div v-if="!isEngineActive && parsedLogList.length === 0" class="log-placeholder">
-          <span>Engine đang tắt</span>
+          Động cơ chưa được kích hoạt
         </div>
         
-        <div v-for="(line, index) in parsedLogList" :key="index" class="log-line">
-          <div class="line-meta">
-            <span class="meta-tag depth">D:{{ line.depth }}</span>
-            <span class="meta-tag score" :class="getScoreClass(line.scoreText)">{{ line.scoreText }}</span>
-            <span class="meta-info">{{ line.timeText }}s</span>
-            <span class="meta-info">{{ line.npsText }}</span>
-            <span class="meta-info wdl" v-if="line.wdlText">{{ line.wdlText }}</span>
+        <div v-for="(line, index) in parsedLogList" :key="index" class="log-entry">
+          <div class="log-header">
+            <span class="p-item">Độ sâu:{{ line.depth }}</span>
+            <span class="p-item">Điểm:{{ line.scoreText }}</span>
+            <span class="p-item">Thời gian:{{ line.timeText }}</span>
+            <span class="p-item">NPS:{{ line.npsText }}</span>
+            <span class="p-item" v-if="line.wdlText">{{ line.wdlText }}</span>
           </div>
-          <div class="line-pv">
+          <div class="log-pv">
             {{ line.chinesePv }}
           </div>
         </div>
       </div>
       
       <div class="resize-handle-bottom" @mousedown.prevent="startResizeHeight">
-        <div class="handle-bar"></div>
+        <div class="handle-grip"></div>
       </div>
     </DraggablePanel>
 
-    <DraggablePanel panel-id="notation" class="panel-container mt-2 flex-grow-1" :no-resize="true">
+    <DraggablePanel panel-id="notation" class="mt-2 flex-grow-1" :no-resize="true">
       <template #header>
-        <div class="panel-header">
-          <v-icon icon="mdi-file-document-edit-outline" size="16" class="mr-1"></v-icon>
+        <div class="notation-header">
           <h3>{{ $t('analysis.notation') }}</h3>
         </div>
       </template>
       
       <div
-        class="notation-box flex-grow-1 custom-scrollbar"
+        class="notation-table-container flex-grow-1"
         :class="{ 'disabled-clicks': isMatchRunning }"
         ref="moveListElement"
       >
-        <div class="notation-table-header">
+        <div class="notation-row header">
           <div class="col-num">#</div>
           <div class="col-move">Đỏ</div>
           <div class="col-move">Đen</div>
         </div>
 
-        <div class="notation-list">
+        <div class="notation-body">
           <div 
             v-for="pair in formattedHistory" 
             :key="pair.moveNumber" 
             class="notation-row"
-            :class="{ 'highlight-row': currentMoveIndex === pair.redIndex || currentMoveIndex === pair.blackIndex }"
+            :class="{ 'active-row': currentMoveIndex === pair.redIndex || currentMoveIndex === pair.blackIndex }"
           >
             <div class="col-num">{{ pair.moveNumber }}.</div>
             
@@ -148,7 +142,7 @@
           </div>
           
           <div v-if="formattedHistory.length === 0" class="empty-notation">
-            ---
+            Chưa có nước đi nào
           </div>
         </div>
       </div>
@@ -191,8 +185,8 @@ const selectedEngineId = ref<string | null>(null)
 const moveListElement = ref<HTMLElement | null>(null)
 
 // --- KÍCH THƯỚC ĐỘNG ---
-const sidebarWidth = ref(400)
-const logHeight = ref(220)
+const sidebarWidth = ref(420)
+const logHeight = ref(250)
 
 // --- LOGIC KÉO DÃN ---
 const startResizeWidth = (e: MouseEvent) => {
@@ -231,7 +225,7 @@ const startResizeHeight = (e: MouseEvent) => {
 const isEngineActive = computed(() => isEngineLoaded.value || isThinking.value)
 const isMatchRunning = computed(() => jaiEngine?.isMatchRunning?.value || false)
 
-// --- FORMAT BIÊN BẢN ---
+// --- LOGIC MỚI: FORMAT BIÊN BẢN DẠNG BẢNG (Formatted History) ---
 const formattedHistory = computed(() => {
   const moves: any[] = []
   const hist = history.value || []
@@ -244,7 +238,7 @@ const formattedHistory = computed(() => {
     moves.push({
       moveNumber,
       redMove: redEntry ? redEntry.data : '',
-      redIndex: i + 1, 
+      redIndex: i + 1, // Index để replay (1-based)
       blackMove: blackEntry ? blackEntry.data : '',
       blackIndex: blackEntry ? i + 2 : null
     })
@@ -252,9 +246,10 @@ const formattedHistory = computed(() => {
   return moves
 })
 
-// --- AUTO SCROLL ---
+// --- TỰ ĐỘNG CUỘN BIÊN BẢN (AUTO SCROLL NOTATION) ---
 watch(currentMoveIndex, () => {
   nextTick(() => {
+    // Tìm phần tử đang active (current-move)
     const activeEl = document.querySelector('.col-move.current-move')
     if (activeEl) {
       activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
@@ -262,7 +257,7 @@ watch(currentMoveIndex, () => {
   })
 })
 
-// --- ENGINE CONTROLS ---
+// --- KẾT NỐI ENGINE ---
 const actualThreads = computed({
   get: () => {
     if (!uciOptions?.value) return 1
@@ -317,16 +312,6 @@ const handleEngineChange = async () => {
 }
 
 // --- LOG PARSING ---
-// Hàm helper để tô màu điểm số
-function getScoreClass(scoreText: string) {
-    if (scoreText.startsWith('M')) return 'mate-score'
-    const val = parseInt(scoreText)
-    if (isNaN(val)) return ''
-    if (val > 50) return 'pos-score'
-    if (val < -50) return 'neg-score'
-    return 'draw-score'
-}
-
 function parseInfoLine(line: string) {
   if (!line.startsWith('info') || !line.includes('depth')) return null
   const extract = (key: string) => {
@@ -346,10 +331,10 @@ function parseInfoLine(line: string) {
   if (wdlMatch) {
     const total = parseInt(wdlMatch[1]) + parseInt(wdlMatch[2]) + parseInt(wdlMatch[3])
     if (total > 0) {
-      const w = (parseInt(wdlMatch[1]) / total * 100).toFixed(0)
-      const d = (parseInt(wdlMatch[2]) / total * 100).toFixed(0)
-      const l = (parseInt(wdlMatch[3]) / total * 100).toFixed(0)
-      wdlText = `W:${w}% D:${d}%`
+      const w = (parseInt(wdlMatch[1]) / total * 100).toFixed(1)
+      const d = (parseInt(wdlMatch[2]) / total * 100).toFixed(1)
+      const l = (parseInt(wdlMatch[3]) / total * 100).toFixed(1)
+      wdlText = `T(${w}%)H(${d}%)B(${l}%)`
     }
   }
   let scoreText = scoreVal.toString()
@@ -390,7 +375,7 @@ onMounted(async () => {
 
 watch(parsedLogList, () => {
   nextTick(() => {
-    const container = document.querySelector('.log-content');
+    const container = document.querySelector('.pikafish-log-container');
     if (container && container.scrollTop === 0) container.scrollTop = 0; 
   })
 }, { deep: true })
@@ -398,138 +383,156 @@ watch(parsedLogList, () => {
 
 <style lang="scss">
 /* --- Sidebar Base --- */
-.sidebar.pikafish-theme {
-    height: calc(100vh - 80px); 
-    padding: 0;
+.sidebar {
+    height: calc(100vh - 120px); 
+    padding: 12px;
     display: flex;
     flex-direction: column;
     gap: 8px;
-    background-color: #f5f5f5; /* Nền xám nhẹ */
-    border-left: 1px solid #ddd;
-    font-family: 'Roboto', sans-serif;
+    box-sizing: border-box;
+    border-left: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+    overflow-y: hidden;
+    background-color: rgb(var(--v-theme-surface));
+    font-family: 'Noto Sans SC', sans-serif;
     position: relative;
+    min-width: 300px;
 }
 
-/* Resize Handle */
 .resize-handle-left {
-  position: absolute; top: 0; left: -5px; bottom: 0; width: 10px;
-  cursor: ew-resize; z-index: 100; background: transparent;
+  position: absolute; top: 0; left: 0; bottom: 0; width: 5px;
+  cursor: ew-resize; z-index: 100; background-color: transparent;
+  transition: background-color 0.2s;
 }
-
-/* --- New Toolbar Styling --- */
-.pikafish-toolbar {
-  background: #ffffff;
-  display: flex; align-items: center; padding: 6px 8px;
-  gap: 8px; border-bottom: 1px solid #ddd;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-  height: 44px; flex-shrink: 0;
-}
-
-/* Switch */
-.custom-switch { width: 16px; height: 16px; accent-color: #2196f3; cursor: pointer; }
-
-/* Control Groups */
-.control-group {
-  position: relative;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  background: #f9f9f9;
-  display: flex; align-items: center;
-  height: 28px;
-  transition: all 0.2s;
-  padding: 0 4px;
-}
-.control-group:hover { border-color: #bdbdbd; background: #fff; }
-.control-group.expanded { flex-grow: 1; }
-.control-group.small { width: 50px; }
-.control-group.medium { width: 75px; }
-
-.input-label {
-    font-size: 9px; color: #999; text-transform: uppercase; margin-right: 2px; font-weight: bold;
-}
-
-.styled-input {
-  border: none; width: 100%; height: 100%; outline: none; background: transparent;
-  font-size: 13px; font-family: inherit; color: #333; padding: 0;
-  appearance: none; -webkit-appearance: none;
-}
-.select-arrow { pointer-events: none; position: absolute; right: 2px; color: #777; }
-
-/* Buttons */
-.settings-btn {
-  width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
-  border: none; background: transparent; cursor: pointer; color: #666;
-  border-radius: 4px; transition: 0.2s;
-}
-.settings-btn:hover { background: #eee; color: #2196f3; }
-
-/* --- Panel Styling --- */
-.panel-container {
-  background: white; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-  border: 1px solid #e0e0e0; overflow: hidden; display: flex; flex-direction: column;
-  margin: 0 8px;
-}
-.panel-header {
-  background: #fafafa; padding: 6px 10px; border-bottom: 1px solid #eee;
-  display: flex; align-items: center; color: #555;
-}
-.panel-header h3 { font-size: 12px; font-weight: 700; margin: 0; text-transform: uppercase; }
-
-/* --- Log Content --- */
-.log-content {
-  padding: 6px; overflow-y: auto; background: #fff;
-}
-.log-placeholder { text-align: center; color: #aaa; padding: 20px; font-size: 13px; font-style: italic; }
-.log-line {
-  margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px dashed #f0f0f0;
-}
-.line-meta { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
-.meta-tag { font-size: 10px; padding: 1px 4px; border-radius: 3px; font-weight: bold; }
-.meta-tag.depth { background: #e3f2fd; color: #1565c0; }
-.meta-tag.score { min-width: 30px; text-align: center; }
-
-/* Score Colors */
-.pos-score { color: #2e7d32; background: #e8f5e9; }
-.neg-score { color: #c62828; background: #ffebee; }
-.draw-score { color: #616161; background: #f5f5f5; }
-.mate-score { color: #fff; background: #9c27b0; }
-
-.meta-info { font-size: 11px; color: #757575; }
-.line-pv { font-size: 13px; color: #212121; line-height: 1.4; }
-
-/* --- Notation Table --- */
-.notation-box {
-  display: flex; flex-direction: column; height: 100%;
-}
-.notation-table-header {
-  display: flex; background: #f5f5f5; padding: 6px 0; border-bottom: 1px solid #eee;
-  font-size: 11px; font-weight: bold; color: #616161; text-transform: uppercase;
-}
-.col-num { width: 40px; text-align: center; color: #9e9e9e; }
-.col-move { flex: 1; text-align: center; }
-
-.notation-list { overflow-y: auto; flex: 1; }
-.notation-row {
-  display: flex; align-items: center; padding: 4px 0; border-bottom: 1px solid #fafafa;
-  font-size: 13px; transition: 0.1s;
-}
-.notation-row:hover { background: #f5f5f5; }
-.notation-row.highlight-row { background: #fffde7; }
-
-.clickable { cursor: pointer; border-radius: 4px; margin: 0 4px; }
-.clickable:hover { background: rgba(0,0,0,0.05); }
-.current-move { background: #fff176; color: #000; font-weight: bold; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
-
-/* Scrollbar đẹp */
-.custom-scrollbar::-webkit-scrollbar { width: 6px; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: #e0e0e0; border-radius: 3px; }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #bdbdbd; }
+.resize-handle-left:hover { background-color: rgba(0, 123, 255, 0.3); }
 
 .resize-handle-bottom {
-  height: 8px; cursor: ns-resize; background: #f5f5f5; border-top: 1px solid #eee;
-  display: flex; align-items: center; justify-content: center;
+  width: 100%; height: 8px; cursor: ns-resize;
+  background-color: #f0f0f0; display: flex; align-items: center; justify-content: center;
+  border-top: 1px solid #ddd; border-bottom: 1px solid #ddd; margin-top: -1px;
 }
-.handle-bar { width: 24px; height: 3px; background: #ccc; border-radius: 2px; }
+.resize-handle-bottom:hover { background-color: #e0e0e0; }
+.handle-grip { width: 30px; height: 3px; background-color: #bbb; border-radius: 2px; }
 
-.disabled-clicks { pointer-events: none; opacity: 0.8; }
+.sidebar.pikafish-theme {
+  font-family: 'Consolas', 'Monaco', monospace;
+  background-color: #f5f5f5;
+  padding: 8px;
+}
+
+/* --- Toolbar --- */
+.pikafish-toolbar {
+  background: #e0e0e0; display: flex; align-items: center; padding: 4px 6px;
+  gap: 6px; border: 1px solid #ccc; height: 38px; flex-shrink: 0;
+}
+.engine-toggle input[type="checkbox"] { width: 18px; height: 18px; accent-color: #6a1b9a; cursor: pointer; }
+.engine-info-box {
+  background: white; border: 1px solid #aaa; padding: 2px 4px; font-size: 13px;
+  height: 24px; display: flex; align-items: center; overflow: hidden;
+}
+.engine-name { flex-grow: 1; min-width: 100px; }
+.threads { width: 50px; }
+.hash { width: 70px; }
+.pika-select, .pika-select-small, .pika-input {
+  border: none; width: 100%; outline: none; font-family: inherit; font-size: 12px;
+  background: transparent; padding: 0; margin: 0;
+}
+.custom-display-name { font-weight: bold; color: #000; background-color: #e0e0e0; }
+.pika-settings-btn { background: none; border: none; cursor: pointer; padding: 2px; min-width: 24px; }
+.pika-settings-btn:hover { background: #ddd; border-radius: 4px; }
+
+/* --- Log Display --- */
+.pikafish-log-container {
+  flex-shrink: 0; background: white; overflow-y: auto; padding: 5px;
+  border: 1px solid #ccc; border-bottom: none;
+}
+.log-entry { margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px dotted #f0f0f0; }
+.log-header {
+  color: #008000; font-size: 12px; font-weight: bold; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px;
+}
+.p-item { margin-right: 8px; }
+.log-pv { color: #000; font-size: 14px; line-height: 1.4; word-wrap: break-word; font-family: 'Noto Sans SC', sans-serif; }
+.log-placeholder { text-align: center; color: #999; margin-top: 20px; font-style: italic; }
+
+/* --- Notation Table Style --- */
+.notation-table-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: 4px;
+  background-color: white;
+  overflow: hidden;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 14px;
+}
+
+/* Header */
+.notation-row.header {
+  background-color: #e0e0e0;
+  font-weight: bold;
+  border-bottom: 1px solid #ccc;
+  color: #333;
+}
+
+/* Row chung */
+.notation-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.notation-body {
+  flex-grow: 1;
+  overflow-y: auto;
+}
+
+/* Cột */
+.col-num {
+  width: 40px;
+  text-align: center;
+  border-right: 1px solid #eee;
+  color: #666;
+  background-color: #f9f9f9;
+  padding: 4px 0;
+  font-size: 12px;
+}
+
+.col-move {
+  flex: 1;
+  text-align: center;
+  padding: 4px 0;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.col-move:hover {
+  background-color: #eaeaea;
+}
+
+/* Highlight nước đi hiện tại */
+.col-move.current-move {
+  background-color: #ffeb3b; /* Vàng sáng */
+  color: #000;
+  font-weight: bold;
+  box-shadow: inset 0 0 0 1px #fbc02d;
+}
+
+/* Dòng active (đang xem) */
+.notation-row.active-row {
+  background-color: #fff9c4;
+}
+
+.empty-notation {
+  text-align: center;
+  padding: 20px;
+  color: #999;
+  font-style: italic;
+  font-size: 13px;
+}
+
+.panel-title-text h3, .notation-header h3 {
+  font-size: 13px; margin: 0; color: #333; font-weight: bold;
+}
 </style>
