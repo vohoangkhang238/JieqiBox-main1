@@ -181,12 +181,18 @@
   // FIX: Lưu tọa độ click cuối cùng để menu không bị nhảy về (4,4)
   const lastClickPos = ref({ row: 4, col: 4 })
   
+  // FIX: Logic tính toán vị trí menu vòng tròn (ĐÃ SỬA)
   const radialMenuPos = computed(() => {
-    // Ưu tiên dùng tọa độ click chuột gần nhất
-    if (lastClickPos.value) return lastClickPos.value
-    // Nếu không thì dùng vị trí quân đang chọn
+    // Ưu tiên TUYỆT ĐỐI: Lấy tọa độ từ chính yêu cầu lật (pendingFlip)
+    // Dù là người click hay AI đi, biến pendingFlip luôn chứa tọa độ chính xác của quân cần lật.
+    if (pendingFlip.value && typeof pendingFlip.value.row === 'number' && typeof pendingFlip.value.col === 'number') {
+      return { row: pendingFlip.value.row, col: pendingFlip.value.col }
+    }
+
+    // Các trường hợp dự phòng (Fallback)
     if (selectedPiece.value) return { row: selectedPiece.value.row, col: selectedPiece.value.col }
-    // Fallback
+    if (lastClickPos.value) return lastClickPos.value
+    
     return { row: 4, col: 4 }
   })
 
