@@ -317,29 +317,23 @@
 <style scoped lang="scss">
 /* --- LAYOUT TỔNG THỂ --- */
 .chessboard-wrapper {
-  /* Đảm bảo khung không bao giờ tràn màn hình và luôn giữ tỷ lệ */
   width: 100%;
   height: 100%;
   max-width: 98vmin;
   max-height: 98vmin;
   margin: 0 auto;
-
-  /* Tỷ lệ cố định: Bàn cờ (chiếm đa số) + Kho quân (bên phải) */
-  aspect-ratio: 1.25 / 1; 
-
+  /* Tỷ lệ: Bàn cờ + Kho quân (bên phải thu nhỏ) */
+  aspect-ratio: 1.15 / 1; 
   display: flex;
-  flex-direction: row; /* LUÔN LUÔN xếp ngang */
+  flex-direction: row;
   align-items: stretch;
-  gap: 0.8vmin;
+  gap: 0; 
   padding: 0.8vmin;
-  
-  /* QUAN TRỌNG: Loại bỏ hoàn toàn media query chuyển sang column */
 }
 
 .main-column {
-  /* Chiếm phần lớn không gian */
   flex: 1 1 auto;
-  width: 75%; 
+  width: 84%; 
   display: flex;
   flex-direction: column;
   position: relative;
@@ -353,35 +347,33 @@
   z-index: 1;
 }
 
-/* --- SIDE PANEL (KHO QUÂN - LUÔN BÊN PHẢI) --- */
+/* --- SIDE PANEL (KHO QUÂN - TRONG SUỐT HOÀN TOÀN) --- */
 .side-panel {
-  /* Chiếm phần còn lại, cố định tỷ lệ */
-  flex: 0 0 22%; /* Cố định chiều rộng 22% so với container cha */
-  min-width: 0; /* Cho phép thu nhỏ tối đa */
-
-  background: #a0a0a0;
-  border-radius: 1vmin;
-  padding: 0.5vmin;
+  flex: 0 0 16%; 
+  min-width: 0;
+  background: transparent; 
+  box-shadow: none;
+  border: none;
+  padding: 0 0 0 0.5vmin;
   display: flex;
-  flex-direction: column; /* LUÔN LUÔN xếp dọc */
+  flex-direction: column;
   justify-content: space-between;
-  box-shadow: inset 0 0 1vmin rgba(0,0,0,0.2);
-  overflow: hidden; /* Ẩn nội dung tràn khi quá nhỏ */
+  overflow: hidden;
 }
 
 .pool-section {
   display: flex;
-  flex-direction: column; /* LUÔN LUÔN xếp dọc */
+  flex-direction: column;
   flex: 1;
   justify-content: space-evenly;
-  gap: 0.4vmin;
-  min-height: 0; /* Cho phép thu nhỏ chiều cao */
+  gap: 0;
+  min-height: 0;
 }
 
 .top-pool {
-  border-bottom: 0.2vmin solid rgba(255,255,255,0.3);
-  padding-bottom: 0.4vmin;
-  margin-bottom: 0.4vmin;
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-bottom: 0.5vmin;
 }
 
 /* --- TỪNG SLOT QUÂN --- */
@@ -389,82 +381,109 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  
-  background: rgba(255,255,255, 0.4);
-  border-radius: 0.5vmin; /* Bo góc nhỏ theo tỷ lệ */
-  padding: 0.2vmin 0.4vmin;
-  box-shadow: 0 0.1vmin 0.3vmin rgba(0,0,0,0.1);
-  
-  flex: 1; /* Tự động chia đều chiều cao */
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+  padding: 0;
+  flex: 1;
   width: 100%;
-  min-height: 0; /* Cho phép thu nhỏ */
+  min-height: 0;
 }
 
-/* Wrapper ảnh để căn giữa và scale */
+/* Wrapper ảnh */
 .pool-img-wrapper {
-  width: 32%; /* Chiếm khoảng 1/3 slot */
+  width: 35%;
   height: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
 }
 .pool-img {
-  /* Kích thước ảnh scale theo chiều cao của dòng */
   height: auto;
   width: auto;
-  max-height: 95%; 
+  max-height: 90%; 
   max-width: 100%;
   object-fit: contain;
-  filter: drop-shadow(0 0.1vmin 0.1vmin rgba(0,0,0,0.3));
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5)); 
 }
 
-/* Số lượng quân - Font size siêu nhỏ theo vmin */
+/* Số lượng quân */
 .pool-num {
-  font-weight: 800;
-  font-size: 2.2vmin; /* Cực nhỏ để không bị vỡ khi scale down */
-  text-shadow: 0 0.1vmin 0.1vmin rgba(0,0,0,0.2);
+  font-weight: 900;
+  font-size: 2.2vmin;
+  /* Viền chữ trắng + bóng đen để nổi bật trên mọi nền */
+  text-shadow: 
+    -1px -1px 0 #fff,  
+     1px -1px 0 #fff,
+    -1px  1px 0 #fff,
+     1px  1px 0 #fff,
+     0 0 4px rgba(0,0,0,0.8);
   flex: 1;
   text-align: center;
   line-height: 1;
+  z-index: 2;
 }
 .red-num { color: #d32f2f; }
-.black-num { color: #212121; }
+.black-num { color: #000000; }
 
-/* Nút bấm (Xếp dọc) - Kích thước siêu nhỏ */
+/* Nút bấm (Xếp dọc) */
 .pool-btns {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  height: 90%;
-  width: 22%; 
-  gap: 0.2vmin;
+  justify-content: center;
+  height: 80%; 
+  width: 20%; 
+  gap: 0; /* Các nút sát nhau */
+  margin-right: 2px;
 }
 
+/* --- UPDATE: NÚT BẤM TRONG SUỐT --- */
 .tiny-btn {
   flex: 1;
   width: 100%;
+  
+  /* Xóa nền và viền */
   border: none;
-  background: rgba(0,0,0,0.6);
-  color: #fff;
-  font-size: 1.3vmin; /* Font nút cực nhỏ */
-  font-weight: bold;
+  background: transparent;
+  
+  /* Chữ to và đậm hơn để dễ bấm */
+  color: #f0f0f0; 
+  font-size: 2vmin; 
+  font-weight: 900;
+  
   padding: 0;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.1s;
+  transition: all 0.15s ease;
   
-  &:hover:not(:disabled) { background: #1976d2; }
-  &:disabled { opacity: 0.3; background: #555; cursor: default; }
+  /* Bóng chữ đậm để nhìn thấy nút trên nền sáng */
+  text-shadow: 0 0 3px rgba(0,0,0,1);
+
+  /* Hiệu ứng khi di chuột */
+  &:hover:not(:disabled) {
+    color: #4caf50; /* Chuyển màu xanh lá */
+    transform: scale(1.3); /* Phóng to nhẹ */
+    background: transparent;
+  }
   
-  &.btn-inc { border-top-right-radius: 0.4vmin; border-top-left-radius: 0.4vmin; }
-  &.btn-dec { border-bottom-right-radius: 0.4vmin; border-bottom-left-radius: 0.4vmin; }
+  /* Hiệu ứng khi ấn */
+  &:active:not(:disabled) {
+    transform: scale(0.9);
+  }
+
+  /* Khi không bấm được */
+  &:disabled {
+    opacity: 0.15; /* Mờ hẳn đi */
+    cursor: default;
+    color: #ccc;
+  }
 }
 
 /* Divider lỗi */
 .pool-divider { height: 2vmin; display: flex; align-items: center; justify-content: center; min-height: 0; }
-.pool-error { font-size: 1.5vmin; color: #ffeb3b; background: rgba(0,0,0,0.5); padding: 0.2vmin 0.8vmin; border-radius: 0.5vmin; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pool-error { font-size: 1.5vmin; color: #ffeb3b; background: rgba(0,0,0,0.8); padding: 0.2vmin 0.8vmin; border-radius: 0.5vmin; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* --- CÁC STYLE CŨ (GIỮ NGUYÊN) --- */
 .bg { width: 100%; height: 100%; display: block; }
