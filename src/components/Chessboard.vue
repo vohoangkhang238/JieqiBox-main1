@@ -360,35 +360,37 @@
   width: 100%; 
   display: flex;
   flex-direction: column;
-  
-  /* QUAN TRỌNG: Tự động chia đều khoảng cách */
-  justify-content: space-between; 
 }
 
-/* --- [1] KHỐI TRÊN (QUÂN ĐEN) --- */
+/* --- KHỐI TRÊN (QUÂN ĐEN) - GIỮ NGUYÊN (Hoặc chỉnh tương tự nếu muốn) --- */
 .top-zone {
   top: 0; 
-  bottom: 52%; /* Kết thúc ở nửa trên */
-  
-  justify-content: flex-start; /* Quân đen dồn lên đỉnh */
+  bottom: 50%; 
+  justify-content: flex-start; 
   gap: 0;
 }
-/* Giảm chiều cao dòng quân Đen cho gọn */
-.top-zone .pool-row { height: 5vmin; }
+.top-zone .pool-row { height: 5.2vmin; }
 
 
-/* --- [2] KHỐI DƯỚI (QUÂN ĐỎ) - CĂN CHỈNH MẠNH TAY --- */
+/* --- [QUAN TRỌNG] KHỐI DƯỚI (QUÂN ĐỎ) - THAY ĐỔI CƠ CHẾ --- */
 .bottom-zone {
-  /* Mép trên: 45% là vị trí khoảng giữa sông. 
-     -> Chỉnh số này LỚN hơn (vd 50%) để tụt xuống. 
-     -> Chỉnh NHỎ hơn (vd 40%) để bay lên cao. */
-  top: 45%; 
-
-  /* Mép dưới: -2% để quân Tốt chạm hẳn xuống đáy (hoặc lòi ra xíu). */
-  bottom: -2%; 
+  /* 1. BỎ RÀNG BUỘC TRÊN: Xe đỏ tự do, không bị ép ngay sông */
+  top: auto; 
+  
+  /* 2. RÀNG BUỘC DƯỚI: Tốt đỏ đóng đinh ngay đáy */
+  bottom: 0; 
+  
+  /* 3. CHIỀU CAO TỰ DO: Co giãn theo số lượng quân */
+  height: auto;
+  
+  /* 4. XẾP TỪ DƯỚI LÊN: Dồn quân về phía đáy */
+  justify-content: flex-end; 
+  
+  /* 5. KHOẢNG CÁCH: Chỉnh số này để Xe đỏ cao lên hay thấp xuống */
+  gap: 0.5vmin; 
 }
 
-/* --- [3] TỪNG DÒNG QUÂN (QUAN TRỌNG) --- */
+/* --- TỪNG DÒNG QUÂN --- */
 .pool-row {
   display: flex;
   align-items: center; 
@@ -397,9 +399,8 @@
   padding: 0;
   width: 100%;
   
-  /* GIẢM CHIỀU CAO XUỐNG CÒN 5vmin 
-     (Nếu để to quá thì nó chật kín, không còn chỗ để nhúc nhích) */
-  height: 5vmin; 
+  /* Chiều cao mỗi dòng */
+  height: 5.5vmin; 
   
   min-height: 0;
 }
@@ -413,20 +414,17 @@
   align-items: center; 
 }
 
-/* Xe Đen: Dính đỉnh */
+/* Xe Đen (Trên cùng): Dính đỉnh */
 .top-zone .pool-row:first-child .pool-img-wrapper {
   align-items: flex-start;
 }
 
-/* Xe Đỏ (Đầu): Dính mép sông (mép trên của khung bottom-zone) */
-.bottom-zone .pool-row:first-child .pool-img-wrapper {
-  align-items: flex-start;
-}
-
-/* Tốt Đỏ (Cuối): Dính mép đáy (mép dưới của khung bottom-zone) */
+/* Tốt Đỏ (Dưới cùng): Dính đáy */
 .bottom-zone .pool-row:last-child .pool-img-wrapper {
-  align-items: flex-end;
-  /* Đảm bảo không có transform nào can thiệp */
+  /* Ép ảnh xuống sát mép dưới của dòng */
+  align-items: flex-end; 
+  
+  /* Reset mọi dịch chuyển để chạm đáy chuẩn xác */
   transform: none; 
 }
 
