@@ -362,33 +362,39 @@
   flex-direction: column;
 }
 
-/* --- KHỐI TRÊN (QUÂN ĐEN) - GIỮ NGUYÊN (Hoặc chỉnh tương tự nếu muốn) --- */
+/* -----------------------------------------------------------
+   1. KHỐI TRÊN (QUÂN ĐEN) - GIỮ NGUYÊN TUYỆT ĐỐI 
+----------------------------------------------------------- */
 .top-zone {
   top: 0; 
-  bottom: 50%; 
-  justify-content: flex-start; 
+  bottom: 52%; 
+  justify-content: flex-start;
   gap: 0;
 }
-.top-zone .pool-row { height: 5.2vmin; }
+/* Chiều cao dòng quân đen (như cũ) */
+.top-zone .pool-row { height: 5vmin; }
 
 
-/* --- [QUAN TRỌNG] KHỐI DƯỚI (QUÂN ĐỎ) - THAY ĐỔI CƠ CHẾ --- */
+/* -----------------------------------------------------------
+   2. KHỐI DƯỚI (QUÂN ĐỎ) - ĐỐI XỨNG HOÀN HẢO
+----------------------------------------------------------- */
 .bottom-zone {
-  /* 1. BỎ RÀNG BUỘC TRÊN: Xe đỏ tự do, không bị ép ngay sông */
-  top: auto; 
+  /* Đối xứng với bottom: 52% của đen -> top: 52% */
+  top: 52%; 
   
-  /* 2. RÀNG BUỘC DƯỚI: Tốt đỏ đóng đinh ngay đáy */
+  /* Đối xứng với top: 0 của đen -> bottom: 0 */
   bottom: 0; 
   
-  /* 3. CHIỀU CAO TỰ DO: Co giãn theo số lượng quân */
-  height: auto;
-  
-  /* 4. XẾP TỪ DƯỚI LÊN: Dồn quân về phía đáy */
+  /* Đối xứng với flex-start (trên xuống) -> flex-end (dưới lên) */
   justify-content: flex-end; 
   
-  /* 5. KHOẢNG CÁCH: Chỉnh số này để Xe đỏ cao lên hay thấp xuống */
-  gap: 0.5vmin; 
+  /* Đối xứng gap: 0 */
+  gap: 0; 
 }
+
+/* Chiều cao dòng quân đỏ cũng phải bằng quân đen */
+.bottom-zone .pool-row { height: 5vmin; }
+
 
 /* --- TỪNG DÒNG QUÂN --- */
 .pool-row {
@@ -398,10 +404,7 @@
   background: transparent;
   padding: 0;
   width: 100%;
-  
-  /* Chiều cao mỗi dòng */
-  height: 5.5vmin; 
-  
+  height: 5.5vmin; /* Fallback */
   min-height: 0;
 }
 
@@ -414,17 +417,14 @@
   align-items: center; 
 }
 
-/* Xe Đen (Trên cùng): Dính đỉnh */
+/* Xe Đen (Top): Dính đỉnh */
 .top-zone .pool-row:first-child .pool-img-wrapper {
   align-items: flex-start;
 }
 
-/* Tốt Đỏ (Dưới cùng): Dính đáy */
+/* Tốt Đỏ (Bottom): Dính đáy */
 .bottom-zone .pool-row:last-child .pool-img-wrapper {
-  /* Ép ảnh xuống sát mép dưới của dòng */
-  align-items: flex-end; 
-  
-  /* Reset mọi dịch chuyển để chạm đáy chuẩn xác */
+  align-items: flex-end;
   transform: none; 
 }
 
