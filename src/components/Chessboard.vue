@@ -327,10 +327,7 @@
   display: flex;
   flex-direction: row;
   align-items: stretch;
-  
-  /* [ĐÃ CHỈNH SỬA] Nhích lại gần nhau hơn (0.5vmin thay vì 2vmin) */
   gap: 0.5vmin; 
-  
   padding: 0.8vmin;
 }
 
@@ -411,7 +408,7 @@
   overflow: visible; 
 }
 
-/* --- BADGE SỐ LƯỢNG (STYLE MỚI) --- */
+/* --- BADGE SỐ LƯỢNG --- */
 .pool-num-badge {
   position: absolute;
   top: -0.2vmin;
@@ -439,12 +436,12 @@
 /* ẢNH */
 .pool-img { height: auto; width: auto; max-height: 100%; max-width: 100%; object-fit: contain; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5)); }
 
-/* --- NÚT BẤM (ĐỎ/ĐEN) --- */
+/* --- NÚT BẤM (+ ĐỎ, - ĐEN, RESIZABLE) --- */
 .pool-btns {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  height: 50%; 
+  height: 20%; /* Nhích gần */
   width: 20%; 
   gap: 0; 
   margin-right: 0;
@@ -473,12 +470,18 @@
 
   &:hover:not(:disabled) { transform: scale(1.3); }
   &:active:not(:disabled) { transform: scale(0.9); }
-  &:disabled { opacity: 0.15; cursor: default; color: #ccc; }
+  
+  /* [ĐÃ SỬA LỖI] Disabled nhưng vẫn hiện rõ màu (chỉ mờ 50%) */
+  &:disabled { 
+    opacity: 0.5; /* Mờ nhẹ, không ẩn hẳn */
+    cursor: default; 
+    /* color: #ccc; -> Đã xóa để giữ màu gốc */
+  }
 }
 
-/* MÀU SẮC RIÊNG BIỆT */
-.btn-inc { color: #d32f2f; }
-.btn-dec { color: #000000; }
+/* MÀU SẮC RIÊNG BIỆT (Luôn có màu ngay cả khi disabled nhờ xóa color #ccc ở trên) */
+.btn-inc { color: #e53935; } /* Đỏ */
+.btn-dec { color: #000000; } /* Đen */
 
 /* Các phần khác giữ nguyên */
 .pool-error-floating { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5vmin; color: #ffeb3b; background: rgba(0,0,0,0.8); padding: 0.5vmin 1vmin; border-radius: 0.5vmin; white-space: nowrap; pointer-events: none; z-index: 10; }
