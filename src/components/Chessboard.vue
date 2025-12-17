@@ -325,10 +325,7 @@
   aspect-ratio: 1.15 / 1; 
   display: flex;
   flex-direction: row;
-  
-  /* QUAN TRỌNG: Kéo dãn chiều cao side-panel bằng với bàn cờ */
-  align-items: stretch; 
-  
+  align-items: stretch; /* Kéo dãn chiều cao bằng nhau */
   gap: 0; 
   padding: 0.8vmin;
 }
@@ -349,55 +346,47 @@
   z-index: 1;
 }
 
-/* --- SIDE PANEL (CĂN CHỈNH 2 ĐẦU) --- */
+/* --- SIDE PANEL --- */
 .side-panel {
   flex: 0 0 16%; 
   min-width: 0;
-  
-  /* Trong suốt & không viền */
   background: transparent; 
   box-shadow: none;
   border: none;
   
-  /* Padding 0 để sát mép tuyệt đối */
+  /* Padding 0 tuyệt đối để chạm mép */
   padding: 0 0 0 0.5vmin;
   
   display: flex;
   flex-direction: column;
-  
-  /* QUAN TRỌNG: Đẩy 2 phần (trên/dưới) ra xa nhau nhất có thể */
-  justify-content: space-between; 
-  
+  justify-content: space-between; /* Đẩy 2 nhóm ra 2 đầu cực đại */
   overflow: hidden;
 }
 
-/* --- CẤU HÌNH CHUNG CHO 2 KHỐI QUÂN --- */
+/* --- CẤU HÌNH KHOẢNG CÁCH QUÂN --- */
 .pool-section {
   display: flex;
   flex-direction: column;
-  /* Dùng auto để chiều cao co giãn theo nội dung, không chiếm hết khoảng trống */
   flex: 0 1 auto; 
-  gap: 0.2vmin; /* Khoảng cách nhỏ giữa các quân trong cùng 1 nhóm */
+  
+  /* TĂNG KHOẢNG CÁCH GIỮA CÁC QUÂN: Dãn ra cho thoáng */
+  gap: 1.2vmin; 
+  
   min-height: 0;
 }
 
-/* --- KHỐI TRÊN (XE ĐEN...) --- */
 .top-pool {
   border-bottom: none;
   padding-bottom: 0;
   margin-bottom: 0;
-  
-  /* Căn quân bắt đầu từ mép trên cùng */
   justify-content: flex-start; 
 }
 
-/* --- KHỐI DƯỚI (TỐT ĐỎ...) --- */
 .bottom-pool {
-  /* Căn quân bắt đầu từ mép dưới cùng */
   justify-content: flex-end; 
 }
 
-/* --- TỪNG DÒNG QUÂN (XE, PHÁO, MÃ...) --- */
+/* --- TỪNG DÒNG QUÂN --- */
 .pool-row {
   display: flex;
   align-items: center;
@@ -408,8 +397,10 @@
   padding: 0;
   
   width: 100%;
-  /* Đặt chiều cao cố định tương đối để các quân không bị giãn quá mức */
-  height: 6.5vmin; 
+  
+  /* TĂNG CHIỀU CAO: Để mỗi dòng chiếm nhiều không gian hơn */
+  height: 7.5vmin; 
+  
   min-height: 0;
 }
 
@@ -424,7 +415,7 @@
 .pool-img {
   height: auto;
   width: auto;
-  max-height: 90%; 
+  max-height: 100%; /* Cho phép ảnh lớn tối đa theo chiều cao mới */
   max-width: 100%;
   object-fit: contain;
   filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5)); 
@@ -492,9 +483,9 @@
   }
 }
 
-/* Divider lỗi (Nằm giữa khoảng trống) */
+/* Divider lỗi */
 .pool-divider { 
-  flex: 1; /* Chiếm hết khoảng trống ở giữa */
+  flex: 1; 
   display: flex; 
   align-items: center; 
   justify-content: center; 
