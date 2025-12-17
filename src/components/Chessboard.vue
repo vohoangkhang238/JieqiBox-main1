@@ -134,6 +134,7 @@
 </template>
 
 <script setup lang="ts">
+  /* GIỮ NGUYÊN TOÀN BỘ PHẦN SCRIPT, KHÔNG THAY ĐỔI GÌ */
   import { inject, ref, watch, computed, watchEffect, onMounted, onUnmounted, unref } from 'vue'
   import { useI18n } from 'vue-i18n'
   import type { Piece } from '@/composables/useChessGame'
@@ -316,72 +317,65 @@
 <style scoped lang="scss">
 /* --- LAYOUT TỔNG THỂ --- */
 .chessboard-wrapper {
-  /* GIẢM SIZE XUỐNG CÒN 80VMIN ĐỂ KHÔNG BỊ TO QUÁ */
-  height: 80vmin; 
-  width: auto; 
-  
-  /* Tỷ lệ tổng thể */
-  aspect-ratio: 1.18 / 1; 
+  /* Đảm bảo khung không bao giờ tràn màn hình và luôn giữ tỷ lệ */
+  width: 100%;
+  height: 100%;
+  max-width: 98vmin;
+  max-height: 98vmin;
+  margin: 0 auto;
 
-  margin: 1vmin auto; /* Canh giữa */
-  
+  /* Tỷ lệ cố định: Bàn cờ (chiếm đa số) + Kho quân (bên phải) */
+  aspect-ratio: 1.25 / 1; 
+
   display: flex;
-  flex-direction: row; /* Luôn nằm ngang */
-  align-items: stretch; /* Kéo dãn chiều cao các phần tử con bằng nhau */
-  justify-content: center;
-  gap: 1vmin; /* Khoảng cách giữa bàn cờ và kho */
-  padding: 0.5vmin;
+  flex-direction: row; /* LUÔN LUÔN xếp ngang */
+  align-items: stretch;
+  gap: 0.8vmin;
+  padding: 0.8vmin;
+  
+  /* QUAN TRỌNG: Loại bỏ hoàn toàn media query chuyển sang column */
 }
 
-/* --- CỘT BÀN CỜ --- */
 .main-column {
-  flex: none; 
-  height: 100%; 
-  width: auto; 
-  position: relative;
+  /* Chiếm phần lớn không gian */
+  flex: 1 1 auto;
+  width: 75%; 
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 .chessboard-container {
-  /* Chiều cao full theo cha, chiều rộng tự tính theo tỷ lệ 9/10 */
-  height: 100%;
-  width: auto;
-  aspect-ratio: 9/10; 
-  
+  width: 100%;
+  aspect-ratio: 9/10;
   position: relative;
   user-select: none;
   z-index: 1;
 }
 
-/* --- SIDE PANEL (KHO QUÂN) --- */
+/* --- SIDE PANEL (KHO QUÂN - LUÔN BÊN PHẢI) --- */
 .side-panel {
-  flex: 1; 
-  height: 100%; 
-  
-  /* Giới hạn max width để nó không bè ra */
-  max-width: 25%; 
-  min-width: 15%;
+  /* Chiếm phần còn lại, cố định tỷ lệ */
+  flex: 0 0 22%; /* Cố định chiều rộng 22% so với container cha */
+  min-width: 0; /* Cho phép thu nhỏ tối đa */
 
   background: #a0a0a0;
   border-radius: 1vmin;
   padding: 0.5vmin;
-  
   display: flex;
-  flex-direction: column; 
+  flex-direction: column; /* LUÔN LUÔN xếp dọc */
   justify-content: space-between;
   box-shadow: inset 0 0 1vmin rgba(0,0,0,0.2);
-  overflow: hidden; 
+  overflow: hidden; /* Ẩn nội dung tràn khi quá nhỏ */
 }
 
 .pool-section {
   display: flex;
-  flex-direction: column;
-  flex: 1; /* Chia đều không gian trên dưới */
+  flex-direction: column; /* LUÔN LUÔN xếp dọc */
+  flex: 1;
   justify-content: space-evenly;
   gap: 0.4vmin;
-  width: 100%;
-  min-height: 0;
+  min-height: 0; /* Cho phép thu nhỏ chiều cao */
 }
 
 .top-pool {
@@ -397,32 +391,37 @@
   justify-content: space-between;
   
   background: rgba(255,255,255, 0.4);
-  border-radius: 0.6vmin; 
-  padding: 0 0.4vmin;
+  border-radius: 0.5vmin; /* Bo góc nhỏ theo tỷ lệ */
+  padding: 0.2vmin 0.4vmin;
+  box-shadow: 0 0.1vmin 0.3vmin rgba(0,0,0,0.1);
   
-  height: 15%; 
+  flex: 1; /* Tự động chia đều chiều cao */
   width: 100%;
+  min-height: 0; /* Cho phép thu nhỏ */
 }
 
-/* Wrapper ảnh */
+/* Wrapper ảnh để căn giữa và scale */
 .pool-img-wrapper {
-  width: 35%; 
+  width: 32%; /* Chiếm khoảng 1/3 slot */
   height: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
 }
 .pool-img {
-  height: 80%; /* Ảnh cao bằng 80% dòng */
+  /* Kích thước ảnh scale theo chiều cao của dòng */
+  height: auto;
   width: auto;
+  max-height: 95%; 
+  max-width: 100%;
   object-fit: contain;
   filter: drop-shadow(0 0.1vmin 0.1vmin rgba(0,0,0,0.3));
 }
 
-/* Số lượng quân */
+/* Số lượng quân - Font size siêu nhỏ theo vmin */
 .pool-num {
   font-weight: 800;
-  font-size: 2.2vmin; /* Chữ to rõ theo tỷ lệ màn hình */
+  font-size: 2.2vmin; /* Cực nhỏ để không bị vỡ khi scale down */
   text-shadow: 0 0.1vmin 0.1vmin rgba(0,0,0,0.2);
   flex: 1;
   text-align: center;
@@ -431,14 +430,14 @@
 .red-num { color: #d32f2f; }
 .black-num { color: #212121; }
 
-/* Nút bấm */
+/* Nút bấm (Xếp dọc) - Kích thước siêu nhỏ */
 .pool-btns {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 0.3vmin;
-  height: 80%;
-  width: 20%; 
+  justify-content: space-between;
+  height: 90%;
+  width: 22%; 
+  gap: 0.2vmin;
 }
 
 .tiny-btn {
@@ -447,7 +446,7 @@
   border: none;
   background: rgba(0,0,0,0.6);
   color: #fff;
-  font-size: 1.4vmin;
+  font-size: 1.3vmin; /* Font nút cực nhỏ */
   font-weight: bold;
   padding: 0;
   cursor: pointer;
@@ -464,14 +463,10 @@
 }
 
 /* Divider lỗi */
-.pool-divider { 
-    height: 3vmin; 
-    display: flex; align-items: center; justify-content: center; 
-    width: 100%;
-}
-.pool-error { font-size: 1.4vmin; color: #ffeb3b; background: rgba(0,0,0,0.5); padding: 0.2vmin 0.8vmin; border-radius: 0.5vmin; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.pool-divider { height: 2vmin; display: flex; align-items: center; justify-content: center; min-height: 0; }
+.pool-error { font-size: 1.5vmin; color: #ffeb3b; background: rgba(0,0,0,0.5); padding: 0.2vmin 0.8vmin; border-radius: 0.5vmin; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* --- CÁC PHẦN LOGIC GAME (GIỮ NGUYÊN) --- */
+/* --- CÁC STYLE CŨ (GIỮ NGUYÊN) --- */
 .bg { width: 100%; height: 100%; display: block; }
 .pieces { position: absolute; inset: 0; z-index: 20; }
 .piece { position: absolute; aspect-ratio: 1; pointer-events: none; &.animated { transition: all 0.2s ease; } &.inCheck { transform: translate(-50%, -50%) scale(1.1); filter: drop-shadow(0 0 10px red); z-index: 100; } &.being-flipped { opacity: 0.3; filter: grayscale(1); } }
