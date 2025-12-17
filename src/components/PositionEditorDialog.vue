@@ -2,49 +2,55 @@
   <v-dialog
     v-model="isVisible"
     persistent
-    max-width="800px"
+    max-width="900px"
     :fullscreen="$vuetify.display.smAndDown"
   >
-    <v-card>
-      <v-card-title class="pb-2">
+    <v-card class="position-editor-card">
+      <v-card-title class="d-flex align-center py-2 px-4 bg-surface-variant">
+        <v-icon icon="mdi-chessboard" class="mr-2"></v-icon>
         <span class="text-h6">{{ $t('positionEditor.title') }}</span>
+        <v-spacer></v-spacer>
+        <v-btn icon="mdi-close" variant="text" density="compact" @click="cancelEdit"></v-btn>
       </v-card-title>
 
-      <v-card-text class="pt-0">
-        <v-container class="pa-0 position-editor-container">
-          <!-- Action Buttons -->
-          <v-row class="mb-2">
+      <v-card-text class="pa-0">
+        <v-container fluid class="pa-2 position-editor-container">
+          <v-row no-gutters class="mb-2">
             <v-col cols="12">
-              <div class="d-flex gap-1 flex-wrap action-buttons">
+              <v-sheet class="d-flex gap-2 flex-wrap action-buttons pa-2 rounded border">
                 <v-btn
                   @click="flipBoard"
                   color="primary"
-                  variant="outlined"
+                  variant="tonal"
                   size="small"
+                  prepend-icon="mdi-flip-vertical"
                 >
                   {{ $t('positionEditor.flipBoard') }}
                 </v-btn>
                 <v-btn
                   @click="mirrorLeftRight"
                   color="primary"
-                  variant="outlined"
+                  variant="tonal"
                   size="small"
+                  prepend-icon="mdi-flip-horizontal"
                 >
                   {{ $t('positionEditor.mirrorLeftRight') }}
                 </v-btn>
                 <v-btn
                   @click="switchSide"
                   color="secondary"
-                  variant="outlined"
+                  variant="tonal"
                   size="small"
+                  prepend-icon="mdi-swap-horizontal"
                 >
                   {{ $t('positionEditor.switchSide') }}
                 </v-btn>
                 <v-btn
                   @click="resetOrClearPosition"
                   color="warning"
-                  variant="outlined"
+                  variant="tonal"
                   size="small"
+                  prepend-icon="mdi-refresh"
                 >
                   {{
                     isInitialPosition
@@ -55,322 +61,278 @@
                 <v-btn
                   @click="openImageRecognition"
                   color="info"
-                  variant="outlined"
+                  variant="tonal"
                   size="small"
+                  prepend-icon="mdi-camera"
                   :disabled="isProcessing"
                 >
                   {{ $t('positionEditor.recognizeImage') }}
                 </v-btn>
-              </div>
+              </v-sheet>
             </v-col>
           </v-row>
 
-          <!-- Current side indicator + preserve toggle -->
-          <v-row class="mb-2 side-to-move">
+          <v-row no-gutters class="mb-2">
             <v-col cols="12">
-              <div
-                class="d-flex flex-wrap align-center justify-space-between gap-2"
-              >
-                <v-chip
-                  :color="editingSideToMove === 'red' ? 'red' : 'black'"
-                  text-color="white"
-                  size="small"
-                  class="side-indicator"
-                >
-                  {{ $t('positionEditor.currentSide') }}:
-                  {{
-                    editingSideToMove === 'red'
-                      ? $t('positionEditor.redToMove')
-                      : $t('positionEditor.blackToMove')
-                  }}
-                </v-chip>
+              <v-sheet class="d-flex align-center justify-space-between px-3 py-1 rounded border bg-grey-lighten-4">
+                <div class="d-flex align-center">
+                  <span class="text-caption mr-2 font-weight-bold text-uppercase text-grey-darken-1">{{ $t('positionEditor.currentSide') }}:</span>
+                  <v-chip
+                    :color="editingSideToMove === 'red' ? 'red-darken-1' : 'grey-darken-4'"
+                    variant="flat"
+                    size="small"
+                    class="font-weight-bold px-3"
+                  >
+                    {{
+                      editingSideToMove === 'red'
+                        ? $t('positionEditor.redToMove')
+                        : $t('positionEditor.blackToMove')
+                    }}
+                  </v-chip>
+                </div>
                 <v-switch
                   v-model="preserveDarkPools"
                   :label="$t('positionEditor.preserveDarkPools')"
                   color="primary"
                   density="compact"
                   hide-details
-                  class="preserve-switch"
+                  class="ml-4"
                 ></v-switch>
-              </div>
+              </v-sheet>
             </v-col>
           </v-row>
 
-          <!-- Image Recognition Panel -->
-          <v-row v-if="showImageRecognition" class="mb-2">
-            <v-col cols="12">
-              <v-card variant="outlined">
-                <v-card-title class="pb-2">
-                  <span class="text-h6">{{
-                    $t('positionEditor.imageRecognition')
-                  }}</span>
-                  <v-spacer></v-spacer>
-                  <v-btn
-                    icon="mdi-close"
-                    size="small"
-                    @click="closeImageRecognition"
-                  ></v-btn>
-                </v-card-title>
-                <v-card-text>
-                  <div class="image-recognition-container">
-                    <!-- Upload Area -->
-                    <div
-                      class="upload-area"
-                      :class="{ 'drag-over': isDragOver }"
-                      @dragover.prevent
-                      @dragleave.prevent="isDragOver = false"
-                      @drop.prevent="handleDrop"
-                      @click="triggerFileInput"
-                    >
-                      <input
-                        ref="fileInputRef"
-                        type="file"
-                        accept="image/*"
-                        @change="handleFileSelect"
-                        style="display: none"
-                      />
-                      <div v-if="!inputImage" class="upload-placeholder">
-                        <v-icon size="48" class="mb-2">mdi-image</v-icon>
-                        <p>{{ $t('positionEditor.clickOrDragImage') }}</p>
-                        <p class="text-caption">
-                          {{ $t('positionEditor.supportedFormats') }}
-                        </p>
-                      </div>
-                      <div v-else class="image-preview">
-                        <div class="image-stage">
-                          <img
-                            ref="imageDisplayRef"
-                            :src="inputImage.src"
-                            class="preview-image"
-                            alt="Chessboard image"
-                          />
-                          <canvas
-                            ref="canvasRef"
-                            class="overlay-canvas"
-                          ></canvas>
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- Status and Controls -->
-                    <div class="recognition-controls">
-                      <v-alert
-                        v-if="recognitionStatus"
-                        :type="
-                          recognitionStatus.includes('失败') ||
-                          recognitionStatus.includes('错误')
-                            ? 'error'
-                            : 'info'
-                        "
-                        variant="tonal"
-                        density="compact"
-                        class="mb-2"
+          <v-expand-transition>
+            <v-row v-if="showImageRecognition" class="mb-2">
+              <v-col cols="12">
+                <v-card variant="outlined" class="mb-2">
+                  <v-card-title class="text-subtitle-2 bg-grey-lighten-3 py-1 px-3">
+                    {{ $t('positionEditor.imageRecognition') }}
+                    <v-spacer></v-spacer>
+                    <v-btn icon="mdi-close" size="x-small" variant="text" @click="closeImageRecognition"></v-btn>
+                  </v-card-title>
+                  <v-card-text class="pa-2">
+                    <div class="image-recognition-container">
+                      <div
+                        class="upload-area"
+                        :class="{ 'drag-over': isDragOver }"
+                        @dragover.prevent
+                        @dragleave.prevent="isDragOver = false"
+                        @drop.prevent="handleDrop"
+                        @click="triggerFileInput"
                       >
-                        {{ recognitionStatus }}
-                      </v-alert>
-
-                      <div class="d-flex gap-2 flex-wrap align-center">
-                        <v-btn
-                          @click="processCurrentImage"
-                          color="primary"
-                          :disabled="!inputImage || isProcessing"
-                          :loading="isProcessing"
-                        >
-                          {{ $t('positionEditor.startRecognition') }}
-                        </v-btn>
-                        <v-btn
-                          @click="applyRecognitionResults"
-                          color="success"
-                          :disabled="detectedBoxes.length === 0 || isProcessing"
-                        >
-                          {{ $t('positionEditor.applyResults') }}
-                        </v-btn>
-                        <v-btn
-                          @click="clearRecognition"
-                          color="error"
-                          variant="outlined"
-                          :disabled="isProcessing"
-                        >
-                          {{ $t('positionEditor.clear') }}
-                        </v-btn>
-
-                        <!-- Bounding boxes toggle -->
-                        <v-switch
-                          v-model="showBoundingBoxes"
-                          :label="$t('positionEditor.showBoundingBoxes')"
-                          color="primary"
-                          density="compact"
-                          hide-details
-                          @change="onBoundingBoxToggle"
-                        ></v-switch>
-                      </div>
-                    </div>
-
-                    <!-- Recognition Results Grid -->
-                    <div
-                      v-if="boardGrid && boardGrid.length > 0"
-                      class="recognition-results"
-                    >
-                      <h6 class="mb-2">
-                        {{ $t('positionEditor.recognitionResults') }}
-                      </h6>
-                      <div class="board-grid-display">
-                        <div
-                          v-for="(row, rowIndex) in boardGrid"
-                          :key="rowIndex"
-                          class="grid-row"
-                        >
-                          <div
-                            v-for="(cell, colIndex) in row"
-                            :key="`${rowIndex}-${colIndex}`"
-                            class="grid-cell"
-                            :class="{ 'has-piece': cell }"
-                          >
-                            <span v-if="cell">{{
-                              getDetectedPieceDisplayName(cell)
-                            }}</span>
+                        <input
+                          ref="fileInputRef"
+                          type="file"
+                          accept="image/*"
+                          @change="handleFileSelect"
+                          style="display: none"
+                        />
+                        <div v-if="!inputImage" class="upload-placeholder">
+                          <v-icon size="40" color="primary" class="mb-2">mdi-cloud-upload</v-icon>
+                          <p class="text-body-2 font-weight-medium">{{ $t('positionEditor.clickOrDragImage') }}</p>
+                        </div>
+                        <div v-else class="image-preview">
+                          <div class="image-stage">
+                            <img
+                              ref="imageDisplayRef"
+                              :src="inputImage.src"
+                              class="preview-image"
+                              alt="Chessboard image"
+                            />
+                            <canvas ref="canvasRef" class="overlay-canvas"></canvas>
                           </div>
                         </div>
                       </div>
+
+                      <div class="recognition-controls mt-2">
+                        <v-alert
+                          v-if="recognitionStatus"
+                          :type="recognitionStatus.includes('失败') || recognitionStatus.includes('错误') ? 'error' : 'info'"
+                          variant="tonal"
+                          density="compact"
+                          class="mb-2 text-caption"
+                        >
+                          {{ recognitionStatus }}
+                        </v-alert>
+
+                        <div class="d-flex gap-2 flex-wrap align-center">
+                          <v-btn
+                            @click="processCurrentImage"
+                            color="primary"
+                            size="small"
+                            :disabled="!inputImage || isProcessing"
+                            :loading="isProcessing"
+                          >
+                            {{ $t('positionEditor.startRecognition') }}
+                          </v-btn>
+                          <v-btn
+                            @click="applyRecognitionResults"
+                            color="success"
+                            size="small"
+                            :disabled="detectedBoxes.length === 0 || isProcessing"
+                          >
+                            {{ $t('positionEditor.applyResults') }}
+                          </v-btn>
+                          <v-btn
+                            @click="clearRecognition"
+                            color="error"
+                            variant="outlined"
+                            size="small"
+                            :disabled="isProcessing"
+                          >
+                            {{ $t('positionEditor.clear') }}
+                          </v-btn>
+                          <v-checkbox
+                            v-model="showBoundingBoxes"
+                            :label="$t('positionEditor.showBoundingBoxes')"
+                            color="primary"
+                            density="compact"
+                            hide-details
+                            class="ml-2"
+                            @change="onBoundingBoxToggle"
+                          ></v-checkbox>
+                        </div>
+                      </div>
+                    </div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+            </v-row>
+          </v-expand-transition>
+
+          <v-row class="fill-height-row">
+            <v-col cols="12" md="8" class="pa-1 board-col d-flex flex-column">
+              <v-sheet class="position-editor-board-wrapper elevation-2 rounded">
+                <div class="position-editor-board">
+                  <img src="@/assets/xiangqi.png" class="board-bg" alt="board" />
+
+                  <div class="pieces">
+                    <img
+                      v-for="piece in editingPieces"
+                      :key="piece.id"
+                      :src="getPieceImageUrl(piece.name)"
+                      class="piece"
+                      :class="{
+                        selected: selectedPiece && selectedPiece.id === piece.id,
+                      }"
+                      :style="rcStyle(piece.row, piece.col)"
+                      @click="selectPiece(piece)"
+                    />
+                  </div>
+
+                  <div class="board-click-area" @click="handleBoardClick"></div>
+                </div>
+              </v-sheet>
+            </v-col>
+
+            <v-col cols="12" md="4" class="pa-1 selector-col">
+              <v-card variant="outlined" class="h-100 d-flex flex-column piece-selector-card">
+                
+                <div v-if="selectedPiece" class="selected-piece-panel pa-3 bg-blue-lighten-5 border-b">
+                  <div class="d-flex align-center gap-3">
+                    <div class="selected-piece-preview elevation-2 rounded-circle bg-white">
+                      <img :src="getPieceImageUrl(selectedPiece.name)" class="piece-img-large" />
+                    </div>
+                    <div>
+                      <div class="text-subtitle-2 font-weight-bold">{{ getPieceDisplayName(selectedPiece.name) }}</div>
+                      <div class="text-caption text-grey-darken-1">{{ $t('positionEditor.clickToPlace') }}</div>
+                    </div>
+                    <v-spacer></v-spacer>
+                    <v-btn
+                      @click="removePieceById(selectedPiece.id)"
+                      color="error"
+                      variant="text"
+                      icon="mdi-delete"
+                      density="comfortable"
+                      :title="$t('common.delete')"
+                    ></v-btn>
+                  </div>
+                </div>
+
+                <div class="piece-library pa-2 flex-grow-1 overflow-y-auto">
+                  
+                  <div class="piece-group mb-3">
+                    <div class="text-caption font-weight-bold text-red mb-1 ml-1">{{ $t('positionEditor.revealedPieces') }} ({{ $t('common.red') }})</div>
+                    <div class="piece-grid">
+                      <div
+                        v-for="piece in redPieceOptions"
+                        :key="piece.name"
+                        class="piece-option red-option"
+                        v-ripple
+                        @click="selectPieceType(piece.name, true)"
+                      >
+                        <img :src="getPieceImageUrl(piece.name)" class="piece-img" />
+                      </div>
                     </div>
                   </div>
-                </v-card-text>
+
+                  <div class="piece-group mb-3">
+                    <div class="text-caption font-weight-bold text-black mb-1 ml-1">{{ $t('positionEditor.revealedPieces') }} ({{ $t('common.black') }})</div>
+                    <div class="piece-grid">
+                      <div
+                        v-for="piece in blackPieceOptions"
+                        :key="piece.name"
+                        class="piece-option black-option"
+                        v-ripple
+                        @click="selectPieceType(piece.name, true)"
+                      >
+                        <img :src="getPieceImageUrl(piece.name)" class="piece-img" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="piece-group">
+                    <div class="text-caption font-weight-bold text-grey-darken-2 mb-1 ml-1">{{ $t('positionEditor.darkPieces') }}</div>
+                    <div class="piece-grid">
+                      <div
+                        v-for="piece in unknownPieces"
+                        :key="piece.name"
+                        class="piece-option dark-option"
+                        v-ripple
+                        @click="selectPieceType(piece.name, false)"
+                      >
+                        <img :src="getPieceImageUrl('dark_piece')" class="piece-img" />
+                        <span class="text-caption text-center mt-1">{{ piece.displayName }}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
               </v-card>
             </v-col>
           </v-row>
 
-          <!-- Layout for mobile and desktop -->
-          <v-row class="g-0">
-            <!-- Board area -->
-            <v-col cols="12" md="8" class="pa-1 board-col">
-              <div class="position-editor-board">
-                <img src="@/assets/xiangqi.png" class="board-bg" alt="board" />
-
-                <!-- Pieces -->
-                <div class="pieces">
-                  <img
-                    v-for="piece in editingPieces"
-                    :key="piece.id"
-                    :src="getPieceImageUrl(piece.name)"
-                    class="piece"
-                    :class="{
-                      selected: selectedPiece && selectedPiece.id === piece.id,
-                    }"
-                    :style="rcStyle(piece.row, piece.col)"
-                    @click="selectPiece(piece)"
-                  />
-                </div>
-
-                <!-- Board click area for placing pieces -->
-                <div class="board-click-area" @click="handleBoardClick"></div>
-              </div>
-            </v-col>
-
-            <!-- Piece selector panel -->
-            <v-col cols="12" md="4" class="pa-1 selector-col">
-              <div class="piece-selector">
-                <!-- Selected Piece Info -->
-                <div v-if="selectedPiece" class="selected-piece-info mb-3">
-                  <h6 class="mb-2">{{ $t('positionEditor.selectedPiece') }}</h6>
-                  <div class="selected-piece-display">
-                    <img
-                      :src="getPieceImageUrl(selectedPiece.name)"
-                      :alt="selectedPiece.name"
-                      class="piece-img-large"
-                    />
-                    <span class="piece-name">{{
-                      getPieceDisplayName(selectedPiece.name)
-                    }}</span>
-                  </div>
-                  <p class="hint-text">
-                    {{ $t('positionEditor.clickToPlace') }}
-                  </p>
-                  <v-btn
-                    @click="removePieceById(selectedPiece.id)"
-                    color="error"
-                    variant="outlined"
-                    size="small"
-                    class="mt-2"
-                  >
-                    {{ $t('common.delete') }}
-                  </v-btn>
-                </div>
-
-                <h5 class="mb-2 desktop-only">
-                  {{ $t('positionEditor.addPieces') }}
-                </h5>
-
-                <!-- Known Piece Selection -->
-                <div class="piece-category">
-                  <h6 class="mb-1 desktop-only">
-                    {{ $t('positionEditor.revealedPieces') }}
-                  </h6>
-                  <div class="piece-grid">
-                    <div
-                      v-for="piece in knownPieces"
-                      :key="piece.name"
-                      class="piece-option"
-                      @click="selectPieceType(piece.name, true)"
-                    >
-                      <img
-                        :src="getPieceImageUrl(piece.name)"
-                        :alt="piece.name"
-                        class="piece-img"
-                      />
-                      <span class="piece-name">{{ piece.displayName }}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Unknown Piece Selection -->
-                <div class="piece-category">
-                  <h6 class="mb-1 desktop-only">
-                    {{ $t('positionEditor.darkPieces') }}
-                  </h6>
-                  <div class="piece-grid">
-                    <div
-                      v-for="piece in unknownPieces"
-                      :key="piece.name"
-                      class="piece-option"
-                      @click="selectPieceType(piece.name, false)"
-                    >
-                      <img
-                        :src="getPieceImageUrl('dark_piece')"
-                        :alt="piece.name"
-                        class="piece-img"
-                      />
-                      <span class="piece-name">{{ piece.displayName }}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </v-col>
-          </v-row>
-
-          <!-- Validation Status -->
-          <v-row class="mt-2">
+          <v-row no-gutters class="mt-2">
             <v-col cols="12">
               <v-alert
                 :type="validationStatus.type as 'success' | 'error'"
-                :title="validationStatus.message"
                 variant="tonal"
                 density="compact"
-                class="validation-alert"
-              />
+                class="mb-0 py-2 text-caption font-weight-medium"
+              >
+                <template v-slot:prepend>
+                  <v-icon :icon="validationStatus.type === 'success' ? 'mdi-check-circle' : 'mdi-alert-circle'" size="small"></v-icon>
+                </template>
+                {{ validationStatus.message }}
+              </v-alert>
             </v-col>
           </v-row>
         </v-container>
       </v-card-text>
 
-      <v-card-actions class="pa-3">
+      <v-divider></v-divider>
+
+      <v-card-actions class="pa-2 bg-grey-lighten-5">
         <v-spacer></v-spacer>
-        <v-btn color="error" variant="text" size="small" @click="cancelEdit">
+        <v-btn color="grey-darken-1" variant="text" @click="cancelEdit">
           {{ $t('positionEditor.cancel') }}
         </v-btn>
         <v-btn
           color="primary"
-          size="small"
+          variant="flat"
           @click="applyChanges"
+          class="px-4"
           :disabled="validationStatus.type !== 'success'"
         >
           {{ $t('positionEditor.applyChanges') }}
@@ -392,16 +354,10 @@
     LABELS,
   } from '@/composables/image-recognition'
 
-  // Create a global instance of Mersenne Twister for this component
+  // Create a global instance of Mersenne Twister
   const mt = new MersenneTwister()
-
-  // Set seed based on current date and time for better randomness
   mt.init_seed(new Date().getTime())
-
-  // Custom random function using Mersenne Twister
-  const mtRandom = (): number => {
-    return mt.random()
-  }
+  const mtRandom = (): number => mt.random()
 
   interface Props {
     modelValue: boolean
@@ -418,17 +374,9 @@
   const { t } = useI18n()
   const gameState: any = inject('game-state')
 
-  // Layout constants similar to Chessboard.vue
-  const PAD_X = 11,
-    PAD_Y = 11,
-    COLS = 9,
-    ROWS = 10,
-    GX = 100 - PAD_X,
-    GY = 100 - PAD_Y,
-    OX = PAD_X / 2,
-    OY = PAD_Y / 2
+  // Layout constants
+  const PAD_X = 11, PAD_Y = 11, COLS = 9, ROWS = 10, GX = 100 - PAD_X, GY = 100 - PAD_Y, OX = PAD_X / 2, OY = PAD_Y / 2
 
-  // Dialog visibility
   const isVisible = computed({
     get: () => props.modelValue,
     set: value => emit('update:modelValue', value),
@@ -450,7 +398,6 @@
   const detectedBoxes = ref<DetectionBox[]>([])
   const boardGrid = ref<(DetectionBox | null)[][] | null>(null)
 
-  // Image recognition composable
   const {
     isProcessing,
     status: recognitionStatus,
@@ -461,7 +408,7 @@
     updateBoardGrid,
   } = useImageRecognition()
 
-  // Calculate row/col to percentage coordinates
+  // Calculate row/col to percentage
   const percentFromRC = (row: number, col: number) => ({
     x: OX + (col / (COLS - 1)) * GX,
     y: OY + (row / (ROWS - 1)) * GY,
@@ -476,45 +423,24 @@
     }
   }
 
-  // Piece options
-  const knownPieces = computed(() => [
-    {
-      name: 'red_chariot',
-      displayName: t('positionEditor.pieces.red_chariot'),
-    },
-    { name: 'red_horse', displayName: t('positionEditor.pieces.red_horse') },
-    {
-      name: 'red_elephant',
-      displayName: t('positionEditor.pieces.red_elephant'),
-    },
-    {
-      name: 'red_advisor',
-      displayName: t('positionEditor.pieces.red_advisor'),
-    },
+  // --- REFACTORED PIECE OPTIONS (Grouped) ---
+  const redPieceOptions = computed(() => [
     { name: 'red_king', displayName: t('positionEditor.pieces.red_king') },
+    { name: 'red_advisor', displayName: t('positionEditor.pieces.red_advisor') },
+    { name: 'red_elephant', displayName: t('positionEditor.pieces.red_elephant') },
+    { name: 'red_horse', displayName: t('positionEditor.pieces.red_horse') },
+    { name: 'red_chariot', displayName: t('positionEditor.pieces.red_chariot') },
     { name: 'red_cannon', displayName: t('positionEditor.pieces.red_cannon') },
     { name: 'red_pawn', displayName: t('positionEditor.pieces.red_pawn') },
-    {
-      name: 'black_chariot',
-      displayName: t('positionEditor.pieces.black_chariot'),
-    },
-    {
-      name: 'black_horse',
-      displayName: t('positionEditor.pieces.black_horse'),
-    },
-    {
-      name: 'black_elephant',
-      displayName: t('positionEditor.pieces.black_elephant'),
-    },
-    {
-      name: 'black_advisor',
-      displayName: t('positionEditor.pieces.black_advisor'),
-    },
+  ])
+
+  const blackPieceOptions = computed(() => [
     { name: 'black_king', displayName: t('positionEditor.pieces.black_king') },
-    {
-      name: 'black_cannon',
-      displayName: t('positionEditor.pieces.black_cannon'),
-    },
+    { name: 'black_advisor', displayName: t('positionEditor.pieces.black_advisor') },
+    { name: 'black_elephant', displayName: t('positionEditor.pieces.black_elephant') },
+    { name: 'black_horse', displayName: t('positionEditor.pieces.black_horse') },
+    { name: 'black_chariot', displayName: t('positionEditor.pieces.black_chariot') },
+    { name: 'black_cannon', displayName: t('positionEditor.pieces.black_cannon') },
     { name: 'black_pawn', displayName: t('positionEditor.pieces.black_pawn') },
   ])
 
@@ -522,16 +448,12 @@
     { name: 'unknown', displayName: t('positionEditor.pieces.unknown') },
   ])
 
-  // Check if current position is the initial position
+  // Combined for logic usage
+  const knownPieces = computed(() => [...redPieceOptions.value, ...blackPieceOptions.value])
+
   const isInitialPosition = computed(() => {
     if (editingPieces.value.length !== 32) return false
-
-    // Compare with initial FEN layout
-    const initialBoard = Array(10)
-      .fill(null)
-      .map(() => Array(9).fill(null))
-
-    // Parse START_FEN to get initial piece positions
+    const initialBoard = Array(10).fill(null).map(() => Array(9).fill(null))
     const fenParts = START_FEN.split(' ')
     const boardPart = fenParts[0]
 
@@ -544,59 +466,40 @@
           const isRed = char.toUpperCase() === char
           if (char.toLowerCase() === 'x') {
             const tempName = isRed ? 'red_unknown' : 'black_unknown'
-            initialBoard[rowIndex][colIndex] = {
-              name: tempName,
-              isKnown: false,
-            }
+            initialBoard[rowIndex][colIndex] = { name: tempName, isKnown: false }
           } else {
             const pieceName = getPieceNameFromChar(char)
-            initialBoard[rowIndex][colIndex] = {
-              name: pieceName,
-              isKnown: true,
-            }
+            initialBoard[rowIndex][colIndex] = { name: pieceName, isKnown: true }
           }
           colIndex++
         }
       }
     })
 
-    // Compare current pieces with initial board
     for (let row = 0; row < 10; row++) {
       for (let col = 0; col < 9; col++) {
         const currentPiece = getPieceAt(row, col)
         const initialPiece = initialBoard[row][col]
-
         if (!currentPiece && !initialPiece) continue
         if (!currentPiece || !initialPiece) return false
         if (currentPiece.name !== initialPiece.name) return false
         if (currentPiece.isKnown !== initialPiece.isKnown) return false
       }
     }
-
     return editingSideToMove.value === 'red'
   })
 
-  // Initialize editing state
   watch(isVisible, visible => {
     if (visible) {
-      // Deep copy the current board state
       editingPieces.value = gameState.pieces.value.map((piece: any) => ({
         ...piece,
         id: piece.id,
         isKnown: piece.isKnown,
-        name: piece.isKnown
-          ? piece.name
-          : piece.row >= 5
-            ? 'red_unknown'
-            : 'black_unknown',
-        // Ensure initialRole matches the piece's current square
-        initialRole: gameState.getRoleByPosition
-          ? gameState.getRoleByPosition(piece.row, piece.col)
-          : piece.initialRole,
+        name: piece.isKnown ? piece.name : piece.row >= 5 ? 'red_unknown' : 'black_unknown',
+        initialRole: gameState.getRoleByPosition ? gameState.getRoleByPosition(piece.row, piece.col) : piece.initialRole,
         initialRow: piece.row,
         initialCol: piece.col,
       }))
-      // Reclassify by king halves to avoid any flip-induced mislabeling
       reclassifyAllDarkPieces()
       editingSideToMove.value = gameState.sideToMove.value
       selectedPiece.value = null
@@ -604,86 +507,48 @@
     }
   })
 
-  // Helper function to get piece name from FEN character
   const getPieceNameFromChar = (char: string): string => {
     const isRed = char === char.toUpperCase()
     const pieceType = char.toLowerCase()
     const typeMap: { [key: string]: string } = {
-      r: 'chariot',
-      n: 'horse',
-      b: 'elephant',
-      a: 'advisor',
-      k: 'king',
-      c: 'cannon',
-      p: 'pawn',
+      r: 'chariot', n: 'horse', b: 'elephant', a: 'advisor', k: 'king', c: 'cannon', p: 'pawn',
     }
     return `${isRed ? 'red' : 'black'}_${typeMap[pieceType]}`
   }
 
-  // Get the piece at a specific position
   const getPieceAt = (row: number, col: number): Piece | null => {
     return editingPieces.value.find(p => p.row === row && p.col === col) || null
   }
 
-  // Helper: compute dark rows for each side based on king positions
   const getDarkRowsByKings = () => {
     const topRegion = [0, 1, 2, 3, 4]
     const bottomRegion = [5, 6, 7, 8, 9]
-
-    const redKing = editingPieces.value.find(
-      p => p.isKnown && p.name === 'red_king'
-    )
-    const blackKing = editingPieces.value.find(
-      p => p.isKnown && p.name === 'black_king'
-    )
-
-    // Defaults: red bottom, black top
+    const redKing = editingPieces.value.find(p => p.isKnown && p.name === 'red_king')
+    const blackKing = editingPieces.value.find(p => p.isKnown && p.name === 'black_king')
     let redRows = bottomRegion.slice()
     let blackRows = topRegion.slice()
-
     const isInTop = (row: number) => topRegion.includes(row)
     const isInBottom = (row: number) => bottomRegion.includes(row)
 
     if (redKing) {
-      if (isInTop(redKing.row)) {
-        redRows = topRegion.slice()
-        blackRows = bottomRegion.slice()
-      } else if (isInBottom(redKing.row)) {
-        redRows = bottomRegion.slice()
-        blackRows = topRegion.slice()
-      } else if (blackKing) {
-        // Red king in middle rows, decide by black king if possible
-        if (isInTop(blackKing.row)) {
-          blackRows = topRegion.slice()
-          redRows = bottomRegion.slice()
-        } else if (isInBottom(blackKing.row)) {
-          blackRows = bottomRegion.slice()
-          redRows = topRegion.slice()
-        }
+      if (isInTop(redKing.row)) { redRows = topRegion.slice(); blackRows = bottomRegion.slice() }
+      else if (isInBottom(redKing.row)) { redRows = bottomRegion.slice(); blackRows = topRegion.slice() }
+      else if (blackKing) {
+        if (isInTop(blackKing.row)) { blackRows = topRegion.slice(); redRows = bottomRegion.slice() }
+        else if (isInBottom(blackKing.row)) { blackRows = bottomRegion.slice(); redRows = topRegion.slice() }
       }
     } else if (blackKing) {
-      // Red king missing, decide by black king
-      if (isInTop(blackKing.row)) {
-        blackRows = topRegion.slice()
-        redRows = bottomRegion.slice()
-      } else if (isInBottom(blackKing.row)) {
-        blackRows = bottomRegion.slice()
-        redRows = topRegion.slice()
-      }
+      if (isInTop(blackKing.row)) { blackRows = topRegion.slice(); redRows = bottomRegion.slice() }
+      else if (isInBottom(blackKing.row)) { blackRows = bottomRegion.slice(); redRows = topRegion.slice() }
     }
-
     return { redRows, blackRows }
   }
 
-  // Helper: classify unknown color by king-based halves
-  const classifyUnknownByKings = (
-    row: number
-  ): 'red_unknown' | 'black_unknown' => {
+  const classifyUnknownByKings = (row: number): 'red_unknown' | 'black_unknown' => {
     const { redRows } = getDarkRowsByKings()
     return redRows.includes(row) ? 'red_unknown' : 'black_unknown'
   }
 
-  // Helper: reclassify all dark piece names according to current king-based halves
   const reclassifyAllDarkPieces = () => {
     const { redRows } = getDarkRowsByKings()
     editingPieces.value = editingPieces.value.map(p => {
@@ -694,199 +559,122 @@
     })
   }
 
-  // Select an existing piece
-  const selectPiece = (piece: Piece) => {
-    selectedPiece.value = piece
-  }
+  const selectPiece = (piece: Piece) => { selectedPiece.value = piece }
 
-  // Select a piece type from the palette
   const selectPieceType = (pieceName: string, isKnown: boolean) => {
-    // Create a temporary piece for selection
     selectedPiece.value = {
       id: Date.now() + mtRandom(),
       name: pieceName,
-      row: -1,
-      col: -1,
+      row: -1, col: -1,
       isKnown,
-      initialRole: '',
-      initialRow: -1,
-      initialCol: -1,
+      initialRole: '', initialRow: -1, initialCol: -1,
     }
   }
 
-  // Handle board click to place pieces
   const handleBoardClick = (event: MouseEvent) => {
     if (!selectedPiece.value) return
-
     const boardElement = event.currentTarget as HTMLElement
     const rect = boardElement.getBoundingClientRect()
     const x = event.clientX - rect.left
     const y = event.clientY - rect.top
-
-    // Convert pixel coordinates to board coordinates
     const boardWidth = rect.width
     const boardHeight = rect.height
-
-    // Calculate percentage positions
     const percentX = (x / boardWidth) * 100
     const percentY = (y / boardHeight) * 100
-
-    // Convert percentage to row/col coordinates
     const col = Math.round(((percentX - OX) / GX) * (COLS - 1))
     const row = Math.round(((percentY - OY) / GY) * (ROWS - 1))
-
-    // Validate coordinates
     if (row < 0 || row >= ROWS || col < 0 || col >= COLS) return
-
     placePiece(row, col)
   }
 
-  // Place the selected piece at a position
   const placePiece = (row: number, col: number) => {
     if (!selectedPiece.value) return
-
     const existingPiece = getPieceAt(row, col)
     if (existingPiece) return
 
-    // If it's an existing piece, move it
     if (selectedPiece.value.row !== -1) {
       selectedPiece.value.row = row
       selectedPiece.value.col = col
-      // Update initial placement role for dark move logic
       if (gameState.getRoleByPosition) {
-        selectedPiece.value.initialRole =
-          gameState.getRoleByPosition(row, col) || ''
+        selectedPiece.value.initialRole = gameState.getRoleByPosition(row, col) || ''
       }
       selectedPiece.value.initialRow = row
       selectedPiece.value.initialCol = col
-      // Reclassify unknown color label based on king halves if it's a dark piece
       if (!selectedPiece.value.isKnown) {
         selectedPiece.value.name = classifyUnknownByKings(row)
       }
-      // If a king moved, dark piece halves may change; reclassify
-      if (
-        selectedPiece.value.name === 'red_king' ||
-        selectedPiece.value.name === 'black_king'
-      ) {
+      if (selectedPiece.value.name === 'red_king' || selectedPiece.value.name === 'black_king') {
         reclassifyAllDarkPieces()
       }
     } else {
-      // It's a new piece from palette
       let finalPieceName = selectedPiece.value.name
       if (selectedPiece.value.name === 'unknown') {
-        // Classify unknown by king-based halves (independent of flip)
         finalPieceName = classifyUnknownByKings(row)
       }
-
       const newPiece: Piece = {
         id: Date.now() + mtRandom(),
         name: finalPieceName,
-        row,
-        col,
+        row, col,
         isKnown: selectedPiece.value.isKnown,
-        initialRole: gameState.getRoleByPosition
-          ? gameState.getRoleByPosition(row, col)
-          : '',
-        initialRow: row,
-        initialCol: col,
+        initialRole: gameState.getRoleByPosition ? gameState.getRoleByPosition(row, col) : '',
+        initialRow: row, initialCol: col,
       }
-
       editingPieces.value.push(newPiece)
     }
-
     selectedPiece.value = null
   }
 
-  // Remove a piece by ID
   const removePieceById = (pieceId: number | string) => {
     editingPieces.value = editingPieces.value.filter(p => p.id !== pieceId)
     selectedPiece.value = null
   }
 
-  // Flip the board
   const flipBoard = () => {
     editingPieces.value = editingPieces.value.map(piece => {
       const flippedRow = 9 - piece.row
       const flippedCol = 8 - piece.col
-      const flippedInitialRow = 9 - piece.initialRow
-      const flippedInitialCol = 8 - piece.initialCol
       return {
         ...piece,
         row: flippedRow,
         col: flippedCol,
-        initialRow: flippedInitialRow,
-        initialCol: flippedInitialCol,
-        // Recompute initialRole based on new square to keep dark move logic consistent with position
-        initialRole: gameState.getRoleByPosition
-          ? gameState.getRoleByPosition(flippedRow, flippedCol)
-          : piece.initialRole,
+        initialRow: 9 - piece.initialRow,
+        initialCol: 8 - piece.initialCol,
+        initialRole: gameState.getRoleByPosition ? gameState.getRoleByPosition(flippedRow, flippedCol) : piece.initialRole,
       }
     })
-
-    // Reclassify dark pieces after coordinates change
     reclassifyAllDarkPieces()
-
-    if (gameState.toggleBoardFlip) {
-      gameState.toggleBoardFlip()
-    }
+    if (gameState.toggleBoardFlip) gameState.toggleBoardFlip()
   }
 
-  // Mirror left-right (horizontal mirror over central file)
   const mirrorLeftRight = () => {
     editingPieces.value = editingPieces.value.map(piece => {
       const mirroredCol = 8 - piece.col
-      const mirroredInitialCol = 8 - piece.initialCol
-      const sameRow = piece.row
-      const sameInitialRow = piece.initialRow
       return {
         ...piece,
-        row: sameRow,
         col: mirroredCol,
-        initialRow: sameInitialRow,
-        initialCol: mirroredInitialCol,
-        initialRole: gameState.getRoleByPosition
-          ? gameState.getRoleByPosition(sameRow, mirroredCol)
-          : piece.initialRole,
+        initialCol: 8 - piece.initialCol,
+        initialRole: gameState.getRoleByPosition ? gameState.getRoleByPosition(piece.row, mirroredCol) : piece.initialRole,
       }
     })
-
-    // Reclassify dark pieces after coordinates change
     reclassifyAllDarkPieces()
-
-    // Do not change board flip orientation for left-right mirror
   }
 
-  // Switch side to move
-  const switchSide = () => {
-    editingSideToMove.value =
-      editingSideToMove.value === 'red' ? 'black' : 'red'
-  }
+  const switchSide = () => { editingSideToMove.value = editingSideToMove.value === 'red' ? 'black' : 'red' }
 
-  // Reset or clear position
   const resetOrClearPosition = () => {
     if (isInitialPosition.value) {
-      // Clear position
       editingPieces.value = []
       editingSideToMove.value = 'red'
     } else {
-      // Reset to initial position
       if (gameState.loadFen) {
         gameState.loadFen(START_FEN, false)
-
         setTimeout(() => {
-          const originalPieces = gameState.pieces.value.map((piece: any) => ({
+          editingPieces.value = gameState.pieces.value.map((piece: any) => ({
             ...piece,
             id: piece.id,
             isKnown: piece.isKnown,
-            name: piece.isKnown
-              ? piece.name
-              : piece.row >= 5
-                ? 'red_unknown'
-                : 'black_unknown',
+            name: piece.isKnown ? piece.name : piece.row >= 5 ? 'red_unknown' : 'black_unknown',
           }))
-
-          editingPieces.value = originalPieces
-          // Ensure correct classification by king halves
           reclassifyAllDarkPieces()
           editingSideToMove.value = 'red'
         }, 0)
@@ -895,1076 +683,346 @@
     selectedPiece.value = null
   }
 
-  // Validation status with comprehensive checks
   const validationStatus = computed(() => {
     try {
-      // Check for duplicate positions
       const positions = editingPieces.value.map(p => `${p.row},${p.col}`)
-      const uniquePositions = new Set(positions)
-      if (positions.length !== uniquePositions.size) {
-        return {
-          type: 'error',
-          message: t('positionEditor.validationStatus.duplicatePosition'),
-        }
-      }
+      if (positions.length !== new Set(positions).size) return { type: 'error', message: t('positionEditor.validationStatus.duplicatePosition') }
 
-      // Check for kings
-      const redKings = editingPieces.value.filter(
-        p => p.isKnown && p.name === 'red_king'
-      )
-      const blackKings = editingPieces.value.filter(
-        p => p.isKnown && p.name === 'black_king'
-      )
+      const redKings = editingPieces.value.filter(p => p.isKnown && p.name === 'red_king')
+      const blackKings = editingPieces.value.filter(p => p.isKnown && p.name === 'black_king')
 
-      if (redKings.length === 0) {
-        return {
-          type: 'error',
-          message: t('positionEditor.validationStatus.noRedKing'),
-        }
-      }
-      if (blackKings.length === 0) {
-        return {
-          type: 'error',
-          message: t('positionEditor.validationStatus.noBlackKing'),
-        }
-      }
-      if (redKings.length > 1 || blackKings.length > 1) {
-        return {
-          type: 'error',
-          message: t('positionEditor.validationStatus.tooManyPieces'),
-        }
-      }
+      if (redKings.length === 0) return { type: 'error', message: t('positionEditor.validationStatus.noRedKing') }
+      if (blackKings.length === 0) return { type: 'error', message: t('positionEditor.validationStatus.noBlackKing') }
+      if (redKings.length > 1 || blackKings.length > 1) return { type: 'error', message: t('positionEditor.validationStatus.tooManyPieces') }
 
-      const redKing = redKings[0]
-      const blackKing = blackKings[0]
+      const redKing = redKings[0], blackKing = blackKings[0]
+      const isInRedPalace = (r: number, c: number) => r >= 7 && r <= 9 && c >= 3 && c <= 5
+      const isInBlackPalace = (r: number, c: number) => r >= 0 && r <= 2 && c >= 3 && c <= 5
 
-      // Check if kings are in palace
-      const isInRedPalace = (row: number, col: number) =>
-        row >= 7 && row <= 9 && col >= 3 && col <= 5
-      const isInBlackPalace = (row: number, col: number) =>
-        row >= 0 && row <= 2 && col >= 3 && col <= 5
+      const redKingInWrongPalace = !isInRedPalace(redKing.row, redKing.col) && isInBlackPalace(redKing.row, redKing.col)
+      const blackKingInWrongPalace = !isInBlackPalace(blackKing.row, blackKing.col) && isInRedPalace(blackKing.row, blackKing.col)
 
-      // Check if kings are in wrong palace (will be auto-flipped)
-      const redKingInWrongPalace =
-        !isInRedPalace(redKing.row, redKing.col) &&
-        isInBlackPalace(redKing.row, redKing.col)
-      const blackKingInWrongPalace =
-        !isInBlackPalace(blackKing.row, blackKing.col) &&
-        isInRedPalace(blackKing.row, blackKing.col)
+      if (!isInRedPalace(redKing.row, redKing.col) && !redKingInWrongPalace) return { type: 'error', message: t('positionEditor.validationStatus.kingOutOfPalace') }
+      if (!isInBlackPalace(blackKing.row, blackKing.col) && !blackKingInWrongPalace) return { type: 'error', message: t('positionEditor.validationStatus.kingOutOfPalace') }
 
-      if (!isInRedPalace(redKing.row, redKing.col)) {
-        if (redKingInWrongPalace) {
-          // Red king in black palace - will auto-flip, so this is valid
-        } else {
-          return {
-            type: 'error',
-            message: t('positionEditor.validationStatus.kingOutOfPalace'),
-          }
-        }
-      }
-
-      if (!isInBlackPalace(blackKing.row, blackKing.col)) {
-        if (blackKingInWrongPalace) {
-          // Black king in red palace - will auto-flip, so this is valid
-        } else {
-          return {
-            type: 'error',
-            message: t('positionEditor.validationStatus.kingOutOfPalace'),
-          }
-        }
-      }
-
-      // Check if kings are facing each other
       if (redKing.col === blackKing.col) {
-        const minRow = Math.min(redKing.row, blackKing.row)
-        const maxRow = Math.max(redKing.row, blackKing.row)
-        const piecesBetweenKings = editingPieces.value.filter(
-          p => p.col === redKing.col && p.row > minRow && p.row < maxRow
-        )
-        if (piecesBetweenKings.length === 0) {
-          return {
-            type: 'error',
-            message: t('positionEditor.validationStatus.kingFacing'),
-          }
-        }
+        const minRow = Math.min(redKing.row, blackKing.row), maxRow = Math.max(redKing.row, blackKing.row)
+        const piecesBetween = editingPieces.value.filter(p => p.col === redKing.col && p.row > minRow && p.row < maxRow)
+        if (piecesBetween.length === 0) return { type: 'error', message: t('positionEditor.validationStatus.kingFacing') }
       }
 
-      // Check piece count limits
       const pieceCounts: { [key: string]: number } = {}
       editingPieces.value.forEach(piece => {
         if (piece.isKnown) {
           const char = FEN_MAP[piece.name]
-          if (char) {
-            pieceCounts[char] = (pieceCounts[char] || 0) + 1
-          }
+          if (char) pieceCounts[char] = (pieceCounts[char] || 0) + 1
         }
       })
-
       for (const [char, count] of Object.entries(pieceCounts)) {
-        const maxCount =
-          INITIAL_PIECE_COUNTS[char as keyof typeof INITIAL_PIECE_COUNTS]
-        if (count > maxCount) {
-          return {
-            type: 'error',
-            message: t('positionEditor.validationStatus.tooManyPieces'),
-          }
-        }
+        if (count > INITIAL_PIECE_COUNTS[char]) return { type: 'error', message: t('positionEditor.validationStatus.tooManyPieces') }
       }
 
-      // Check total piece count for each side
-      const redPieces = editingPieces.value.filter(p =>
-        p.name.startsWith('red')
-      )
-      const blackPieces = editingPieces.value.filter(p =>
-        p.name.startsWith('black')
-      )
+      const redPieces = editingPieces.value.filter(p => p.name.startsWith('red'))
+      const blackPieces = editingPieces.value.filter(p => p.name.startsWith('black'))
+      if (redPieces.length > 16 || blackPieces.length > 16) return { type: 'error', message: t('positionEditor.validationStatus.tooManyTotalPieces') }
 
-      if (redPieces.length > 16 || blackPieces.length > 16) {
-        return {
-          type: 'error',
-          message: t('positionEditor.validationStatus.tooManyTotalPieces'),
-        }
-      }
-
-      // Check dark piece positions (validate by king-based halves)
       const darkPieces = editingPieces.value.filter(p => !p.isKnown)
       const { redRows, blackRows } = getDarkRowsByKings()
-
       for (const piece of darkPieces) {
-        const isRedPiece = piece.name.startsWith('red')
-        const validRows = isRedPiece ? redRows : blackRows
-
-        if (!validRows.includes(piece.row)) {
-          return {
-            type: 'error',
-            message: t(
-              'positionEditor.validationStatus.darkPieceInvalidPosition'
-            ),
-          }
-        }
+        const validRows = piece.name.startsWith('red') ? redRows : blackRows
+        if (!validRows.includes(piece.row)) return { type: 'error', message: t('positionEditor.validationStatus.darkPieceInvalidPosition') }
       }
 
-      // Check if current side is in check using the editing pieces
-      // We need to temporarily use the editing pieces for the check calculation
       const originalPieces = gameState.pieces.value
       try {
-        // Temporarily set the pieces to the editing state
         gameState.pieces.value = editingPieces.value
-
-        // Now check if the current side is in check
         const currentKing = editingSideToMove.value === 'red' ? 'black' : 'red'
-        if (
-          gameState.isCurrentPositionInCheck &&
-          gameState.isCurrentPositionInCheck(currentKing)
-        ) {
-          return {
-            type: 'error',
-            message: t('positionEditor.validationStatus.inCheck'),
-          }
+        if (gameState.isCurrentPositionInCheck && gameState.isCurrentPositionInCheck(currentKing)) {
+          return { type: 'error', message: t('positionEditor.validationStatus.inCheck') }
         }
       } finally {
-        // Always restore the original pieces
         gameState.pieces.value = originalPieces
       }
 
-      return {
-        type: 'success',
-        message: t('positionEditor.validationStatus.normal'),
-      }
+      return { type: 'success', message: t('positionEditor.validationStatus.normal') }
     } catch (error) {
-      return {
-        type: 'error',
-        message: t('positionEditor.validationStatus.error'),
-      }
+      return { type: 'error', message: t('positionEditor.validationStatus.error') }
     }
   })
 
-  // Get piece image URL
+  // --- FIX: USE PNG IMAGES ---
   const getPieceImageUrl = (pieceName: string): string => {
-    const imageName =
-      pieceName === 'red_unknown' ||
-      pieceName === 'black_unknown' ||
-      pieceName === 'unknown'
-        ? 'dark_piece'
-        : pieceName
-    return new URL(`../assets/${imageName}.svg`, import.meta.url).href
+    const imageName = (pieceName === 'red_unknown' || pieceName === 'black_unknown' || pieceName === 'unknown') ? 'dark_piece' : pieceName
+    return new URL(`../assets/${imageName}.png`, import.meta.url).href
   }
 
-  // Get piece display name
   const getPieceDisplayName = (pieceName: string): string => {
     const knownPiece = knownPieces.value.find((p: any) => p.name === pieceName)
     if (knownPiece) return knownPiece.displayName
-
-    if (pieceName === 'red_unknown')
-      return t('positionEditor.pieces.red_unknown')
-    if (pieceName === 'black_unknown')
-      return t('positionEditor.pieces.black_unknown')
+    if (pieceName === 'red_unknown') return t('positionEditor.pieces.red_unknown')
+    if (pieceName === 'black_unknown') return t('positionEditor.pieces.black_unknown')
     if (pieceName === 'unknown') return t('positionEditor.pieces.unknown')
-
     return pieceName
   }
 
-  // Cancel edit
-  const cancelEdit = () => {
-    selectedPiece.value = null
-    closeImageRecognition()
-    isVisible.value = false
-  }
-
-  // Image recognition methods
-  const openImageRecognition = () => {
-    showImageRecognition.value = true
-  }
-
-  const closeImageRecognition = () => {
-    showImageRecognition.value = false
-    clearRecognition()
-  }
-
-  const triggerFileInput = () => {
-    fileInputRef.value?.click()
-  }
+  const cancelEdit = () => { selectedPiece.value = null; closeImageRecognition(); isVisible.value = false }
+  const openImageRecognition = () => { showImageRecognition.value = true }
+  const closeImageRecognition = () => { showImageRecognition.value = false; clearRecognition() }
+  const triggerFileInput = () => { fileInputRef.value?.click() }
 
   const handleFileSelect = (event: Event) => {
-    const target = event.target as HTMLInputElement
-    const file = target.files?.[0]
-    if (file) {
-      loadImage(file)
-    }
+    const file = (event.target as HTMLInputElement).files?.[0]
+    if (file) loadImage(file)
   }
 
   const handleDrop = (event: DragEvent) => {
     isDragOver.value = false
     const files = event.dataTransfer?.files
-    if (files && files.length > 0) {
-      const file = files[0]
-      if (file.type.startsWith('image/')) {
-        loadImage(file)
-      }
-    }
+    if (files && files[0].type.startsWith('image/')) loadImage(files[0])
   }
 
-  // Support paste image from clipboard
   window.addEventListener('paste', (e: ClipboardEvent) => {
     if (!showImageRecognition.value) return
-    const items = e.clipboardData?.items
-    if (!items) return
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i]
-      if (item.type.startsWith('image/')) {
-        const file = item.getAsFile()
-        if (file) loadImage(file)
-        break
-      }
-    }
+    const item = e.clipboardData?.items[0]
+    if (item?.type.startsWith('image/')) loadImage(item.getAsFile()!)
   })
 
   const loadImage = async (file: File) => {
     try {
       const img = new Image()
       const imageUrl = URL.createObjectURL(file)
-      // Ensure canvas clears when a new image loads
-      if (canvasRef.value) {
-        const ctx = canvasRef.value.getContext('2d')
-        if (ctx)
-          ctx.clearRect(0, 0, canvasRef.value.width, canvasRef.value.height)
-      }
-
-      await new Promise<void>((resolve, reject) => {
-        img.onload = () => resolve()
-        img.onerror = reject
-        img.src = imageUrl
-      })
-
-      inputImage.value = img
-      detectedBoxes.value = []
-      boardGrid.value = null
-
-      // Do not revoke immediately; keep the blob URL while the image is displayed
-    } catch (error) {
-      console.error('Image loading failed:', error)
-    }
+      if (canvasRef.value) canvasRef.value.getContext('2d')?.clearRect(0, 0, canvasRef.value.width, canvasRef.value.height)
+      await new Promise<void>((resolve, reject) => { img.onload = () => resolve(); img.onerror = reject; img.src = imageUrl })
+      inputImage.value = img; detectedBoxes.value = []; boardGrid.value = null
+    } catch (error) { console.error(error) }
   }
 
   const processCurrentImage = async () => {
     if (!inputImage.value) return
-
     try {
-      // Convert HTMLImageElement to File object for processing
       const canvas = document.createElement('canvas')
-      const ctx = canvas.getContext('2d')!
-      canvas.width = inputImage.value.naturalWidth
-      canvas.height = inputImage.value.naturalHeight
-      ctx.drawImage(inputImage.value, 0, 0)
-
+      canvas.width = inputImage.value.naturalWidth; canvas.height = inputImage.value.naturalHeight
+      canvas.getContext('2d')?.drawImage(inputImage.value, 0, 0)
       canvas.toBlob(async blob => {
         if (!blob) return
-
-        const file = new File([blob], 'chessboard.jpg', { type: 'image/jpeg' })
-        await processImage(file)
-
-        // Update detection results
+        await processImage(new File([blob], 'chessboard.jpg', { type: 'image/jpeg' }))
         await nextTick()
         detectedBoxes.value = recognitionDetectedBoxes.value
         boardGrid.value = updateBoardGrid(detectedBoxes.value)
-
-        // Draw bounding boxes
         await nextTick()
-        if (imageDisplayRef.value && canvasRef.value) {
-          drawBoundingBoxes(
-            detectedBoxes.value,
-            imageDisplayRef.value,
-            canvasRef.value
-          )
-        }
+        if (imageDisplayRef.value && canvasRef.value) drawBoundingBoxes(detectedBoxes.value, imageDisplayRef.value, canvasRef.value)
       }, 'image/jpeg')
-    } catch (error) {
-      console.error('Image processing failed:', error)
-    }
+    } catch (error) { console.error(error) }
   }
 
   const applyRecognitionResults = () => {
     if (!boardGrid.value) return
-
-    // Clear current board
     editingPieces.value = []
-
-    // Convert recognition results to pieces
     for (let row = 0; row < boardGrid.value.length; row++) {
       for (let col = 0; col < boardGrid.value[row].length; col++) {
         const detection = boardGrid.value[row][col]
         if (detection) {
           const pieceName = convertDetectionToPieceName(detection)
           if (pieceName) {
-            const piece: Piece = {
+            editingPieces.value.push({
               id: Date.now() + mtRandom(),
-              name: pieceName,
-              row,
-              col,
+              name: pieceName, row, col,
               isKnown: !pieceName.includes('unknown'),
-              initialRole: '',
-              initialRow: row,
-              initialCol: col,
-            }
-            editingPieces.value.push(piece)
+              initialRole: '', initialRow: row, initialCol: col,
+            })
           }
         }
       }
     }
-
-    // Reclassify dark pieces
     reclassifyAllDarkPieces()
   }
 
-  const convertDetectionToPieceName = (
-    detection: DetectionBox
-  ): string | null => {
-    const label = LABELS[detection.labelIndex]
-    if (!label) return null
-
-    const labelName = label.name
-
-    // Convert piece name
-    if (labelName === 'r_general') return 'red_king'
-    if (labelName === 'r_advisor') return 'red_advisor'
-    if (labelName === 'r_elephant') return 'red_elephant'
-    if (labelName === 'r_horse') return 'red_horse'
-    if (labelName === 'r_chariot') return 'red_chariot'
-    if (labelName === 'r_cannon') return 'red_cannon'
-    if (labelName === 'r_soldier') return 'red_pawn'
-
-    if (labelName === 'b_general') return 'black_king'
-    if (labelName === 'b_advisor') return 'black_advisor'
-    if (labelName === 'b_elephant') return 'black_elephant'
-    if (labelName === 'b_horse') return 'black_horse'
-    if (labelName === 'b_chariot') return 'black_chariot'
-    if (labelName === 'b_cannon') return 'black_cannon'
-    if (labelName === 'b_soldier') return 'black_pawn'
-
-    // Dark pieces
-    if (labelName.startsWith('dark_')) {
-      const baseName = labelName.substring(5)
-      if (baseName === 'r_advisor') return 'red_unknown'
-      if (baseName === 'r_cannon') return 'red_unknown'
-      if (baseName === 'r_chariot') return 'red_unknown'
-      if (baseName === 'r_elephant') return 'red_unknown'
-      if (baseName === 'r_general') return 'red_unknown'
-      if (baseName === 'r_horse') return 'red_unknown'
-      if (baseName === 'r_soldier') return 'red_unknown'
-
-      if (baseName === 'b_advisor') return 'black_unknown'
-      if (baseName === 'b_cannon') return 'black_unknown'
-      if (baseName === 'b_chariot') return 'black_unknown'
-      if (baseName === 'b_elephant') return 'black_unknown'
-      if (baseName === 'b_general') return 'black_unknown'
-      if (baseName === 'b_horse') return 'black_unknown'
-      if (baseName === 'b_soldier') return 'black_unknown'
+  const convertDetectionToPieceName = (detection: DetectionBox): string | null => {
+    const label = LABELS[detection.labelIndex]; if (!label) return null
+    const name = label.name
+    const map: any = { r_general: 'red_king', r_advisor: 'red_advisor', r_elephant: 'red_elephant', r_horse: 'red_horse', r_chariot: 'red_chariot', r_cannon: 'red_cannon', r_soldier: 'red_pawn', b_general: 'black_king', b_advisor: 'black_advisor', b_elephant: 'black_elephant', b_horse: 'black_horse', b_chariot: 'black_chariot', b_cannon: 'black_cannon', b_soldier: 'black_pawn' }
+    if (map[name]) return map[name]
+    if (name.startsWith('dark_')) {
+      const base = name.substring(5)
+      return base.startsWith('r_') ? 'red_unknown' : 'black_unknown'
     }
-
-    if (labelName === 'dark') return 'red_unknown' // Default dark piece to red
-
-    return null
-  }
-
-  const getDetectedPieceDisplayName = (detection: DetectionBox): string => {
-    const pieceName = convertDetectionToPieceName(detection)
-    if (!pieceName) return '?'
-
-    if (pieceName === 'red_unknown' || pieceName === 'black_unknown') {
-      return t('positionEditor.darkPiece')
-    }
-
-    const piece = knownPieces.value.find(p => p.name === pieceName)
-    if (piece) {
-      return piece.displayName
-    }
-
-    return pieceName
+    return name === 'dark' ? 'red_unknown' : null
   }
 
   const clearRecognition = () => {
-    inputImage.value = null
-    detectedBoxes.value = []
-    boardGrid.value = null
-    if (canvasRef.value) {
-      const ctx = canvasRef.value.getContext('2d')
-      if (ctx) {
-        ctx.clearRect(0, 0, canvasRef.value.width, canvasRef.value.height)
-      }
-    }
+    inputImage.value = null; detectedBoxes.value = []; boardGrid.value = null
+    canvasRef.value?.getContext('2d')?.clearRect(0, 0, canvasRef.value.width, canvasRef.value.height)
   }
 
   const onBoundingBoxToggle = async () => {
-    // Redraw the canvas when toggle state changes
-    if (
-      imageDisplayRef.value &&
-      canvasRef.value &&
-      detectedBoxes.value.length > 0
-    ) {
+    if (imageDisplayRef.value && canvasRef.value && detectedBoxes.value.length > 0) {
       await nextTick()
-      drawBoundingBoxes(
-        detectedBoxes.value,
-        imageDisplayRef.value,
-        canvasRef.value
-      )
+      drawBoundingBoxes(detectedBoxes.value, imageDisplayRef.value, canvasRef.value)
     }
   }
 
-  // Apply changes with dark piece pool adjustment and auto-flip if needed
   const applyChanges = () => {
     if (validationStatus.value.type !== 'success') return
-
-    // Check if auto-flip is needed based on king positions
-    const isInRedPalace = (row: number, col: number) =>
-      row >= 7 && row <= 9 && col >= 3 && col <= 5
-    const isInBlackPalace = (row: number, col: number) =>
-      row >= 0 && row <= 2 && col >= 3 && col <= 5
-
-    const redKing = editingPieces.value.find(
-      p => p.isKnown && p.name === 'red_king'
-    )
-    const blackKing = editingPieces.value.find(
-      p => p.isKnown && p.name === 'black_king'
-    )
-
+    const redKing = editingPieces.value.find(p => p.isKnown && p.name === 'red_king')
+    const blackKing = editingPieces.value.find(p => p.isKnown && p.name === 'black_king')
     let needsAutoFlip = false
     if (redKing && blackKing) {
-      const redKingInWrongPalace =
-        !isInRedPalace(redKing.row, redKing.col) &&
-        isInBlackPalace(redKing.row, redKing.col)
-      const blackKingInWrongPalace =
-        !isInBlackPalace(blackKing.row, blackKing.col) &&
-        isInRedPalace(blackKing.row, blackKing.col)
-
-      // Check if kings are in opposite positions (red on top, black on bottom)
-      const redKingOnTop = redKing.row < 5
-      const blackKingOnBottom = blackKing.row >= 5
-      const kingsInOppositePositions = redKingOnTop && blackKingOnBottom
-
-      if (
-        redKingInWrongPalace ||
-        blackKingInWrongPalace ||
-        kingsInOppositePositions
-      ) {
-        needsAutoFlip = true
-      }
+      const redKingTop = redKing.row < 5, blackKingBottom = blackKing.row >= 5
+      if ((redKing.row > 4 && redKing.row < 7) || (blackKing.row < 5 && blackKing.row > 2) || (redKingTop && blackKingBottom)) needsAutoFlip = true
     }
 
-    // Calculate current unrevealed piece counts
-    const newUnrevealedCounts: { [key: string]: number } = {}
-    'RNBAKCP rnbakcp'
-      .split('')
-      .filter(c => c !== ' ')
-      .forEach(c => (newUnrevealedCounts[c] = 0))
-
-    // Count pieces on board
-    const knownPiecesOnBoard: { [key: string]: number } = {}
-    const darkPiecesOnBoard = { red: 0, black: 0 }
-
-    editingPieces.value.forEach(piece => {
-      if (piece.isKnown) {
-        const char = FEN_MAP[piece.name]
-        if (char) {
-          knownPiecesOnBoard[char] = (knownPiecesOnBoard[char] || 0) + 1
-        }
-      } else {
-        if (piece.name.startsWith('red')) {
-          darkPiecesOnBoard.red++
-        } else {
-          darkPiecesOnBoard.black++
-        }
-      }
+    const newUnrevealedCounts: any = {}; 'RNBAKCP rnbakcp'.split('').filter(c => c !== ' ').forEach(c => newUnrevealedCounts[c] = 0)
+    const knownPiecesOnBoard: any = {}, darkPiecesOnBoard = { red: 0, black: 0 }
+    editingPieces.value.forEach(p => {
+      if (p.isKnown) { const c = FEN_MAP[p.name]; if(c) knownPiecesOnBoard[c] = (knownPiecesOnBoard[c]||0)+1 }
+      else { if(p.name.startsWith('red')) darkPiecesOnBoard.red++; else darkPiecesOnBoard.black++ }
     })
-
-    // Calculate remaining pieces for unrevealed pool
-    for (const [char, maxCount] of Object.entries(INITIAL_PIECE_COUNTS)) {
-      const onBoard = knownPiecesOnBoard[char] || 0
-      const remaining = maxCount - onBoard
-      if (remaining > 0) {
-        newUnrevealedCounts[char] = remaining
-      }
+    for (const [char, max] of Object.entries(INITIAL_PIECE_COUNTS)) {
+      const rem = max - (knownPiecesOnBoard[char]||0)
+      if (rem > 0) newUnrevealedCounts[char] = rem
     }
+    if (darkPiecesOnBoard.red === 0) 'RNBAKCP'.split('').forEach(c => newUnrevealedCounts[c] = 0)
+    if (darkPiecesOnBoard.black === 0) 'rnbakcp'.split('').forEach(c => newUnrevealedCounts[c] = 0)
 
-    // Adjust for dark pieces - distribute randomly if needed
-    if (darkPiecesOnBoard.red > 0 || darkPiecesOnBoard.black > 0) {
-      // If no dark pieces, clear the pool
-      if (darkPiecesOnBoard.red === 0) {
-        'RNBAKCP'.split('').forEach(c => (newUnrevealedCounts[c] = 0))
-      }
-      if (darkPiecesOnBoard.black === 0) {
-        'rnbakcp'.split('').forEach(c => (newUnrevealedCounts[c] = 0))
-      }
-    }
-
-    // Apply the changes
     gameState.pieces.value = editingPieces.value
     gameState.sideToMove.value = editingSideToMove.value
-
-    // Auto-flip board if needed
-    if (needsAutoFlip && gameState.toggleBoardFlip) {
-      gameState.toggleBoardFlip()
-    }
-
-    // Update unrevealed piece counts unless user opts to preserve
-    if (!preserveDarkPools.value && gameState.unrevealedPieceCounts) {
-      gameState.unrevealedPieceCounts.value = newUnrevealedCounts
-    }
-
-    // Reset captured dark piece pool unless user opts to preserve
+    if (needsAutoFlip && gameState.toggleBoardFlip) gameState.toggleBoardFlip()
+    if (!preserveDarkPools.value && gameState.unrevealedPieceCounts) gameState.unrevealedPieceCounts.value = newUnrevealedCounts
     if (!preserveDarkPools.value && gameState.capturedUnrevealedPieceCounts) {
-      const resetCapturedCounts: { [key: string]: number } = {}
-      'RNBAKCP rnbakcp'
-        .split('')
-        .filter(c => c !== ' ')
-        .forEach(c => (resetCapturedCounts[c] = 0))
-      gameState.capturedUnrevealedPieceCounts.value = resetCapturedCounts
+      const resetC: any = {}; 'RNBAKCP rnbakcp'.split('').filter(c => c !== ' ').forEach(c => resetC[c] = 0)
+      gameState.capturedUnrevealedPieceCounts.value = resetC
     }
-
-    // Record the edit operation in history
-    const editData = `position_edit:${editingPieces.value.length}_pieces${needsAutoFlip ? '_with_flip' : ''}`
-    if (gameState.recordAndFinalize) {
-      gameState.recordAndFinalize('adjust', editData)
-    }
-
-    // Reset the zIndex of all pieces
-    gameState.pieces.value.forEach((p: any) => (p.zIndex = undefined))
-    if (gameState.updateAllPieceZIndexes) {
-      gameState.updateAllPieceZIndexes()
-    }
-
-    // Trigger the arrow clear event
-    if (gameState.triggerArrowClear) {
-      gameState.triggerArrowClear()
-    }
-
-    // Force stop engine analysis
-    window.dispatchEvent(
-      new CustomEvent('force-stop-ai', {
-        detail: { reason: 'position-edit' },
-      })
-    )
-
+    
+    if (gameState.recordAndFinalize) gameState.recordAndFinalize('adjust', `position_edit:${editingPieces.value.length}_pieces`)
+    gameState.pieces.value.forEach((p: any) => p.zIndex = undefined)
+    if (gameState.updateAllPieceZIndexes) gameState.updateAllPieceZIndexes()
+    if (gameState.triggerArrowClear) gameState.triggerArrowClear()
+    window.dispatchEvent(new CustomEvent('force-stop-ai', { detail: { reason: 'position-edit' } }))
     emit('position-changed', editingPieces.value, editingSideToMove.value)
-    selectedPiece.value = null
-    isVisible.value = false
+    selectedPiece.value = null; isVisible.value = false
   }
 </script>
 
 <style lang="scss" scoped>
+  .position-editor-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    max-height: 90vh; /* Giới hạn chiều cao */
+  }
+
+  .position-editor-container {
+    height: 100%;
+    overflow-y: auto;
+  }
+
+  .fill-height-row {
+    min-height: 450px; /* Đảm bảo đủ chỗ cho bàn cờ */
+  }
+
+  .position-editor-board-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 450px;
+    margin: 0 auto;
+    aspect-ratio: 9/10;
+    overflow: hidden;
+  }
+
   .position-editor-board {
     position: relative;
     width: 100%;
-    aspect-ratio: 9/10;
-    margin: 0 auto;
-    max-width: 100%;
+    height: 100%;
     user-select: none;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    -webkit-touch-callout: none;
-    -webkit-tap-highlight-color: transparent;
   }
 
   .board-bg {
-    width: 100%;
-    height: 100%;
-    display: block;
-    user-select: none;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    -webkit-touch-callout: none;
-    -webkit-tap-highlight-color: transparent;
+    width: 100%; height: 100%; display: block;
   }
 
   .pieces {
-    position: absolute;
-    inset: 0;
-    z-index: 10;
-    pointer-events: none; // Disable pointer events on pieces container
+    position: absolute; inset: 0; z-index: 10; pointer-events: none;
   }
 
   .piece {
-    position: absolute;
-    width: 12%;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    z-index: 10;
-    pointer-events: auto; // Re-enable pointer events on individual pieces
+    position: absolute; width: 11.5%; /* Tinh chỉnh kích thước */
+    cursor: pointer; transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); z-index: 10;
+    pointer-events: auto;
+    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3)); /* Bóng đổ cho PNG */
 
-    &:hover {
-      transform: translate(-50%, -50%) scale(1.1);
-      z-index: 30;
-    }
-
-    &.selected {
-      transform: translate(-50%, -50%) scale(1.2);
-      filter: drop-shadow(0 0 8px rgba(33, 150, 243, 0.8));
-      z-index: 40;
-    }
+    &:hover { transform: translate(-50%, -50%) scale(1.15); z-index: 30; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4)); }
+    &.selected { transform: translate(-50%, -50%) scale(1.2); filter: drop-shadow(0 0 8px rgba(33, 150, 243, 0.8)); z-index: 40; }
   }
 
   .board-click-area {
-    position: absolute;
-    inset: 0;
-    z-index: 5; // Lower than pieces
-    cursor: crosshair;
+    position: absolute; inset: 0; z-index: 5; cursor: crosshair;
   }
 
-  .piece-selector {
-    padding: 12px;
-    background-color: rgb(var(--v-theme-surface));
-    border-radius: 6px;
-    height: 100%;
-    overflow-y: auto;
-    max-height: 500px;
-
-    @media (max-width: 768px) {
-      height: auto;
-      margin-top: 4px;
-      max-height: 250px;
-      padding: 6px;
-    }
+  /* Piece Selector Styling */
+  .piece-selector-card {
+    background-color: #fafafa;
   }
 
-  .selected-piece-info {
-    padding: 12px;
-    background-color: rgba(var(--v-theme-primary), 0.1);
-    border-radius: 6px;
-    border: 1px solid rgba(var(--v-theme-primary), 0.3);
-
-    .selected-piece-display {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 8px;
-    }
-
-    .piece-img-large {
-      width: 32px;
-      height: 32px;
-    }
-
-    .hint-text {
-      font-size: 12px;
-      color: rgba(var(--v-theme-on-surface), 0.7);
-      margin: 0;
-    }
-
-    @media (max-width: 768px) {
-      padding: 8px;
-
-      .selected-piece-display {
-        gap: 6px;
-        margin-bottom: 6px;
-      }
-
-      .piece-img-large {
-        width: 24px;
-        height: 24px;
-      }
-
-      .hint-text {
-        font-size: 11px;
-      }
-    }
-  }
-
-  .piece-category {
-    margin-bottom: 12px;
-
-    h6 {
-      margin: 0 0 6px 0;
-      color: rgb(var(--v-theme-on-surface));
-      font-size: 12px;
-    }
-
-    @media (max-width: 768px) {
-      margin-bottom: 8px;
-
-      h6 {
-        margin: 0 0 4px 0;
-        font-size: 11px;
-      }
-    }
+  .piece-library {
+    /* Custom Scrollbar */
+    &::-webkit-scrollbar { width: 6px; }
+    &::-webkit-scrollbar-track { background: #f1f1f1; }
+    &::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
+    &::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
   }
 
   .piece-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 6px;
-
-    @media (max-width: 768px) {
-      grid-template-columns: repeat(8, 1fr);
-      gap: 1px;
-    }
-  }
-
-  .piece-option {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 6px;
-    border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-    border-radius: 4px;
-    cursor: pointer;
-    background-color: rgb(var(--v-theme-surface));
-    transition: all 0.2s ease;
-
-    &:hover {
-      background-color: rgba(var(--v-theme-primary), 0.1);
-      border-color: #1976d2;
-      transform: scale(1.05);
-    }
-
-    .piece-img {
-      width: 20px;
-      height: 20px;
-      margin-bottom: 2px;
-
-      @media (max-width: 768px) {
-        width: 14px;
-        height: 14px;
-        margin-bottom: 0;
-      }
-    }
-
-    .piece-name {
-      font-size: 9px;
-      text-align: center;
-      color: rgb(var(--v-theme-on-surface));
-
-      @media (max-width: 768px) {
-        display: none;
-      }
-    }
-  }
-
-  .gap-1 {
+    grid-template-columns: repeat(7, 1fr); /* 7 cột cho 7 loại quân */
     gap: 4px;
   }
 
-  .flex-wrap {
-    flex-wrap: wrap;
+  .piece-option {
+    aspect-ratio: 1;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 4px; cursor: pointer;
+    background: white; border: 1px solid #e0e0e0;
+    transition: all 0.1s;
+
+    &:hover { transform: scale(1.1); z-index: 2; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+    &:active { transform: scale(0.95); }
+
+    .piece-img { width: 85%; height: 85%; object-fit: contain; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2)); }
   }
 
-  .action-buttons {
-    @media (max-width: 768px) {
-      gap: 2px !important;
-
-      .v-btn {
-        font-size: 11px;
-        padding: 4px 8px;
-        min-width: auto;
-      }
-    }
-  }
-
-  .side-indicator {
-    @media (max-width: 768px) {
-      font-size: 11px;
-      padding: 4px 8px;
-    }
-  }
-
-  .validation-alert {
-    @media (max-width: 768px) {
-      font-size: 11px;
-      padding: 8px;
-    }
-  }
-
-  .position-editor-container {
-    @media (max-width: 768px) {
-      padding: 8px !important;
-    }
-  }
-
-  .board-col {
-    @media (max-width: 768px) {
-      padding: 4px !important;
-    }
-  }
-
-  .selector-col {
-    @media (max-width: 768px) {
-      padding: 4px !important;
-    }
-  }
-
-  .side-to-move {
-    margin-top: 0 !important;
-  }
-
-  // Hide desktop-only elements on mobile
-  .desktop-only {
-    @media (max-width: 768px) {
-      display: none !important;
-    }
-  }
-
-  // Image recognition styles
-  .image-recognition-container {
-    display: flex;
+  .red-option:hover { border-color: #e53935; background-color: #ffebee; }
+  .black-option:hover { border-color: #333; background-color: #eceff1; }
+  .dark-option { 
+    grid-column: span 1; 
     flex-direction: column;
-    gap: 16px;
+    &:hover { border-color: #757575; background-color: #f5f5f5; }
   }
 
-  .upload-area {
-    border: 2px dashed rgba(var(--v-border-color), var(--v-border-opacity));
-    border-radius: 8px;
-    padding: 32px;
-    text-align: center;
-    transition: all 0.3s ease;
-    cursor: pointer;
-    min-height: 200px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    &.drag-over {
-      border-color: rgb(var(--v-theme-primary));
-      background-color: rgba(var(--v-theme-primary), 0.05);
-    }
-
-    .upload-placeholder {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-      color: rgba(var(--v-theme-on-surface), 0.6);
-
-      p {
-        margin: 0;
-        font-size: 14px;
-      }
-    }
-
-    .image-preview {
-      display: flex;
-      justify-content: center;
-
-      .image-stage {
-        position: relative;
-        display: inline-block;
-        max-width: 100%;
-      }
-
-      .preview-image {
-        display: block;
-        max-width: 100%;
-        max-height: 400px;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      }
-
-      .overlay-canvas {
-        position: absolute;
-        inset: 0;
-        pointer-events: none;
-      }
-    }
+  .selected-piece-preview {
+    width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;
+    border: 1px solid #ddd;
   }
+  .piece-img-large { width: 85%; height: 85%; object-fit: contain; }
 
-  .recognition-controls {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .recognition-results {
-    .board-grid-display {
-      display: grid;
-      grid-template-columns: repeat(9, 1fr);
-      gap: 2px;
-      max-width: 300px;
-      margin: 0 auto;
-
-      .grid-row {
-        display: contents;
-      }
-
-      .grid-cell {
-        aspect-ratio: 1;
-        border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 12px;
-        font-weight: bold;
-        background-color: rgb(var(--v-theme-surface));
-        min-height: 24px;
-
-        &.has-piece {
-          background-color: rgba(var(--v-theme-primary), 0.1);
-          color: rgb(var(--v-theme-primary));
-        }
-      }
-    }
-  }
-
-  // More compact layout for mobile portrait
+  /* Mobile Responsive */
   @media (max-width: 768px) {
-    .piece-selector {
-      padding: 6px;
-      max-height: 250px;
-    }
-
-    .selected-piece-info {
-      padding: 6px;
-      margin-bottom: 8px;
-
-      .selected-piece-display {
-        gap: 4px;
-        margin-bottom: 4px;
-      }
-
-      .piece-img-large {
-        width: 20px;
-        height: 20px;
-      }
-
-      .hint-text {
-        font-size: 10px;
-      }
-    }
-
-    .piece-category {
-      margin-bottom: 6px;
-    }
-
-    .piece-grid {
-      grid-template-columns: repeat(8, 1fr);
-      gap: 1px;
-    }
-
-    .piece-option {
-      padding: 3px;
-
-      .piece-img {
-        width: 14px;
-        height: 14px;
-      }
-    }
-
-    .action-buttons {
-      gap: 1px !important;
-
-      .v-btn {
-        font-size: 10px;
-        padding: 2px 6px;
-        min-width: auto;
-        height: 28px;
-      }
-    }
-
-    .side-indicator {
-      font-size: 10px;
-      padding: 2px 6px;
-      height: 24px;
-    }
-
-    .validation-alert {
-      font-size: 10px;
-      padding: 6px;
-      margin-top: 4px;
-    }
-
-    .position-editor-container {
-      padding: 4px !important;
-    }
-
-    .board-col {
-      padding: 2px !important;
-    }
-
-    .selector-col {
-      padding: 2px !important;
-    }
-
-    // Reduce dialog padding on mobile
-    .v-card-text {
-      padding: 8px !important;
-    }
-
-    .v-card-actions {
-      padding: 8px !important;
-    }
-
-    // Mobile image recognition styles
-    .upload-area {
-      padding: 16px;
-      min-height: 120px;
-
-      .upload-placeholder {
-        p {
-          font-size: 12px;
-        }
-      }
-
-      .preview-image {
-        max-height: 200px;
-      }
-    }
-
-    .recognition-controls {
-      gap: 8px;
-
-      .v-btn {
-        font-size: 12px;
-        padding: 4px 12px;
-        min-width: auto;
-      }
-    }
-
-    .board-grid-display {
-      grid-template-columns: repeat(9, 1fr);
-      gap: 1px;
-
-      .grid-cell {
-        min-height: 20px;
-        font-size: 10px;
-      }
-    }
+    .position-editor-card { max-height: 100vh; }
+    .position-editor-board-wrapper { max-width: 100%; aspect-ratio: 9/10; margin-bottom: 8px; }
+    .fill-height-row { min-height: auto; flex-direction: column; }
+    .piece-selector-card { height: auto !important; max-height: 250px; }
+    .piece-grid { grid-template-columns: repeat(7, 1fr); gap: 2px; }
+    .piece-option { border-radius: 3px; }
+    .action-buttons .v-btn { flex: 1 0 auto; }
   }
+
+  /* Image Recognition Styles */
+  .upload-area {
+    border: 2px dashed #bdbdbd; border-radius: 8px; padding: 20px;
+    text-align: center; transition: all 0.3s; cursor: pointer; min-height: 150px;
+    display: flex; align-items: center; justify-content: center; background: #fafafa;
+    &:hover, &.drag-over { border-color: #1976d2; background: #e3f2fd; }
+  }
+  .preview-image { max-width: 100%; max-height: 300px; border-radius: 4px; display: block; margin: 0 auto; }
+  .image-stage { position: relative; display: inline-block; }
+  .overlay-canvas { position: absolute; inset: 0; pointer-events: none; }
 </style>
