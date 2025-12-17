@@ -325,7 +325,10 @@
   aspect-ratio: 1.2 / 1; 
   display: flex;
   flex-direction: row;
-  align-items: stretch; /* Kéo dãn khung để dễ căn chỉnh */
+  
+  /* QUAN TRỌNG: Kéo dãn chiều cao side-panel bằng 100% bàn cờ */
+  align-items: stretch; 
+  
   gap: 2vmin; 
   padding: 0.8vmin;
 }
@@ -345,35 +348,43 @@
   z-index: 1;
 }
 
-/* --- SIDE PANEL --- */
+/* --- SIDE PANEL (CỘT BÊN PHẢI) --- */
 .side-panel {
   flex: 0 0 16%; 
   min-width: 0;
+  
+  /* Chiều cao 100% để căn đều từ đỉnh xuống đáy bàn cờ */
+  height: 100%; 
+  
   background: transparent; 
   box-shadow: none;
   border: none;
-  padding: 0;
+  padding: 0; /* Sát mép tuyệt đối */
   
   display: flex;
   flex-direction: column;
-  justify-content: space-between; /* Đẩy 2 đầu */
   
-  overflow: visible; /* Để quân cờ trồi ra ngoài không bị cắt */
+  /* KHOẢNG TRỐNG Ở GIỮA 2 PHE: Chỉnh số này để tăng/giảm khoảng cách giữa Đen và Đỏ */
+  gap: 8vmin; 
+  
+  overflow: hidden;
 }
 
-/* --- CẤU HÌNH NHÓM QUÂN --- */
+/* --- CẤU HÌNH NHÓM QUÂN (POOL SECTION) --- */
 .pool-section {
+  /* Tự động giãn ra để chiếm phần không gian còn lại */
+  flex: 1; 
+  
   display: flex;
   flex-direction: column;
-  flex: 0 1 auto; 
-  gap: 0.1vmin; /* Khoảng cách giữa các quân siêu nhỏ */
+  
+  /* QUAN TRỌNG: Tự động chia đều khoảng cách giữa các quân bên trong */
+  justify-content: space-between; 
+  
   min-height: 0;
 }
 
-.top-pool { justify-content: flex-start; }
-.bottom-pool { justify-content: flex-end; }
-
-/* --- TỪNG DÒNG QUÂN --- */
+/* --- TỪNG DÒNG (SLOT) QUÂN --- */
 .pool-row {
   display: flex;
   align-items: center; 
@@ -381,7 +392,10 @@
   background: transparent;
   padding: 0;
   width: 100%;
+  
+  /* Để height auto hoặc fix nhỏ để Flexbox tự chia khoảng cách */
   height: 5.5vmin; 
+  
   min-height: 0;
 }
 
@@ -394,18 +408,19 @@
   align-items: center; 
 }
 
-/* 1. Xe đen (Trên cùng): Dính mép trên */
+/* --- CĂN CHỈNH 2 ĐẦU MÚT (Không cần chỉnh tay nữa) --- */
+/* Flex space-between đã tự lo việc đẩy quân đầu lên đỉnh và quân cuối xuống đáy */
+
+/* 1. Xe đen (Trên cùng): Căn đỉnh */
 .top-pool .pool-row:first-child .pool-img-wrapper {
   align-items: flex-start; 
 }
 
-/* 2. Tốt đỏ (Dưới cùng): Dính mép dưới + Đẩy xuống thêm */
+/* 2. Tốt đỏ (Dưới cùng): Căn đáy */
 .bottom-pool .pool-row:last-child .pool-img-wrapper {
   align-items: flex-end; 
-  
-  /* --- [ĐÃ TĂNG THÊM] --- */
-  /* Đẩy xuống sâu hơn nữa */
-  transform: translateY(2.5vmin); 
+  /* Xóa transform chỉnh tay để nó tự động theo Flexbox */
+  transform: none; 
 }
 
 .pool-img {
