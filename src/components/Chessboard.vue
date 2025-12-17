@@ -384,15 +384,12 @@
 }
 
 
-/* --- TỪNG DÒNG QUÂN (LAYOUT MỚI) --- */
+/* --- TỪNG DÒNG QUÂN --- */
 .pool-row {
   display: flex;
   align-items: center; 
-  
-  /* Căn giữa vì giờ chỉ còn Ảnh và Nút */
-  justify-content: center; 
+  justify-content: center; /* Căn giữa */
   gap: 1.5vmin; 
-  
   background: transparent;
   padding: 0;
   width: 100%;
@@ -400,46 +397,45 @@
   min-height: 0;
 }
 
-/* --- WRAPPER ẢNH (CHỨA CẢ BADGE) --- */
+/* --- WRAPPER ẢNH --- */
 .pool-img-wrapper {
   width: 45%; 
   height: 100%;
   display: flex;
   justify-content: center;
   align-items: center; 
-  
-  /* Quan trọng: Để định vị Badge */
   position: relative; 
   overflow: visible; 
 }
 
-/* --- STYLE BADGE SỐ LƯỢNG (NOTIFICATION STYLE) --- */
+/* --- [MỚI] STYLE CHO BADGE SỐ LƯỢNG (NHỎ GỌN) --- */
 .pool-num-badge {
   position: absolute;
-  /* Góc trên phải */
-  top: -0.5vmin;
-  right: -0.5vmin;
+  top: -0.2vmin;
+  right: -0.2vmin;
   
-  background-color: #f44336; /* Đỏ */
+  background-color: #f44336; 
   color: white;
   
-  width: 2.2vmin;
-  height: 2.2vmin;
-  border-radius: 50%;
+  /* Size nhỏ hơn theo yêu cầu */
+  width: 1.8vmin;
+  height: 1.8vmin;
   
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   
-  font-size: 1.4vmin;
+  /* Font nhỏ */
+  font-size: 1.1vmin;
   font-weight: bold;
   line-height: 1;
   
-  border: 0.2vmin solid #fff;
+  /* Viền mỏng */
+  border: 0.15vmin solid #fff;
   box-shadow: 0 0.2vmin 0.4vmin rgba(0,0,0,0.3);
   z-index: 10;
 }
-
 
 /* Căn chỉnh mép ảnh */
 .top-zone .pool-row:first-child .pool-img-wrapper { align-items: flex-start; }
@@ -448,15 +444,12 @@
 /* ẢNH */
 .pool-img { height: auto; width: auto; max-height: 100%; max-width: 100%; object-fit: contain; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5)); }
 
-/* --- [ĐÃ CHỈNH SỬA] NÚT BẤM (GỌN HƠN) --- */
+/* --- [ĐÃ CHỈNH SỬA] NÚT BẤM (GỌN) --- */
 .pool-btns {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  
-  /* Chiều cao 50% để 2 nút xích lại gần */
-  height: 50%; 
-  
+  height: 50%; /* Thu gọn chiều cao */
   width: 20%; 
   gap: 0; 
   margin-right: 0;
@@ -477,8 +470,6 @@
   justify-content: center;
   transition: all 0.15s ease;
   text-shadow: 0 0 3px rgba(0,0,0,1);
-  
-  /* Line-height nhỏ */
   line-height: 0.8;
 
   &:hover:not(:disabled) { color: #4caf50; transform: scale(1.3); }
