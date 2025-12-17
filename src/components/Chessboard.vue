@@ -322,20 +322,15 @@
   max-width: 98vmin;
   max-height: 98vmin;
   margin: 0 auto;
-  aspect-ratio: 1.2 / 1; /* Tăng nhẹ tỷ lệ tổng để bù cho khoảng trống mới thêm */
-  
+  aspect-ratio: 1.2 / 1; 
   display: flex;
   flex-direction: row;
   align-items: stretch;
-  
-  /* --- TẠO KHOẢNG CÁCH Ở GIỮA --- */
   gap: 2vmin; 
-  
   padding: 0.8vmin;
 }
 
 .main-column {
-  /* Để flex: 1 để nó tự co giãn theo khoảng trống còn lại, không set cứng width */
   flex: 1; 
   display: flex;
   flex-direction: column;
@@ -352,25 +347,31 @@
 
 /* --- SIDE PANEL --- */
 .side-panel {
-  /* Giữ nguyên độ rộng cột bên phải */
   flex: 0 0 16%; 
   min-width: 0;
   background: transparent; 
   box-shadow: none;
   border: none;
   padding: 0 0 0 0.5vmin;
+  
   display: flex;
   flex-direction: column;
-  justify-content: space-between; 
+  
+  /* CĂN TRÊN: Toàn bộ danh sách quân sẽ neo từ trên xuống */
+  justify-content: flex-start; 
+  
+  /* Tạo khoảng cách cố định giữa 2 phe Đen và Đỏ (thay vì đẩy hết cỡ) */
+  gap: 6vmin; 
+  
   overflow: hidden;
 }
 
-/* --- CẤU HÌNH KHOẢNG CÁCH --- */
+/* --- CẤU HÌNH KHOẢNG CÁCH GIỮA CÁC QUÂN --- */
 .pool-section {
   display: flex;
   flex-direction: column;
   flex: 0 1 auto; 
-  gap: 1.2vmin;
+  gap: 0.6vmin; /* Giữ khoảng cách giữa các quân cùng màu */
   min-height: 0;
 }
 
@@ -378,8 +379,9 @@
   justify-content: flex-start; 
 }
 
+/* Bottom Pool giờ cũng xếp tự nhiên, không ép đáy nữa */
 .bottom-pool {
-  justify-content: flex-end; 
+  justify-content: flex-start; 
 }
 
 /* --- TỪNG DÒNG QUÂN --- */
@@ -390,7 +392,7 @@
   background: transparent;
   padding: 0;
   width: 100%;
-  height: 7.5vmin; 
+  height: 6.2vmin; 
   min-height: 0;
 }
 
@@ -403,12 +405,14 @@
   align-items: center; 
 }
 
-/* Căn quân đầu/cuối chạm mép */
+/* Chỉ giữ căn chỉnh đặc biệt cho quân ĐẦU TIÊN (trên cùng) */
 .top-pool .pool-row:first-child .pool-img-wrapper {
   align-items: flex-start; 
 }
+
+/* BỎ căn chỉnh đáy cho quân cuối cùng, để nó nằm tự nhiên */
 .bottom-pool .pool-row:last-child .pool-img-wrapper {
-  align-items: flex-end; 
+  align-items: center; 
 }
 
 .pool-img {
@@ -481,13 +485,9 @@
   }
 }
 
-/* Divider */
+/* Divider - Ẩn đi hoặc giữ kích thước nhỏ, vì khoảng cách đã do side-panel gap lo */
 .pool-divider { 
-  flex: 1; 
-  display: flex; 
-  align-items: center; 
-  justify-content: center; 
-  min-height: 2vmin; 
+  display: none;
 }
 .pool-error { font-size: 1.5vmin; color: #ffeb3b; background: rgba(0,0,0,0.8); padding: 0.2vmin 0.8vmin; border-radius: 0.5vmin; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
