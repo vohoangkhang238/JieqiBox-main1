@@ -361,34 +361,34 @@
   display: flex;
   flex-direction: column;
   
-  /* Tự động chia đều khoảng cách giữa mép trên và mép dưới */
+  /* QUAN TRỌNG: Tự động chia đều khoảng cách */
   justify-content: space-between; 
 }
 
-/* --- KHỐI TRÊN (QUÂN ĐEN) --- */
+/* --- [1] KHỐI TRÊN (QUÂN ĐEN) --- */
 .top-zone {
   top: 0; 
-  bottom: 50%; /* Kết thúc ở giữa bàn cờ */
-  justify-content: flex-start; /* Quân đen dồn lên trên */
+  bottom: 52%; /* Kết thúc ở nửa trên */
+  
+  justify-content: flex-start; /* Quân đen dồn lên đỉnh */
   gap: 0;
 }
-
-.top-zone .pool-row {
-  height: 5.2vmin; 
-}
+/* Giảm chiều cao dòng quân Đen cho gọn */
+.top-zone .pool-row { height: 5vmin; }
 
 
-/* --- [CHỈNH SỬA] KHỐI DƯỚI (QUÂN ĐỎ) --- */
+/* --- [2] KHỐI DƯỚI (QUÂN ĐỎ) - CĂN CHỈNH MẠNH TAY --- */
 .bottom-zone {
-  /* MÉP TRÊN: Bắt đầu ngay dưới sông (Vị trí mũi tên trên) */
-  top: 53%; 
-  
-  /* MÉP DƯỚI: Nhích lên một chút so với đáy để khớp với hàng tốt (Vị trí mũi tên dưới) */
-  /* Tăng số này (ví dụ 4%) nếu muốn quân Tốt bay cao hơn nữa */
-  bottom: 2%; 
+  /* Mép trên: 45% là vị trí khoảng giữa sông. 
+     -> Chỉnh số này LỚN hơn (vd 50%) để tụt xuống. 
+     -> Chỉnh NHỎ hơn (vd 40%) để bay lên cao. */
+  top: 45%; 
+
+  /* Mép dưới: -2% để quân Tốt chạm hẳn xuống đáy (hoặc lòi ra xíu). */
+  bottom: -2%; 
 }
 
-/* --- TỪNG DÒNG QUÂN --- */
+/* --- [3] TỪNG DÒNG QUÂN (QUAN TRỌNG) --- */
 .pool-row {
   display: flex;
   align-items: center; 
@@ -396,7 +396,11 @@
   background: transparent;
   padding: 0;
   width: 100%;
-  height: 5.5vmin; 
+  
+  /* GIẢM CHIỀU CAO XUỐNG CÒN 5vmin 
+     (Nếu để to quá thì nó chật kín, không còn chỗ để nhúc nhích) */
+  height: 5vmin; 
+  
   min-height: 0;
 }
 
@@ -409,20 +413,20 @@
   align-items: center; 
 }
 
-/* 1. Xe Đen: Dính đỉnh */
+/* Xe Đen: Dính đỉnh */
 .top-zone .pool-row:first-child .pool-img-wrapper {
   align-items: flex-start;
 }
 
-/* 2. Xe Đỏ (Đầu khu vực đỏ): Dính mép trên khu vực đỏ */
+/* Xe Đỏ (Đầu): Dính mép sông (mép trên của khung bottom-zone) */
 .bottom-zone .pool-row:first-child .pool-img-wrapper {
   align-items: flex-start;
 }
 
-/* 3. Tốt Đỏ (Cuối khu vực đỏ): Dính mép dưới khu vực đỏ */
+/* Tốt Đỏ (Cuối): Dính mép đáy (mép dưới của khung bottom-zone) */
 .bottom-zone .pool-row:last-child .pool-img-wrapper {
   align-items: flex-end;
-  /* Xóa transform để nó nằm đúng giới hạn bottom: 2% đã đặt ở trên */
+  /* Đảm bảo không có transform nào can thiệp */
   transform: none; 
 }
 
