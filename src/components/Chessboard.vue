@@ -325,8 +325,10 @@
   aspect-ratio: 1.15 / 1; 
   display: flex;
   flex-direction: row;
-  /* Đổi thành flex-end để ưu tiên căn đáy (nếu chiều cao panel < bàn cờ) */
-  align-items: flex-end; 
+  
+  /* QUAN TRỌNG: Kéo dãn chiều cao side-panel bằng với bàn cờ */
+  align-items: stretch; 
+  
   gap: 0; 
   padding: 0.8vmin;
 }
@@ -347,43 +349,55 @@
   z-index: 1;
 }
 
-/* --- SIDE PANEL (CẬP NHẬT: ĐẨY XUỐNG DƯỚI) --- */
+/* --- SIDE PANEL (CĂN CHỈNH 2 ĐẦU) --- */
 .side-panel {
   flex: 0 0 16%; 
   min-width: 0;
   
-  /* Đặt chiều cao nhỏ hơn 100% một chút để nó tụt xuống */
-  height: 94%; 
-  
+  /* Trong suốt & không viền */
   background: transparent; 
   box-shadow: none;
   border: none;
   
-  /* Thêm padding-top để đẩy nội dung quân xuống thấp hơn nữa */
-  padding: 4vmin 0 0 0.5vmin;
+  /* Padding 0 để sát mép tuyệt đối */
+  padding: 0 0 0 0.5vmin;
   
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  
+  /* QUAN TRỌNG: Đẩy 2 phần (trên/dưới) ra xa nhau nhất có thể */
+  justify-content: space-between; 
+  
   overflow: hidden;
 }
 
+/* --- CẤU HÌNH CHUNG CHO 2 KHỐI QUÂN --- */
 .pool-section {
   display: flex;
   flex-direction: column;
-  flex: 1;
-  justify-content: space-evenly;
-  gap: 0;
+  /* Dùng auto để chiều cao co giãn theo nội dung, không chiếm hết khoảng trống */
+  flex: 0 1 auto; 
+  gap: 0.2vmin; /* Khoảng cách nhỏ giữa các quân trong cùng 1 nhóm */
   min-height: 0;
 }
 
+/* --- KHỐI TRÊN (XE ĐEN...) --- */
 .top-pool {
   border-bottom: none;
   padding-bottom: 0;
-  margin-bottom: 0.5vmin;
+  margin-bottom: 0;
+  
+  /* Căn quân bắt đầu từ mép trên cùng */
+  justify-content: flex-start; 
 }
 
-/* --- TỪNG SLOT QUÂN --- */
+/* --- KHỐI DƯỚI (TỐT ĐỎ...) --- */
+.bottom-pool {
+  /* Căn quân bắt đầu từ mép dưới cùng */
+  justify-content: flex-end; 
+}
+
+/* --- TỪNG DÒNG QUÂN (XE, PHÁO, MÃ...) --- */
 .pool-row {
   display: flex;
   align-items: center;
@@ -392,8 +406,10 @@
   box-shadow: none;
   border-radius: 0;
   padding: 0;
-  flex: 1;
+  
   width: 100%;
+  /* Đặt chiều cao cố định tương đối để các quân không bị giãn quá mức */
+  height: 6.5vmin; 
   min-height: 0;
 }
 
@@ -432,7 +448,7 @@
 .red-num { color: #d32f2f; }
 .black-num { color: #000000; }
 
-/* Nút bấm (Xếp dọc) */
+/* Nút bấm */
 .pool-btns {
   display: flex;
   flex-direction: column;
@@ -476,8 +492,14 @@
   }
 }
 
-/* Divider lỗi */
-.pool-divider { height: 2vmin; display: flex; align-items: center; justify-content: center; min-height: 0; }
+/* Divider lỗi (Nằm giữa khoảng trống) */
+.pool-divider { 
+  flex: 1; /* Chiếm hết khoảng trống ở giữa */
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  min-height: 2vmin; 
+}
 .pool-error { font-size: 1.5vmin; color: #ffeb3b; background: rgba(0,0,0,0.8); padding: 0.2vmin 0.8vmin; border-radius: 0.5vmin; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* --- CÁC STYLE CŨ (GIỮ NGUYÊN) --- */
