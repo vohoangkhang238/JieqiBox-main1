@@ -322,17 +322,21 @@
   max-width: 98vmin;
   max-height: 98vmin;
   margin: 0 auto;
-  aspect-ratio: 1.15 / 1; 
+  aspect-ratio: 1.2 / 1; /* Tăng nhẹ tỷ lệ tổng để bù cho khoảng trống mới thêm */
+  
   display: flex;
   flex-direction: row;
-  align-items: stretch; /* Kéo dãn chiều cao bằng nhau */
-  gap: 0; 
+  align-items: stretch;
+  
+  /* --- TẠO KHOẢNG CÁCH Ở GIỮA --- */
+  gap: 2vmin; 
+  
   padding: 0.8vmin;
 }
 
 .main-column {
-  flex: 1 1 auto;
-  width: 84%; 
+  /* Để flex: 1 để nó tự co giãn theo khoảng trống còn lại, không set cứng width */
+  flex: 1; 
   display: flex;
   flex-direction: column;
   position: relative;
@@ -348,37 +352,29 @@
 
 /* --- SIDE PANEL --- */
 .side-panel {
+  /* Giữ nguyên độ rộng cột bên phải */
   flex: 0 0 16%; 
   min-width: 0;
   background: transparent; 
   box-shadow: none;
   border: none;
-  
-  /* Padding 0 tuyệt đối để chạm mép */
   padding: 0 0 0 0.5vmin;
-  
   display: flex;
   flex-direction: column;
-  justify-content: space-between; /* Đẩy 2 nhóm ra 2 đầu cực đại */
+  justify-content: space-between; 
   overflow: hidden;
 }
 
-/* --- CẤU HÌNH KHOẢNG CÁCH QUÂN --- */
+/* --- CẤU HÌNH KHOẢNG CÁCH --- */
 .pool-section {
   display: flex;
   flex-direction: column;
   flex: 0 1 auto; 
-  
-  /* TĂNG KHOẢNG CÁCH GIỮA CÁC QUÂN: Dãn ra cho thoáng */
-  gap: 1.2vmin; 
-  
+  gap: 1.2vmin;
   min-height: 0;
 }
 
 .top-pool {
-  border-bottom: none;
-  padding-bottom: 0;
-  margin-bottom: 0;
   justify-content: flex-start; 
 }
 
@@ -389,33 +385,36 @@
 /* --- TỪNG DÒNG QUÂN --- */
 .pool-row {
   display: flex;
-  align-items: center;
+  align-items: center; 
   justify-content: space-between;
   background: transparent;
-  box-shadow: none;
-  border-radius: 0;
   padding: 0;
-  
   width: 100%;
-  
-  /* TĂNG CHIỀU CAO: Để mỗi dòng chiếm nhiều không gian hơn */
   height: 7.5vmin; 
-  
   min-height: 0;
 }
 
-/* Wrapper ảnh */
+/* --- WRAPPER ẢNH --- */
 .pool-img-wrapper {
   width: 35%;
   height: 100%;
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: center; 
 }
+
+/* Căn quân đầu/cuối chạm mép */
+.top-pool .pool-row:first-child .pool-img-wrapper {
+  align-items: flex-start; 
+}
+.bottom-pool .pool-row:last-child .pool-img-wrapper {
+  align-items: flex-end; 
+}
+
 .pool-img {
   height: auto;
   width: auto;
-  max-height: 100%; /* Cho phép ảnh lớn tối đa theo chiều cao mới */
+  max-height: 100%; 
   max-width: 100%;
   object-fit: contain;
   filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5)); 
@@ -469,7 +468,6 @@
   &:hover:not(:disabled) {
     color: #4caf50; 
     transform: scale(1.3); 
-    background: transparent;
   }
   
   &:active:not(:disabled) {
@@ -483,7 +481,7 @@
   }
 }
 
-/* Divider lỗi */
+/* Divider */
 .pool-divider { 
   flex: 1; 
   display: flex; 
