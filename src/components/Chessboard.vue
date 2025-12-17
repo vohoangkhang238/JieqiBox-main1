@@ -97,10 +97,12 @@
       
       <div class="absolute-pool top-zone">
         <div v-for="item in (isRedOnTop ? redPool : blackPool)" :key="item.char" class="pool-row">
+          
           <div class="pool-img-wrapper">
              <img :src="getPieceImageUrl(item.name)" class="pool-img" />
+             <div v-if="item.count > 0" class="pool-num-badge">{{ item.count }}</div>
           </div>
-          <span class="pool-num" :class="isRedOnTop ? 'red-num' : 'black-num'">{{ item.count }}</span>
+
           <div class="pool-btns">
              <button class="tiny-btn btn-inc" @click="adjustUnrevealedCount(item.char, 1)" :disabled="item.count >= item.max">+</button>
              <button class="tiny-btn btn-dec" @click="adjustUnrevealedCount(item.char, -1)" :disabled="item.count <= 0">-</button>
@@ -114,10 +116,12 @@
 
       <div class="absolute-pool bottom-zone">
         <div v-for="item in (isRedOnTop ? blackPool : redPool)" :key="item.char" class="pool-row">
+          
           <div class="pool-img-wrapper">
              <img :src="getPieceImageUrl(item.name)" class="pool-img" />
+             <div v-if="item.count > 0" class="pool-num-badge">{{ item.count }}</div>
           </div>
-          <span class="pool-num" :class="isRedOnTop ? 'black-num' : 'red-num'">{{ item.count }}</span>
+
           <div class="pool-btns">
              <button class="tiny-btn btn-inc" @click="adjustUnrevealedCount(item.char, 1)" :disabled="item.count >= item.max">+</button>
              <button class="tiny-btn btn-dec" @click="adjustUnrevealedCount(item.char, -1)" :disabled="item.count <= 0">-</button>
@@ -132,7 +136,6 @@
 </template>
 
 <script setup lang="ts">
-  /* GIỮ NGUYÊN TOÀN BỘ PHẦN SCRIPT */
   import { inject, ref, watch, computed, watchEffect, onMounted, onUnmounted, unref } from 'vue'
   import { useI18n } from 'vue-i18n'
   import type { Piece } from '@/composables/useChessGame'
@@ -381,11 +384,15 @@
 }
 
 
-/* --- TỪNG DÒNG QUÂN --- */
+/* --- TỪNG DÒNG QUÂN (LAYOUT MỚI) --- */
 .pool-row {
   display: flex;
   align-items: center; 
-  justify-content: space-between;
+  
+  /* Căn giữa vì giờ chỉ còn Ảnh và Nút */
+  justify-content: center; 
+  gap: 1.5vmin; 
+  
   background: transparent;
   padding: 0;
   width: 100%;
@@ -393,38 +400,66 @@
   min-height: 0;
 }
 
-/* --- WRAPPER ẢNH --- */
+/* --- WRAPPER ẢNH (CHỨA CẢ BADGE) --- */
 .pool-img-wrapper {
-  width: 35%;
+  width: 45%; 
   height: 100%;
   display: flex;
   justify-content: center;
   align-items: center; 
+  
+  /* Quan trọng: Để định vị Badge */
+  position: relative; 
+  overflow: visible; 
 }
+
+/* --- STYLE BADGE SỐ LƯỢNG (NOTIFICATION STYLE) --- */
+.pool-num-badge {
+  position: absolute;
+  /* Góc trên phải */
+  top: -0.5vmin;
+  right: -0.5vmin;
+  
+  background-color: #f44336; /* Đỏ */
+  color: white;
+  
+  width: 2.2vmin;
+  height: 2.2vmin;
+  border-radius: 50%;
+  
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  font-size: 1.4vmin;
+  font-weight: bold;
+  line-height: 1;
+  
+  border: 0.2vmin solid #fff;
+  box-shadow: 0 0.2vmin 0.4vmin rgba(0,0,0,0.3);
+  z-index: 10;
+}
+
 
 /* Căn chỉnh mép ảnh */
 .top-zone .pool-row:first-child .pool-img-wrapper { align-items: flex-start; }
 .bottom-zone .pool-row:last-child .pool-img-wrapper { align-items: flex-end; transform: none; }
 
-/* ẢNH & SỐ LƯỢNG */
+/* ẢNH */
 .pool-img { height: auto; width: auto; max-height: 100%; max-width: 100%; object-fit: contain; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5)); }
-.pool-num { font-weight: 900; font-size: 2.2vmin; text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 0 4px rgba(0,0,0,0.8); flex: 1; text-align: center; line-height: 1; z-index: 2; }
-.red-num { color: #d32f2f; }
-.black-num { color: #000000; }
 
-
-/* --- [ĐÃ CHỈNH SỬA] NÚT BẤM --- */
+/* --- [ĐÃ CHỈNH SỬA] NÚT BẤM (GỌN HƠN) --- */
 .pool-btns {
   display: flex;
   flex-direction: column;
   justify-content: center;
   
-  /* GIẢM CHIỀU CAO: Từ 80% xuống 50% để 2 nút xích lại gần nhau hơn */
+  /* Chiều cao 50% để 2 nút xích lại gần */
   height: 50%; 
   
   width: 20%; 
   gap: 0; 
-  margin-right: 2px;
+  margin-right: 0;
 }
 
 .tiny-btn {
@@ -443,7 +478,7 @@
   transition: all 0.15s ease;
   text-shadow: 0 0 3px rgba(0,0,0,1);
   
-  /* THÊM: Giảm line-height để ký tự nằm gọn hơn */
+  /* Line-height nhỏ */
   line-height: 0.8;
 
   &:hover:not(:disabled) { color: #4caf50; transform: scale(1.3); }
