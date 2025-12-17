@@ -388,7 +388,7 @@
 .pool-row {
   display: flex;
   align-items: center; 
-  justify-content: center; /* Căn giữa */
+  justify-content: center; 
   gap: 1.5vmin; 
   background: transparent;
   padding: 0;
@@ -408,7 +408,7 @@
   overflow: visible; 
 }
 
-/* --- [MỚI] STYLE CHO BADGE SỐ LƯỢNG (NHỎ GỌN) --- */
+/* --- BADGE SỐ LƯỢNG (STYLE MỚI) --- */
 .pool-num-badge {
   position: absolute;
   top: -0.2vmin;
@@ -417,7 +417,6 @@
   background-color: #f44336; 
   color: white;
   
-  /* Size nhỏ hơn theo yêu cầu */
   width: 1.8vmin;
   height: 1.8vmin;
   
@@ -426,12 +425,10 @@
   align-items: center;
   justify-content: center;
   
-  /* Font nhỏ */
   font-size: 1.1vmin;
   font-weight: bold;
   line-height: 1;
   
-  /* Viền mỏng */
   border: 0.15vmin solid #fff;
   box-shadow: 0 0.2vmin 0.4vmin rgba(0,0,0,0.3);
   z-index: 10;
@@ -444,12 +441,12 @@
 /* ẢNH */
 .pool-img { height: auto; width: auto; max-height: 100%; max-width: 100%; object-fit: contain; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5)); }
 
-/* --- [ĐÃ CHỈNH SỬA] NÚT BẤM (GỌN) --- */
+/* --- NÚT BẤM (+ ĐỎ, - ĐEN, RESIZABLE) --- */
 .pool-btns {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  height: 50%; /* Thu gọn chiều cao */
+  height: 50%; 
   width: 20%; 
   gap: 0; 
   margin-right: 0;
@@ -460,8 +457,10 @@
   width: 100%;
   border: none;
   background: transparent;
-  color: #f0f0f0; 
-  font-size: 2vmin; 
+  
+  /* [MỚI] Dùng vmin để to nhỏ theo bàn cờ */
+  font-size: 2.2vmin; 
+  
   font-weight: 900;
   padding: 0;
   cursor: pointer;
@@ -469,12 +468,26 @@
   align-items: center;
   justify-content: center;
   transition: all 0.15s ease;
-  text-shadow: 0 0 3px rgba(0,0,0,1);
   line-height: 0.8;
 
-  &:hover:not(:disabled) { color: #4caf50; transform: scale(1.3); }
+  /* Viền trắng cho chữ để nổi bật */
+  text-shadow: 
+      1px 1px 0 #fff, 
+     -1px -1px 0 #fff, 
+      1px -1px 0 #fff, 
+     -1px 1px 0 #fff;
+
+  &:hover:not(:disabled) { transform: scale(1.3); }
   &:active:not(:disabled) { transform: scale(0.9); }
   &:disabled { opacity: 0.15; cursor: default; color: #ccc; }
+}
+
+/* [MỚI] MÀU SẮC RIÊNG BIỆT */
+.btn-inc {
+  color: #d32f2f; /* Đỏ */
+}
+.btn-dec {
+  color: #000000; /* Đen */
 }
 
 /* Các phần khác giữ nguyên */
