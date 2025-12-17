@@ -346,6 +346,7 @@
 .side-panel {
   flex: 0 0 16%; 
   min-width: 0;
+  height: 100%; 
   position: relative; 
   background: transparent; 
   border: none;
@@ -353,7 +354,6 @@
   overflow: visible;
 }
 
-/* --- CLASS CHUNG --- */
 .absolute-pool {
   position: absolute; 
   left: 0;
@@ -362,38 +362,26 @@
   flex-direction: column;
 }
 
-/* -----------------------------------------------------------
-   1. KHỐI TRÊN (QUÂN ĐEN) - GIỮ NGUYÊN TUYỆT ĐỐI 
------------------------------------------------------------ */
+/* --- KHỐI TRÊN (QUÂN ĐEN) --- */
 .top-zone {
   top: 0; 
-  bottom: 52%; 
+  bottom: 51%; 
   justify-content: flex-start;
   gap: 0;
 }
-/* Chiều cao dòng quân đen (như cũ) */
 .top-zone .pool-row { height: 5vmin; }
 
 
-/* -----------------------------------------------------------
-   2. KHỐI DƯỚI (QUÂN ĐỎ) - ĐỐI XỨNG HOÀN HẢO
------------------------------------------------------------ */
+/* --- [ĐÃ CHỈNH SỬA] KHỐI DƯỚI (QUÂN ĐỎ) --- */
 .bottom-zone {
-  /* Đối xứng với bottom: 52% của đen -> top: 52% */
-  top: 52%; 
+  top: 59%; 
   
-  /* Đối xứng với top: 0 của đen -> bottom: 0 */
-  bottom: 0; 
+  /* ĐẨY MẠNH XUỐNG DƯỚI NỮA (-6%) */
+  bottom: -8%; 
   
-  /* Đối xứng với flex-start (trên xuống) -> flex-end (dưới lên) */
-  justify-content: flex-end; 
-  
-  /* Đối xứng gap: 0 */
+  justify-content: space-between; 
   gap: 0; 
 }
-
-/* Chiều cao dòng quân đỏ cũng phải bằng quân đen */
-.bottom-zone .pool-row { height: 5vmin; }
 
 
 /* --- TỪNG DÒNG QUÂN --- */
@@ -404,7 +392,7 @@
   background: transparent;
   padding: 0;
   width: 100%;
-  height: 5.5vmin; /* Fallback */
+  height: 5vmin; 
   min-height: 0;
 }
 
@@ -417,77 +405,26 @@
   align-items: center; 
 }
 
-/* Xe Đen (Top): Dính đỉnh */
-.top-zone .pool-row:first-child .pool-img-wrapper {
-  align-items: flex-start;
+/* Xe Đen: Đỉnh */
+.top-zone .pool-row:first-child .pool-img-wrapper { align-items: flex-start; }
+
+/* Xe Đỏ: Đỉnh vùng đỏ */
+.bottom-zone .pool-row:first-child .pool-img-wrapper { align-items: flex-start; }
+
+/* Tốt Đỏ: Đáy vùng đỏ */
+.bottom-zone .pool-row:last-child .pool-img-wrapper { 
+  align-items: flex-end; 
+  transform: none;
 }
 
-/* Tốt Đỏ (Bottom): Dính đáy */
-.bottom-zone .pool-row:last-child .pool-img-wrapper {
-  align-items: flex-end;
-  transform: none; 
-}
-
-/* Ảnh quân */
-.pool-img {
-  height: auto;
-  width: auto;
-  max-height: 100%; 
-  max-width: 100%;
-  object-fit: contain;
-  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5)); 
-}
-
-/* Số lượng */
-.pool-num {
-  font-weight: 900;
-  font-size: 2.2vmin;
-  text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 0 4px rgba(0,0,0,0.8);
-  flex: 1;
-  text-align: center;
-  line-height: 1;
-  z-index: 2;
-}
+/* ẢNH & SỐ LƯỢNG */
+.pool-img { height: auto; width: auto; max-height: 100%; max-width: 100%; object-fit: contain; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5)); }
+.pool-num { font-weight: 900; font-size: 2.2vmin; text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 0 4px rgba(0,0,0,0.8); flex: 1; text-align: center; line-height: 1; z-index: 2; }
 .red-num { color: #d32f2f; }
 .black-num { color: #000000; }
-
-/* Nút bấm */
-.pool-btns {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  height: 80%; 
-  width: 20%; 
-  gap: 0; 
-  margin-right: 2px;
-}
-
-.tiny-btn {
-  flex: 1;
-  width: 100%;
-  border: none;
-  background: transparent;
-  color: #f0f0f0; 
-  font-size: 2vmin; 
-  font-weight: 900;
-  padding: 0;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s ease;
-  text-shadow: 0 0 3px rgba(0,0,0,1);
-
-  &:hover:not(:disabled) { color: #4caf50; transform: scale(1.3); }
-  &:active:not(:disabled) { transform: scale(0.9); }
-  &:disabled { opacity: 0.15; cursor: default; color: #ccc; }
-}
-
-.pool-error-floating {
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  font-size: 1.5vmin; color: #ffeb3b; background: rgba(0,0,0,0.8); 
-  padding: 0.5vmin 1vmin; border-radius: 0.5vmin; white-space: nowrap; pointer-events: none; z-index: 10;
-}
+.pool-btns { display: flex; flex-direction: column; justify-content: center; height: 80%; width: 20%; gap: 0; margin-right: 2px; }
+.tiny-btn { flex: 1; width: 100%; border: none; background: transparent; color: #f0f0f0; font-size: 2vmin; font-weight: 900; padding: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease; text-shadow: 0 0 3px rgba(0,0,0,1); &:hover:not(:disabled) { color: #4caf50; transform: scale(1.3); } &:active:not(:disabled) { transform: scale(0.9); } &:disabled { opacity: 0.15; cursor: default; color: #ccc; } }
+.pool-error-floating { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5vmin; color: #ffeb3b; background: rgba(0,0,0,0.8); padding: 0.5vmin 1vmin; border-radius: 0.5vmin; white-space: nowrap; pointer-events: none; z-index: 10; }
 
 /* STYLE CŨ */
 .bg { width: 100%; height: 100%; display: block; }
