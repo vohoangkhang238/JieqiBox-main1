@@ -361,25 +361,31 @@
   display: flex;
   flex-direction: column;
   
-  /* QUAN TRỌNG: Máy tự động chia đều khoảng cách các quân */
+  /* Tự động chia đều khoảng cách giữa mép trên và mép dưới */
   justify-content: space-between; 
 }
 
 /* --- KHỐI TRÊN (QUÂN ĐEN) --- */
 .top-zone {
-  /* Từ đỉnh */
   top: 0; 
-  /* Đến gần giữa (chừa khoảng sông rộng hơn xíu) */
-  bottom: 50%; 
+  bottom: 50%; /* Kết thúc ở giữa bàn cờ */
+  justify-content: flex-start; /* Quân đen dồn lên trên */
+  gap: 0;
 }
 
-/* --- KHỐI DƯỚI (QUÂN ĐỎ) - ĐÃ CĂN CHỈNH LẠI --- */
+.top-zone .pool-row {
+  height: 5.2vmin; 
+}
+
+
+/* --- [CHỈNH SỬA] KHỐI DƯỚI (QUÂN ĐỎ) --- */
 .bottom-zone {
-  /* [ĐÃ SỬA]: Nhích điểm bắt đầu xuống thấp hơn (từ 51% -> 54%) */
-  top: 54%; 
+  /* MÉP TRÊN: Bắt đầu ngay dưới sông (Vị trí mũi tên trên) */
+  top: 53%; 
   
-  /* Kết thúc ở đáy */
-  bottom: 0; 
+  /* MÉP DƯỚI: Nhích lên một chút so với đáy để khớp với hàng tốt (Vị trí mũi tên dưới) */
+  /* Tăng số này (ví dụ 4%) nếu muốn quân Tốt bay cao hơn nữa */
+  bottom: 2%; 
 }
 
 /* --- TỪNG DÒNG QUÂN --- */
@@ -403,28 +409,20 @@
   align-items: center; 
 }
 
-/* --- CĂN CHỈNH MÉP --- */
-
-/* 1. Xe Đen (Đầu trên): Dính mép trên */
+/* 1. Xe Đen: Dính đỉnh */
 .top-zone .pool-row:first-child .pool-img-wrapper {
   align-items: flex-start;
 }
-/* 2. Tốt Đen (Cuối trên): Dính mép sông trên */
-.top-zone .pool-row:last-child .pool-img-wrapper {
-  align-items: flex-end;
-}
 
-/* 3. Xe Đỏ (Đầu dưới): Dính mép sông dưới */
+/* 2. Xe Đỏ (Đầu khu vực đỏ): Dính mép trên khu vực đỏ */
 .bottom-zone .pool-row:first-child .pool-img-wrapper {
   align-items: flex-start;
 }
 
-/* 4. Tốt Đỏ (Cuối dưới): Dính mép đáy chuẩn */
+/* 3. Tốt Đỏ (Cuối khu vực đỏ): Dính mép dưới khu vực đỏ */
 .bottom-zone .pool-row:last-child .pool-img-wrapper {
   align-items: flex-end;
-  
-  /* [ĐÃ SỬA]: Xóa transform. 
-     Để Flexbox tự chia khoảng cách đều nhau, không bị lệch nữa. */
+  /* Xóa transform để nó nằm đúng giới hạn bottom: 2% đã đặt ở trên */
   transform: none; 
 }
 
@@ -489,7 +487,7 @@
   padding: 0.5vmin 1vmin; border-radius: 0.5vmin; white-space: nowrap; pointer-events: none; z-index: 10;
 }
 
-/* CÁC STYLE CŨ (GIỮ NGUYÊN) */
+/* STYLE CŨ */
 .bg { width: 100%; height: 100%; display: block; }
 .pieces { position: absolute; inset: 0; z-index: 20; }
 .piece { position: absolute; aspect-ratio: 1; pointer-events: none; &.animated { transition: all 0.2s ease; } &.inCheck { transform: translate(-50%, -50%) scale(1.1); filter: drop-shadow(0 0 10px red); z-index: 100; } &.being-flipped { opacity: 0.3; filter: grayscale(1); } }
