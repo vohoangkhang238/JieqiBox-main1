@@ -322,11 +322,11 @@
   max-width: 98vmin;
   max-height: 98vmin;
   margin: 0 auto;
-  /* Tỷ lệ: Bàn cờ + Kho quân (bên phải thu nhỏ) */
   aspect-ratio: 1.15 / 1; 
   display: flex;
   flex-direction: row;
-  align-items: stretch;
+  /* Đổi thành flex-end để ưu tiên căn đáy (nếu chiều cao panel < bàn cờ) */
+  align-items: flex-end; 
   gap: 0; 
   padding: 0.8vmin;
 }
@@ -347,14 +347,21 @@
   z-index: 1;
 }
 
-/* --- SIDE PANEL (KHO QUÂN - TRONG SUỐT HOÀN TOÀN) --- */
+/* --- SIDE PANEL (CẬP NHẬT: ĐẨY XUỐNG DƯỚI) --- */
 .side-panel {
   flex: 0 0 16%; 
   min-width: 0;
+  
+  /* Đặt chiều cao nhỏ hơn 100% một chút để nó tụt xuống */
+  height: 94%; 
+  
   background: transparent; 
   box-shadow: none;
   border: none;
-  padding: 0 0 0 0.5vmin;
+  
+  /* Thêm padding-top để đẩy nội dung quân xuống thấp hơn nữa */
+  padding: 4vmin 0 0 0.5vmin;
+  
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -411,7 +418,6 @@
 .pool-num {
   font-weight: 900;
   font-size: 2.2vmin;
-  /* Viền chữ trắng + bóng đen để nổi bật trên mọi nền */
   text-shadow: 
     -1px -1px 0 #fff,  
      1px -1px 0 #fff,
@@ -433,49 +439,38 @@
   justify-content: center;
   height: 80%; 
   width: 20%; 
-  gap: 0; /* Các nút sát nhau */
+  gap: 0; 
   margin-right: 2px;
 }
 
-/* --- UPDATE: NÚT BẤM TRONG SUỐT --- */
 .tiny-btn {
   flex: 1;
   width: 100%;
-  
-  /* Xóa nền và viền */
   border: none;
   background: transparent;
-  
-  /* Chữ to và đậm hơn để dễ bấm */
   color: #f0f0f0; 
   font-size: 2vmin; 
   font-weight: 900;
-  
   padding: 0;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.15s ease;
-  
-  /* Bóng chữ đậm để nhìn thấy nút trên nền sáng */
   text-shadow: 0 0 3px rgba(0,0,0,1);
 
-  /* Hiệu ứng khi di chuột */
   &:hover:not(:disabled) {
-    color: #4caf50; /* Chuyển màu xanh lá */
-    transform: scale(1.3); /* Phóng to nhẹ */
+    color: #4caf50; 
+    transform: scale(1.3); 
     background: transparent;
   }
   
-  /* Hiệu ứng khi ấn */
   &:active:not(:disabled) {
     transform: scale(0.9);
   }
 
-  /* Khi không bấm được */
   &:disabled {
-    opacity: 0.15; /* Mờ hẳn đi */
+    opacity: 0.15; 
     cursor: default;
     color: #ccc;
   }
