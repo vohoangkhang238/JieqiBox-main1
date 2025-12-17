@@ -325,7 +325,10 @@
   aspect-ratio: 1.2 / 1; 
   display: flex;
   flex-direction: row;
-  align-items: stretch;
+  
+  /* QUAN TRỌNG: Kéo dãn chiều cao side-panel bằng đúng chiều cao bàn cờ */
+  align-items: stretch; 
+  
   gap: 2vmin; 
   padding: 0.8vmin;
 }
@@ -356,32 +359,33 @@
   
   display: flex;
   flex-direction: column;
-  justify-content: flex-start; /* Neo tất cả lên trên */
   
-  /* Khoảng cách lớn giữa nhóm Đen và nhóm Đỏ */
-  gap: 6vmin; 
+  /* ĐẨY 2 NHÓM QUÂN RA 2 ĐẦU (Trên cùng và Dưới cùng) */
+  justify-content: space-between; 
   
   overflow: hidden;
 }
 
-/* --- CẤU HÌNH KHOẢNG CÁCH GIỮA CÁC QUÂN (ĐÃ TĂNG) --- */
+/* --- CẤU HÌNH CÁC NHÓM QUÂN --- */
 .pool-section {
   display: flex;
   flex-direction: column;
   flex: 0 1 auto; 
   
-  /* TĂNG GAP MẠNH: Để các quân cách xa nhau rõ rệt */
-  gap: 1.2vmin; 
+  /* Giữ khoảng cách các quân sát nhau (như bạn đã chọn) */
+  gap: 0.1vmin; 
   
   min-height: 0;
 }
 
 .top-pool {
+  /* Nhóm trên căn từ trên xuống */
   justify-content: flex-start; 
 }
 
 .bottom-pool {
-  justify-content: flex-start; 
+  /* Nhóm dưới căn từ dưới lên */
+  justify-content: flex-end; 
 }
 
 /* --- TỪNG DÒNG QUÂN --- */
@@ -393,13 +397,13 @@
   padding: 0;
   width: 100%;
   
-  /* Giữ chiều cao vừa phải */
-  height: 6.2vmin; 
+  /* Chiều cao nhỏ gọn */
+  height: 5.5vmin; 
   
   min-height: 0;
 }
 
-/* --- WRAPPER ẢNH --- */
+/* --- WRAPPER ẢNH (CĂN CHỈNH TỪNG MILIMET) --- */
 .pool-img-wrapper {
   width: 35%;
   height: 100%;
@@ -408,13 +412,15 @@
   align-items: center; 
 }
 
-/* Căn chỉnh đặc biệt cho quân đầu tiên */
+/* Xe đen (trên cùng) dính sát mép trên */
 .top-pool .pool-row:first-child .pool-img-wrapper {
   align-items: flex-start; 
 }
 
+/* Tốt đỏ (dưới cùng) dính sát mép dưới (ngang hàng Xe bàn cờ) */
 .bottom-pool .pool-row:last-child .pool-img-wrapper {
-  align-items: center; 
+  align-items: flex-end;
+  padding-bottom: px; /* Tăng/giảm số này để quân Tốt đỏ nhích lên hoặc xuống */
 }
 
 .pool-img {
@@ -487,6 +493,7 @@
   }
 }
 
+/* Ẩn divider đi vì khoảng trống giờ do space-between lo */
 .pool-divider { display: none; }
 .pool-error { font-size: 1.5vmin; color: #ffeb3b; background: rgba(0,0,0,0.8); padding: 0.2vmin 0.8vmin; border-radius: 0.5vmin; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
