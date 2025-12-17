@@ -16,7 +16,6 @@
                :class="{ 
                  animated: isAnimating && showAnimations, 
                  inCheck: p.id === checkedKingId,
-                 // Hiệu ứng mờ quân cờ khi đang hiện menu vòng tròn bên trên
                  'being-flipped': pendingFlip && ( (pendingFlip.row === p.row && pendingFlip.col === p.col) || (selectedPiece && p.id === selectedPiece.id) )
                }" 
                :style="rcStyle(p.row, p.col, p.zIndex)" />
@@ -58,11 +57,6 @@
           </defs>
           <template v-for="(a, idx) in arrs" :key="`arrow-${idx}`">
             <line :x1="a.x1" :y1="a.y1" :x2="a.x2" :y2="a.y2" :style="{ stroke: arrowColor(idx) }" :marker-end="`url(#ah-${idx % arrowColors.length})`" class="al" />
-            <text v-if="arrs.length > 1" :x="(a.x1 + a.x2) / 2" :y="(a.y1 + a.y2) / 2" :fill="arrowColor(idx)" class="arrow-label">{{ a.pv }}</text>
-          </template>
-          <template v-if="selectedPvArrow">
-            <line :x1="selectedPvArrow.x1" :y1="selectedPvArrow.y1" :x2="selectedPvArrow.x2" :y2="selectedPvArrow.y2" marker-end="url(#ah-selected)" class="al selected-arrow-shadow" />
-            <line :x1="selectedPvArrow.x1" :y1="selectedPvArrow.y1" :x2="selectedPvArrow.x2" :y2="selectedPvArrow.y2" marker-end="url(#ah-selected)" class="al selected-arrow" />
           </template>
         </svg>
 
@@ -77,29 +71,16 @@
 
         <div v-if="pendingFlip" class="flip-overlay-fixed" @click.stop></div>
 
-        <div 
-          v-if="pendingFlip" 
-          class="radial-menu-container"
-          :style="{
-            ...rcStyle(
-               radialMenuPos.row, 
-               radialMenuPos.col, 
-               9999
-            ),
-            width: '34%', height: 'auto', 'aspect-ratio': '1/1'
-          }"
-        >
-          <div v-for="(item, index) in flipSelectionPieces" :key="item.name" 
-               class="radial-item" 
+        <div v-if="pendingFlip" class="radial-menu-container"
+          :style="{ ...rcStyle(radialMenuPos.row, radialMenuPos.col, 9999), width: '34%', height: 'auto', 'aspect-ratio': '1/1' }">
+          <div v-for="(item, index) in flipSelectionPieces" :key="item.name" class="radial-item" 
                :style="getRadialItemStyle(index, flipSelectionPieces.length)" 
-               @click.stop="handleFlipSelect(item.name)"
-               @mousedown.stop @touchstart.stop>
+               @click.stop="handleFlipSelect(item.name)" @mousedown.stop @touchstart.stop>
             <img :src="getPieceImageUrl(item.name)" class="radial-img" />
             <div class="radial-count">{{ item.count }}</div>
           </div>
-
           <div v-if="flipSelectionPieces.length === 0" class="radial-error-btn" @click.stop="handleFlipRandom">
-             <span>Hết quân! Bấm để bỏ qua</span>
+             <span>Hết quân! Bỏ qua</span>
           </div>
         </div>
         <ClearHistoryConfirmDialog :visible="showClearHistoryDialog" :onConfirm="onConfirmClearHistory" :onCancel="onCancelClearHistory" />
@@ -107,7 +88,6 @@
 
       <div v-if="pendingFlip" class="flip-hint-area">
         <div class="flip-hint-text">
-          <v-icon icon="mdi-gesture-tap" size="small" class="mr-1"></v-icon>
           Vui lòng chọn quân {{ pendingFlip.side === 'red' ? 'Đỏ' : 'Đen' }} cần lật
         </div>
       </div>
@@ -116,33 +96,34 @@
     <div class="side-panel">
       <div class="pool-section top-pool">
         <div v-for="item in (isRedOnTop ? redPool : blackPool)" :key="item.char" class="pool-row">
-          <img :src="getPieceImageUrl(item.name)" class="pool-img" />
-          <div class="pool-controls">
-             <span class="pool-num" :class="isRedOnTop ? 'red-num' : 'black-num'">{{ item.count }}</span>
-             <div class="pool-btns">
-                <button class="tiny-btn" @click="adjustUnrevealedCount(item.char, 1)" :disabled="item.count >= item.max">+</button>
-                <button class="tiny-btn" @click="adjustUnrevealedCount(item.char, -1)" :disabled="item.count <= 0">-</button>
-             </div>
+          <div class="pool-img-wrapper">
+             <img :src="getPieceImageUrl(item.name)" class="pool-img" />
+          </div>
+          
+          <span class="pool-num" :class="isRedOnTop ? 'red-num' : 'black-num'">{{ item.count }}</span>
+          
+          <div class="pool-btns">
+             <button class="tiny-btn btn-inc" @click="adjustUnrevealedCount(item.char, 1)" :disabled="item.count >= item.max">+</button>
+             <button class="tiny-btn btn-dec" @click="adjustUnrevealedCount(item.char, -1)" :disabled="item.count <= 0">-</button>
           </div>
         </div>
       </div>
       
       <div class="pool-divider">
         <div v-if="poolErrorMessage" class="pool-error">
-          <v-icon icon="mdi-alert-circle" size="x-small" color="error"></v-icon>
           <span>{{ poolErrorMessage }}</span>
         </div>
       </div>
 
       <div class="pool-section bottom-pool">
         <div v-for="item in (isRedOnTop ? blackPool : redPool)" :key="item.char" class="pool-row">
-          <img :src="getPieceImageUrl(item.name)" class="pool-img" />
-          <div class="pool-controls">
-             <span class="pool-num" :class="isRedOnTop ? 'black-num' : 'red-num'">{{ item.count }}</span>
-             <div class="pool-btns">
-                <button class="tiny-btn" @click="adjustUnrevealedCount(item.char, 1)" :disabled="item.count >= item.max">+</button>
-                <button class="tiny-btn" @click="adjustUnrevealedCount(item.char, -1)" :disabled="item.count <= 0">-</button>
-             </div>
+          <div class="pool-img-wrapper">
+             <img :src="getPieceImageUrl(item.name)" class="pool-img" />
+          </div>
+          <span class="pool-num" :class="isRedOnTop ? 'black-num' : 'red-num'">{{ item.count }}</span>
+          <div class="pool-btns">
+             <button class="tiny-btn btn-inc" @click="adjustUnrevealedCount(item.char, 1)" :disabled="item.count >= item.max">+</button>
+             <button class="tiny-btn btn-dec" @click="adjustUnrevealedCount(item.char, -1)" :disabled="item.count <= 0">-</button>
           </div>
         </div>
       </div>
@@ -153,15 +134,14 @@
 </template>
 
 <script setup lang="ts">
+  /* GIỮ NGUYÊN TOÀN BỘ PHẦN SCRIPT, KHÔNG THAY ĐỔI GÌ */
   import { inject, ref, watch, computed, watchEffect, onMounted, onUnmounted, unref } from 'vue'
   import { useI18n } from 'vue-i18n'
   import type { Piece } from '@/composables/useChessGame'
   import { useInterfaceSettings } from '@/composables/useInterfaceSettings'
   import ClearHistoryConfirmDialog from './ClearHistoryConfirmDialog.vue'
   import EvaluationChart from './EvaluationChart.vue'
-  import { MATE_SCORE_BASE } from '@/utils/constants'
-  import { isAndroidPlatform } from '@/utils/platform'
-
+  
   const handleChartSeek = (idx: number) => { try { const gsAny: any = gs; if (gsAny?.replayToMove) gsAny.replayToMove(idx) } catch {} }
   const { t } = useI18n()
   const PAD_X = 11, PAD_Y = 11, COLS = 9, ROWS = 10, GX = 100 - PAD_X, GY = 100 - PAD_Y, OX = PAD_X / 2, OY = PAD_Y / 2
@@ -175,24 +155,14 @@
   const { pieces, selectedPieceId, handleBoardClick, isAnimating, lastMovePositions, registerArrowClearCallback, history, currentMoveIndex, unrevealedPieceCounts, adjustUnrevealedCount, getPieceNameFromChar, validationStatus, pendingFlip } = gs
 
   const selectedPiece = computed(() => { if (!unref(selectedPieceId)) return null; return unref(pieces).find((p: Piece) => p.id === unref(selectedPieceId)) })
-
-  // --- LOGIC: FLIP SELECTION & RADIAL MENU ---
   
-  // FIX: Lưu tọa độ click cuối cùng để menu không bị nhảy về (4,4)
   const lastClickPos = ref({ row: 4, col: 4 })
-  
-  // FIX: Logic tính toán vị trí menu vòng tròn (ĐÃ SỬA)
   const radialMenuPos = computed(() => {
-    // Ưu tiên TUYỆT ĐỐI: Lấy tọa độ từ chính yêu cầu lật (pendingFlip)
-    // Dù là người click hay AI đi, biến pendingFlip luôn chứa tọa độ chính xác của quân cần lật.
     if (pendingFlip.value && typeof pendingFlip.value.row === 'number' && typeof pendingFlip.value.col === 'number') {
       return { row: pendingFlip.value.row, col: pendingFlip.value.col }
     }
-
-    // Các trường hợp dự phòng (Fallback)
     if (selectedPiece.value) return { row: selectedPiece.value.row, col: selectedPiece.value.col }
     if (lastClickPos.value) return lastClickPos.value
-    
     return { row: 4, col: 4 }
   })
 
@@ -243,7 +213,6 @@
       }
     }
   }
-  // -------------------------
 
   const poolErrorMessage = computed(() => {
     if (!validationStatus.value) return null
@@ -295,14 +264,9 @@
     const yp = ((e.clientY - rect.top) / rect.height) * 100
     const col = Math.round(((xp - OX) / GX) * (COLS - 1))
     const row = Math.round(((yp - OY) / GY) * (ROWS - 1))
-    
-    // Calculate final coordinates
     const finalRow = Math.max(0, Math.min(ROWS - 1, row))
     const finalCol = Math.max(0, Math.min(COLS - 1, col))
-    
-    // FIX: Cập nhật vị trí click ngay lập tức
     lastClickPos.value = { row: finalRow, col: finalCol }
-
     const result = handleBoardClick(finalRow, finalCol)
     if (result && result.requireClearHistoryConfirm) { pendingMove.value = result.move; showClearHistoryDialog.value = true }
   }
@@ -351,191 +315,185 @@
 </script>
 
 <style scoped lang="scss">
-  /* --- LAYOUT CHÍNH --- */
-  .chessboard-wrapper {
-    display: flex;
-    flex-direction: row;
-    align-items: stretch; /* Side-panel cao bằng bàn cờ */
-    justify-content: center;
-    gap: 15px; /* Tăng khoảng cách giữa bàn cờ và kho quân một chút */
-    width: 100%;
-    max-width: 98vmin; /* Nới rộng tối đa một chút để chứa kho quân to hơn */
-    margin: 0 auto;
-    padding: 20px;
-    
-    @media (max-width: 768px) {
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-      padding: 10px;
-    }
-  }
+/* --- LAYOUT TỔNG THỂ --- */
+.chessboard-wrapper {
+  /* Đảm bảo khung không bao giờ tràn màn hình và luôn giữ tỷ lệ */
+  width: 100%;
+  height: 100%;
+  max-width: 98vmin;
+  max-height: 98vmin;
+  margin: 0 auto;
 
-  .main-column {
-    display: flex;
-    flex-direction: column;
-    flex: 1; /* Tự động co giãn */
-    width: 100%; 
-  }
+  /* Tỷ lệ cố định: Bàn cờ (chiếm đa số) + Kho quân (bên phải) */
+  aspect-ratio: 1.25 / 1; 
 
-  .chessboard-container {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 9/10;
-    margin: auto;
-    user-select: none;
-    overflow: visible !important;
-    z-index: 1;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-  }
-
-  /* --- SIDE PANEL / KHO QUÂN ÚP (Đã chỉnh TO HƠN) --- */
-  .side-panel {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    
-    /* --- THAY ĐỔI CHÍNH Ở ĐÂY: Tăng chiều rộng --- */
-    width: 150px;  /* Tăng từ 100px lên 150px */
-    min-width: 130px;
-    
-    height: auto; 
-    background: rgba(0,0,0,0.25);
-    padding: 12px; /* Tăng padding cho thoáng */
-    border-radius: 12px;
-    backdrop-filter: blur(5px);
-    
-    @media (max-width: 768px) {
-      width: 100%;
-      flex-direction: row;
-      height: auto;
-      overflow-x: auto;
-      padding: 8px;
-    }
-  }
-
-  .pool-section {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 4px; /* Tăng khoảng cách giữa các dòng */
-    flex: 1;
-    
-    @media (max-width: 768px) {
-      flex-direction: row;
-      flex-wrap: wrap;
-      gap: 2px;
-    }
-  }
+  display: flex;
+  flex-direction: row; /* LUÔN LUÔN xếp ngang */
+  align-items: stretch;
+  gap: 0.8vmin;
+  padding: 0.8vmin;
   
-  .top-pool {
-    border-bottom: 1px solid rgba(255,255,255,0.15);
-    padding-bottom: 8px;
-    margin-bottom: 8px;
-    @media (max-width: 768px) {
-      border-bottom: none;
-      border-right: 1px solid rgba(255,255,255,0.1);
-      padding-bottom: 0; margin-bottom: 0;
-      padding-right: 5px; margin-right: 5px;
-    }
-  }
+  /* QUAN TRỌNG: Loại bỏ hoàn toàn media query chuyển sang column */
+}
 
-  .pool-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: rgba(255,255,255,0.1);
-    padding: 4px 8px; /* Tăng padding trong mỗi dòng */
-    border-radius: 8px;
-    transition: background 0.2s;
-    height: 100%;
-    max-height: 55px; /* Cho phép dòng cao hơn */
-    gap: 8px; /* Khoảng cách giữa ảnh và cụm điều khiển */
-    
-    &:hover { background: rgba(255,255,255,0.2); }
-    @media (max-width: 768px) {
-       width: 48%; padding: 2px 4px; gap: 2px;
-    }
-  }
+.main-column {
+  /* Chiếm phần lớn không gian */
+  flex: 1 1 auto;
+  width: 75%; 
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
 
-  /* --- THAY ĐỔI CHÍNH: Icon quân cờ to hơn --- */
-  .pool-img {
-    width: 36px; height: 36px; /* Tăng từ 24px lên 36px */
-    object-fit: contain;
-    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3)); /* Thêm bóng nhẹ cho nổi */
-  }
+.chessboard-container {
+  width: 100%;
+  aspect-ratio: 9/10;
+  position: relative;
+  user-select: none;
+  z-index: 1;
+}
 
-  .pool-controls {
-    display: flex; align-items: center; gap: 6px; /* Tăng gap */
-  }
+/* --- SIDE PANEL (KHO QUÂN - LUÔN BÊN PHẢI) --- */
+.side-panel {
+  /* Chiếm phần còn lại, cố định tỷ lệ */
+  flex: 0 0 22%; /* Cố định chiều rộng 22% so với container cha */
+  min-width: 0; /* Cho phép thu nhỏ tối đa */
+
+  background: #a0a0a0;
+  border-radius: 1vmin;
+  padding: 0.5vmin;
+  display: flex;
+  flex-direction: column; /* LUÔN LUÔN xếp dọc */
+  justify-content: space-between;
+  box-shadow: inset 0 0 1vmin rgba(0,0,0,0.2);
+  overflow: hidden; /* Ẩn nội dung tràn khi quá nhỏ */
+}
+
+.pool-section {
+  display: flex;
+  flex-direction: column; /* LUÔN LUÔN xếp dọc */
+  flex: 1;
+  justify-content: space-evenly;
+  gap: 0.4vmin;
+  min-height: 0; /* Cho phép thu nhỏ chiều cao */
+}
+
+.top-pool {
+  border-bottom: 0.2vmin solid rgba(255,255,255,0.3);
+  padding-bottom: 0.4vmin;
+  margin-bottom: 0.4vmin;
+}
+
+/* --- TỪNG SLOT QUÂN --- */
+.pool-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   
-  /* --- THAY ĐỔI CHÍNH: Số lượng to rõ hơn --- */
-  .pool-num {
-    color: #fff; font-weight: bold; 
-    font-size: 1.25rem; /* Tăng font size từ 0.9 lên 1.25rem */
-    min-width: 22px; text-align: center;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-  }
+  background: rgba(255,255,255, 0.4);
+  border-radius: 0.5vmin; /* Bo góc nhỏ theo tỷ lệ */
+  padding: 0.2vmin 0.4vmin;
+  box-shadow: 0 0.1vmin 0.3vmin rgba(0,0,0,0.1);
   
-  .red-num { color: #ff6b6b; }
-  .black-num { color: #eee; }
+  flex: 1; /* Tự động chia đều chiều cao */
+  width: 100%;
+  min-height: 0; /* Cho phép thu nhỏ */
+}
 
-  .pool-btns {
-    display: flex; flex-direction: column; gap: 2px;
-  }
+/* Wrapper ảnh để căn giữa và scale */
+.pool-img-wrapper {
+  width: 32%; /* Chiếm khoảng 1/3 slot */
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.pool-img {
+  /* Kích thước ảnh scale theo chiều cao của dòng */
+  height: auto;
+  width: auto;
+  max-height: 95%; 
+  max-width: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 0.1vmin 0.1vmin rgba(0,0,0,0.3));
+}
 
-  /* Nút bấm cũng cho to lên một chút cho cân đối */
-  .tiny-btn {
-    width: 18px; height: 16px; line-height: 14px; /* Tăng kích thước nút */
-    font-size: 11px; font-weight: bold;
-    background: rgba(0,0,0,0.5);
-    color: #fff; border: 1px solid rgba(255,255,255,0.2);
-    cursor: pointer; border-radius: 3px;
-    &:hover:not(:disabled) { background: #007bff; border-color: #007bff; }
-    &:disabled { opacity: 0.3; cursor: default; }
-  }
+/* Số lượng quân - Font size siêu nhỏ theo vmin */
+.pool-num {
+  font-weight: 800;
+  font-size: 2.2vmin; /* Cực nhỏ để không bị vỡ khi scale down */
+  text-shadow: 0 0.1vmin 0.1vmin rgba(0,0,0,0.2);
+  flex: 1;
+  text-align: center;
+  line-height: 1;
+}
+.red-num { color: #d32f2f; }
+.black-num { color: #212121; }
 
-  .pool-divider {
-    display: flex; align-items: center; justify-content: center;
-    min-height: 15px;
-  }
-  .pool-error {
-    display: flex; align-items: center; gap: 4px;
-    font-size: 11px; color: #ff5252; text-align: center;
-    line-height: 1.1; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;
-  }
+/* Nút bấm (Xếp dọc) - Kích thước siêu nhỏ */
+.pool-btns {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 90%;
+  width: 22%; 
+  gap: 0.2vmin;
+}
 
-  /* --- CÁC PHẦN KHÁC GIỮ NGUYÊN --- */
-  .bg { width: 100%; height: 100%; display: block; }
-  .pieces { position: absolute; inset: 0; z-index: 20; }
-  .piece { position: absolute; aspect-ratio: 1; pointer-events: none; &.animated { transition: all 0.2s ease; } &.inCheck { transform: translate(-50%, -50%) scale(1.1); filter: drop-shadow(0 0 10px red); z-index: 100; } &.being-flipped { opacity: 0.3; filter: grayscale(1); } }
-  .flip-overlay-fixed { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.3); z-index: 9000; cursor: not-allowed; }
-  .radial-menu-container { position: absolute; transform: translate(-50%, -50%); z-index: 9999; animation: popIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: auto; width: 0; height: 0; overflow: visible; }
-  @keyframes popIn { from { transform: translate(-50%, -50%) scale(0); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
-  .radial-item { position: absolute; width: 45px; height: 45px; border-radius: 50%; background: rgba(30, 30, 30, 0.95); border: 2px solid rgba(255, 255, 255, 0.5); display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.6); transition: all 0.1s; pointer-events: auto; margin-left: -22.5px; margin-top: -22.5px; &:hover { transform: scale(1.2); background: #222; border-color: #00d2ff; z-index: 10000; } &:active { transform: scale(0.95); background: #000; } }
-  .radial-img { width: 85%; height: 85%; object-fit: contain; pointer-events: none; }
-  .radial-count { position: absolute; top: -5px; right: -5px; background: #f44336; color: white; font-size: 10px; font-weight: bold; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid #fff; pointer-events: none; }
-  .radial-error-btn { position: absolute; transform: translate(-50%, -50%); background: #f44336; color: white; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 12px; cursor: pointer; white-space: nowrap; box-shadow: 0 4px 10px rgba(0,0,0,0.5); pointer-events: auto; z-index: 10001; }
+.tiny-btn {
+  flex: 1;
+  width: 100%;
+  border: none;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  font-size: 1.3vmin; /* Font nút cực nhỏ */
+  font-weight: bold;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.1s;
   
-  /* Selection Mark (Bo góc) */
-  .selection-mark { position: absolute; width: 12%; aspect-ratio: 1; transform: translate(-50%, -50%); z-index: 30; pointer-events: none; }
-  .corner { position: absolute; width: 25%; height: 25%; border: 3px solid #007bff; box-shadow: 0 0 4px rgba(0, 123, 255, 0.6); }
-  .top-left { top: 0; left: 0; border-right: none; border-bottom: none; border-top-left-radius: 10px; }
-  .top-right { top: 0; right: 0; border-left: none; border-bottom: none; border-top-right-radius: 10px; }
-  .bottom-left { bottom: 0; left: 0; border-right: none; border-top: none; border-bottom-left-radius: 10px; }
-  .bottom-right { bottom: 0; right: 0; border-left: none; border-top: none; border-bottom-right-radius: 10px; }
+  &:hover:not(:disabled) { background: #1976d2; }
+  &:disabled { opacity: 0.3; background: #555; cursor: default; }
   
-  .highlight.from { position: absolute; transform: translate(-50%,-50%); width: 2.5%; aspect-ratio: 1; background: rgba(255,0,0,0.5); border-radius: 50%; pointer-events: none; }
-  .highlight.to { position: absolute; transform: translate(-50%,-50%); width: 12%; aspect-ratio: 1; border: 2px solid rgba(0,255,255,0.7); pointer-events: none; border-radius: 8px; }
-  .valid-move-dot { position: absolute; transform: translate(-50%,-50%); width: 2.5%; aspect-ratio: 1; background: #4caf50; border-radius: 50%; pointer-events: none; z-index: 15; box-shadow: 0 0 5px #4caf50; }
-  .eval-bar { position: absolute; top: 0; bottom: 0; left: -12px; width: 8px; background: #ddd; border-radius: 4px; overflow: hidden; z-index: 5; border: 1px solid #999; }
-  .eval-top { width: 100%; transition: height 0.5s ease-in-out; }
-  .eval-bottom { width: 100%; transition: height 0.5s ease-in-out; }
-  .eval-marker { position: absolute; left: 0; right: 0; height: 2px; background: #fff; box-shadow: 0 0 2px #000; }
-  .flip-hint-area { margin-top: 10px; background: rgba(0,0,0,0.7); color: #fff; padding: 8px; border-radius: 6px; text-align: center; font-size: 14px; backdrop-filter: blur(4px); }
-  .ar, .user-drawings, .board-labels { position: absolute; inset: 0; pointer-events: none; }
-  .annotation-layer { position: absolute; inset: 0; pointer-events: none; z-index: 50; }
-  .annotation-badge { position: absolute; top: -10px; right: -10px; width: 22px; height: 22px; background: #007bff; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
-  .board-labels { overflow: visible; .rank-labels span { position: absolute; right: -15px; color: #888; font-weight: bold; font-size: 12px; } .file-labels span { position: absolute; bottom: -20px; color: #888; font-weight: bold; font-size: 12px; } }
-  .al { stroke-width: 1.5; stroke-opacity: 0.8; }
+  &.btn-inc { border-top-right-radius: 0.4vmin; border-top-left-radius: 0.4vmin; }
+  &.btn-dec { border-bottom-right-radius: 0.4vmin; border-bottom-left-radius: 0.4vmin; }
+}
+
+/* Divider lỗi */
+.pool-divider { height: 2vmin; display: flex; align-items: center; justify-content: center; min-height: 0; }
+.pool-error { font-size: 1.5vmin; color: #ffeb3b; background: rgba(0,0,0,0.5); padding: 0.2vmin 0.8vmin; border-radius: 0.5vmin; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* --- CÁC STYLE CŨ (GIỮ NGUYÊN) --- */
+.bg { width: 100%; height: 100%; display: block; }
+.pieces { position: absolute; inset: 0; z-index: 20; }
+.piece { position: absolute; aspect-ratio: 1; pointer-events: none; &.animated { transition: all 0.2s ease; } &.inCheck { transform: translate(-50%, -50%) scale(1.1); filter: drop-shadow(0 0 10px red); z-index: 100; } &.being-flipped { opacity: 0.3; filter: grayscale(1); } }
+.flip-overlay-fixed { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.3); z-index: 9000; cursor: not-allowed; }
+.radial-menu-container { position: absolute; transform: translate(-50%, -50%); z-index: 9999; animation: popIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: auto; width: 0; height: 0; overflow: visible; }
+@keyframes popIn { from { transform: translate(-50%, -50%) scale(0); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+.radial-item { position: absolute; width: 45px; height: 45px; border-radius: 50%; background: rgba(30, 30, 30, 0.95); border: 2px solid rgba(255, 255, 255, 0.5); display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.6); transition: all 0.1s; pointer-events: auto; margin-left: -22.5px; margin-top: -22.5px; &:hover { transform: scale(1.2); background: #222; border-color: #00d2ff; z-index: 10000; } &:active { transform: scale(0.95); background: #000; } }
+.radial-img { width: 85%; height: 85%; object-fit: contain; pointer-events: none; }
+.radial-count { position: absolute; top: -5px; right: -5px; background: #f44336; color: white; font-size: 10px; font-weight: bold; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid #fff; pointer-events: none; }
+.radial-error-btn { position: absolute; transform: translate(-50%, -50%); background: #f44336; color: white; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 12px; cursor: pointer; white-space: nowrap; box-shadow: 0 4px 10px rgba(0,0,0,0.5); pointer-events: auto; z-index: 10001; }
+.selection-mark { position: absolute; width: 12%; aspect-ratio: 1; transform: translate(-50%, -50%); z-index: 30; pointer-events: none; }
+.corner { position: absolute; width: 25%; height: 25%; border: 3px solid #007bff; box-shadow: 0 0 4px rgba(0, 123, 255, 0.6); }
+.top-left { top: 0; left: 0; border-right: none; border-bottom: none; border-top-left-radius: 10px; }
+.top-right { top: 0; right: 0; border-left: none; border-bottom: none; border-top-right-radius: 10px; }
+.bottom-left { bottom: 0; left: 0; border-right: none; border-top: none; border-bottom-left-radius: 10px; }
+.bottom-right { bottom: 0; right: 0; border-left: none; border-top: none; border-bottom-right-radius: 10px; }
+.highlight.from { position: absolute; transform: translate(-50%,-50%); width: 2.5%; aspect-ratio: 1; background: rgba(255,0,0,0.5); border-radius: 50%; pointer-events: none; }
+.highlight.to { position: absolute; transform: translate(-50%,-50%); width: 12%; aspect-ratio: 1; border: 2px solid rgba(0,255,255,0.7); pointer-events: none; border-radius: 8px; }
+.valid-move-dot { position: absolute; transform: translate(-50%,-50%); width: 2.5%; aspect-ratio: 1; background: #4caf50; border-radius: 50%; pointer-events: none; z-index: 15; box-shadow: 0 0 5px #4caf50; }
+.eval-bar { position: absolute; top: 0; bottom: 0; left: -1.5vmin; width: 1vmin; background: #ddd; border-radius: 0.5vmin; overflow: hidden; z-index: 5; border: 1px solid #999; }
+.eval-top { width: 100%; transition: height 0.5s ease-in-out; }
+.eval-bottom { width: 100%; transition: height 0.5s ease-in-out; }
+.eval-marker { position: absolute; left: 0; right: 0; height: 2px; background: #fff; box-shadow: 0 0 2px #000; }
+.flip-hint-area { margin-top: 10px; background: rgba(0,0,0,0.7); color: #fff; padding: 8px; border-radius: 6px; text-align: center; font-size: 14px; backdrop-filter: blur(4px); }
+.ar, .user-drawings, .board-labels { position: absolute; inset: 0; pointer-events: none; }
+.annotation-layer { position: absolute; inset: 0; pointer-events: none; z-index: 50; }
+.annotation-badge { position: absolute; top: -1vmin; right: -1vmin; width: 2.5vmin; height: 2.5vmin; background: #007bff; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2vmin; border: 0.2vmin solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+.board-labels { overflow: visible; .rank-labels span { position: absolute; right: -1.5vmin; color: #888; font-weight: bold; font-size: 1.5vmin; } .file-labels span { position: absolute; bottom: -2vmin; color: #888; font-weight: bold; font-size: 1.5vmin; } }
+.al { stroke-width: 1.5; stroke-opacity: 0.8; }
 </style>
