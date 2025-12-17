@@ -362,7 +362,7 @@
   flex-direction: column;
 }
 
-/* --- KHỐI TRÊN (QUÂN ĐEN) --- */
+/* --- [GIỮ NGUYÊN] KHỐI TRÊN (QUÂN ĐEN) --- */
 .top-zone {
   top: 0; 
   bottom: 51%; 
@@ -372,13 +372,10 @@
 .top-zone .pool-row { height: 5vmin; }
 
 
-/* --- [ĐÃ CHỈNH SỬA] KHỐI DƯỚI (QUÂN ĐỎ) --- */
+/* --- [GIỮ NGUYÊN] KHỐI DƯỚI (QUÂN ĐỎ) --- */
 .bottom-zone {
   top: 59%; 
-  
-  /* ĐẨY MẠNH XUỐNG DƯỚI NỮA (-6%) */
   bottom: -8%; 
-  
   justify-content: space-between; 
   gap: 0; 
 }
@@ -405,28 +402,57 @@
   align-items: center; 
 }
 
-/* Xe Đen: Đỉnh */
+/* Căn chỉnh mép ảnh */
 .top-zone .pool-row:first-child .pool-img-wrapper { align-items: flex-start; }
-
-/* Xe Đỏ: Đỉnh vùng đỏ */
-.bottom-zone .pool-row:first-child .pool-img-wrapper { align-items: flex-start; }
-
-/* Tốt Đỏ: Đáy vùng đỏ */
-.bottom-zone .pool-row:last-child .pool-img-wrapper { 
-  align-items: flex-end; 
-  transform: none;
-}
+.bottom-zone .pool-row:last-child .pool-img-wrapper { align-items: flex-end; transform: none; }
 
 /* ẢNH & SỐ LƯỢNG */
 .pool-img { height: auto; width: auto; max-height: 100%; max-width: 100%; object-fit: contain; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5)); }
 .pool-num { font-weight: 900; font-size: 2.2vmin; text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 0 4px rgba(0,0,0,0.8); flex: 1; text-align: center; line-height: 1; z-index: 2; }
 .red-num { color: #d32f2f; }
 .black-num { color: #000000; }
-.pool-btns { display: flex; flex-direction: column; justify-content: center; height: 80%; width: 20%; gap: 0; margin-right: 2px; }
-.tiny-btn { flex: 1; width: 100%; border: none; background: transparent; color: #f0f0f0; font-size: 2vmin; font-weight: 900; padding: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease; text-shadow: 0 0 3px rgba(0,0,0,1); &:hover:not(:disabled) { color: #4caf50; transform: scale(1.3); } &:active:not(:disabled) { transform: scale(0.9); } &:disabled { opacity: 0.15; cursor: default; color: #ccc; } }
-.pool-error-floating { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5vmin; color: #ffeb3b; background: rgba(0,0,0,0.8); padding: 0.5vmin 1vmin; border-radius: 0.5vmin; white-space: nowrap; pointer-events: none; z-index: 10; }
 
-/* STYLE CŨ */
+
+/* --- [ĐÃ CHỈNH SỬA] NÚT BẤM --- */
+.pool-btns {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  
+  /* GIẢM CHIỀU CAO: Từ 80% xuống 50% để 2 nút xích lại gần nhau hơn */
+  height: 50%; 
+  
+  width: 20%; 
+  gap: 0; 
+  margin-right: 2px;
+}
+
+.tiny-btn {
+  flex: 1;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: #f0f0f0; 
+  font-size: 2vmin; 
+  font-weight: 900;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  text-shadow: 0 0 3px rgba(0,0,0,1);
+  
+  /* THÊM: Giảm line-height để ký tự nằm gọn hơn */
+  line-height: 0.8;
+
+  &:hover:not(:disabled) { color: #4caf50; transform: scale(1.3); }
+  &:active:not(:disabled) { transform: scale(0.9); }
+  &:disabled { opacity: 0.15; cursor: default; color: #ccc; }
+}
+
+/* Các phần khác giữ nguyên */
+.pool-error-floating { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5vmin; color: #ffeb3b; background: rgba(0,0,0,0.8); padding: 0.5vmin 1vmin; border-radius: 0.5vmin; white-space: nowrap; pointer-events: none; z-index: 10; }
 .bg { width: 100%; height: 100%; display: block; }
 .pieces { position: absolute; inset: 0; z-index: 20; }
 .piece { position: absolute; aspect-ratio: 1; pointer-events: none; &.animated { transition: all 0.2s ease; } &.inCheck { transform: translate(-50%, -50%) scale(1.1); filter: drop-shadow(0 0 10px red); z-index: 100; } &.being-flipped { opacity: 0.3; filter: grayscale(1); } }
