@@ -353,7 +353,7 @@
   overflow: visible;
 }
 
-/* --- CLASS CHUNG CHO 2 KHỐI --- */
+/* --- CLASS CHUNG --- */
 .absolute-pool {
   position: absolute; 
   left: 0;
@@ -361,23 +361,22 @@
   display: flex;
   flex-direction: column;
   
-  /* QUAN TRỌNG: Tự động chia đều khoảng cách bên trong mỗi khu vực */
+  /* QUAN TRỌNG: Máy tự động chia đều khoảng cách các quân */
   justify-content: space-between; 
 }
 
-/* --- KHỐI TRÊN (QUÂN ĐEN) - ĐÃ RÀNG BUỘC --- */
+/* --- KHỐI TRÊN (QUÂN ĐEN) --- */
 .top-zone {
-  /* Bắt đầu từ đỉnh */
+  /* Từ đỉnh */
   top: 0; 
-  
-  /* Kết thúc ở gần giữa bàn cờ (chừa dòng sông ra) */
-  bottom: 51%; 
+  /* Đến gần giữa (chừa khoảng sông rộng hơn xíu) */
+  bottom: 50%; 
 }
 
-/* --- KHỐI DƯỚI (QUÂN ĐỎ) - ĐÃ RÀNG BUỘC --- */
+/* --- KHỐI DƯỚI (QUÂN ĐỎ) - ĐÃ CĂN CHỈNH LẠI --- */
 .bottom-zone {
-  /* Bắt đầu từ gần giữa bàn cờ */
-  top: 51%; 
+  /* [ĐÃ SỬA]: Nhích điểm bắt đầu xuống thấp hơn (từ 51% -> 54%) */
+  top: 54%; 
   
   /* Kết thúc ở đáy */
   bottom: 0; 
@@ -391,10 +390,7 @@
   background: transparent;
   padding: 0;
   width: 100%;
-  
-  /* Chiều cao nhỏ gọn để Flexbox có khoảng trống để chia */
   height: 5.5vmin; 
-  
   min-height: 0;
 }
 
@@ -407,24 +403,29 @@
   align-items: center; 
 }
 
-/* 1. Xe Đen (Quân đầu tiên Top): Dính mép trên */
+/* --- CĂN CHỈNH MÉP --- */
+
+/* 1. Xe Đen (Đầu trên): Dính mép trên */
 .top-zone .pool-row:first-child .pool-img-wrapper {
   align-items: flex-start;
 }
-/* 2. Tốt Đen (Quân cuối cùng Top): Dính mép sông trên */
+/* 2. Tốt Đen (Cuối trên): Dính mép sông trên */
 .top-zone .pool-row:last-child .pool-img-wrapper {
   align-items: flex-end;
 }
 
-/* 3. Xe Đỏ (Quân đầu tiên Bottom): Dính mép sông dưới */
+/* 3. Xe Đỏ (Đầu dưới): Dính mép sông dưới */
 .bottom-zone .pool-row:first-child .pool-img-wrapper {
   align-items: flex-start;
 }
-/* 4. Tốt Đỏ (Quân cuối cùng Bottom): Dính mép đáy */
+
+/* 4. Tốt Đỏ (Cuối dưới): Dính mép đáy chuẩn */
 .bottom-zone .pool-row:last-child .pool-img-wrapper {
   align-items: flex-end;
-  /* Giữ lại cái nhích nhẹ cho đẹp nếu bạn thích */
-  transform: translateY(1.5vmin); 
+  
+  /* [ĐÃ SỬA]: Xóa transform. 
+     Để Flexbox tự chia khoảng cách đều nhau, không bị lệch nữa. */
+  transform: none; 
 }
 
 /* Ảnh quân */
@@ -488,7 +489,7 @@
   padding: 0.5vmin 1vmin; border-radius: 0.5vmin; white-space: nowrap; pointer-events: none; z-index: 10;
 }
 
-/* STYLE CŨ */
+/* CÁC STYLE CŨ (GIỮ NGUYÊN) */
 .bg { width: 100%; height: 100%; display: block; }
 .pieces { position: absolute; inset: 0; z-index: 20; }
 .piece { position: absolute; aspect-ratio: 1; pointer-events: none; &.animated { transition: all 0.2s ease; } &.inCheck { transform: translate(-50%, -50%) scale(1.1); filter: drop-shadow(0 0 10px red); z-index: 100; } &.being-flipped { opacity: 0.3; filter: grayscale(1); } }
