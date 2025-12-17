@@ -313,7 +313,7 @@
 </script>
 
 <style scoped lang="scss">
-/* --- CÁC PHẦN CŨ GIỮ NGUYÊN --- */
+/* --- LAYOUT TỔNG THỂ --- */
 .chessboard-wrapper {
   width: 100%;
   height: 100%;
@@ -353,40 +353,37 @@
   overflow: visible;
 }
 
-/* --- CLASS CHUNG (Mặc định) --- */
+/* --- CLASS CHUNG CHO 2 KHỐI --- */
 .absolute-pool {
   position: absolute; 
   left: 0;
   width: 100%; 
   display: flex;
   flex-direction: column;
-  gap: 0.2vmin; 
-}
-
-/* --- KHỐI TRÊN (QUÂN ĐEN) - ĐÃ THU HẸP --- */
-.top-zone {
-  top: 0; 
-  justify-content: flex-start;
   
-  /* [CHỈNH RIÊNG QUÂN ĐEN] Gap = 0 để sát nhau */
-  gap: 0; 
+  /* QUAN TRỌNG: Tự động chia đều khoảng cách bên trong mỗi khu vực */
+  justify-content: space-between; 
 }
 
-/* Override riêng cho dòng quân Đen: Giảm chiều cao dòng để chúng xích lại gần hơn */
-.top-zone .pool-row {
-  height: 5.2vmin; /* Nhỏ hơn mặc định (6vmin) */
+/* --- KHỐI TRÊN (QUÂN ĐEN) - ĐÃ RÀNG BUỘC --- */
+.top-zone {
+  /* Bắt đầu từ đỉnh */
+  top: 0; 
+  
+  /* Kết thúc ở gần giữa bàn cờ (chừa dòng sông ra) */
+  bottom: 51%; 
 }
 
-
-/* --- KHỐI DƯỚI (QUÂN ĐỎ) - GIỮ NGUYÊN --- */
+/* --- KHỐI DƯỚI (QUÂN ĐỎ) - ĐÃ RÀNG BUỘC --- */
 .bottom-zone {
-  bottom: -1vmin; 
-  justify-content: flex-end;
-  /* Quân đỏ vẫn giữ khoảng cách thoáng hơn mặc định */
-  gap: 0.2vmin; 
+  /* Bắt đầu từ gần giữa bàn cờ */
+  top: 51%; 
+  
+  /* Kết thúc ở đáy */
+  bottom: 0; 
 }
 
-/* --- TỪNG DÒNG QUÂN (MẶC ĐỊNH) --- */
+/* --- TỪNG DÒNG QUÂN --- */
 .pool-row {
   display: flex;
   align-items: center; 
@@ -394,7 +391,11 @@
   background: transparent;
   padding: 0;
   width: 100%;
-  height: 6vmin; /* Chiều cao mặc định cho quân Đỏ */
+  
+  /* Chiều cao nhỏ gọn để Flexbox có khoảng trống để chia */
+  height: 5.5vmin; 
+  
+  min-height: 0;
 }
 
 /* --- WRAPPER ẢNH --- */
@@ -406,15 +407,27 @@
   align-items: center; 
 }
 
-/* Xe đen căn đỉnh */
+/* 1. Xe Đen (Quân đầu tiên Top): Dính mép trên */
 .top-zone .pool-row:first-child .pool-img-wrapper {
   align-items: flex-start;
 }
-/* Tốt đỏ căn đáy */
-.bottom-zone .pool-row:last-child .pool-img-wrapper {
+/* 2. Tốt Đen (Quân cuối cùng Top): Dính mép sông trên */
+.top-zone .pool-row:last-child .pool-img-wrapper {
   align-items: flex-end;
 }
 
+/* 3. Xe Đỏ (Quân đầu tiên Bottom): Dính mép sông dưới */
+.bottom-zone .pool-row:first-child .pool-img-wrapper {
+  align-items: flex-start;
+}
+/* 4. Tốt Đỏ (Quân cuối cùng Bottom): Dính mép đáy */
+.bottom-zone .pool-row:last-child .pool-img-wrapper {
+  align-items: flex-end;
+  /* Giữ lại cái nhích nhẹ cho đẹp nếu bạn thích */
+  transform: translateY(1.5vmin); 
+}
+
+/* Ảnh quân */
 .pool-img {
   height: auto;
   width: auto;
@@ -424,6 +437,7 @@
   filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5)); 
 }
 
+/* Số lượng */
 .pool-num {
   font-weight: 900;
   font-size: 2.2vmin;
@@ -436,6 +450,7 @@
 .red-num { color: #d32f2f; }
 .black-num { color: #000000; }
 
+/* Nút bấm */
 .pool-btns {
   display: flex;
   flex-direction: column;
@@ -468,20 +483,12 @@
 }
 
 .pool-error-floating {
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 1.5vmin; 
-  color: #ffeb3b; 
-  background: rgba(0,0,0,0.8); 
-  padding: 0.5vmin 1vmin; 
-  border-radius: 0.5vmin; 
-  white-space: nowrap; 
-  pointer-events: none;
-  z-index: 10;
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  font-size: 1.5vmin; color: #ffeb3b; background: rgba(0,0,0,0.8); 
+  padding: 0.5vmin 1vmin; border-radius: 0.5vmin; white-space: nowrap; pointer-events: none; z-index: 10;
 }
 
-/* Các style cũ giữ nguyên */
+/* STYLE CŨ */
 .bg { width: 100%; height: 100%; display: block; }
 .pieces { position: absolute; inset: 0; z-index: 20; }
 .piece { position: absolute; aspect-ratio: 1; pointer-events: none; &.animated { transition: all 0.2s ease; } &.inCheck { transform: translate(-50%, -50%) scale(1.1); filter: drop-shadow(0 0 10px red); z-index: 100; } &.being-flipped { opacity: 0.3; filter: grayscale(1); } }
