@@ -1,155 +1,154 @@
 <template>
   <div class="chessboard-wrapper" :class="{ 'has-chart': showPositionChart }">
     
-    <div class="game-layout-container">
+    <div class="main-column">
+      <div class="chessboard-container">
+        <img src="@/assets/xiangqi.png" class="bg" alt="board" />
 
-      <div class="main-column">
-        <div class="chessboard-container">
-          <img src="@/assets/xiangqi.png" class="bg" alt="board" />
+        <div v-if="showEvaluationBar && currentEvalPercent !== null" class="eval-bar" aria-hidden="true">
+          <div class="eval-top" :style="{ height: currentEvalPercent + '%', background: isRedOnTop ? '#e53935' : '#333' }"></div>
+          <div class="eval-bottom" :style="{ height: 100 - (currentEvalPercent as number) + '%', background: isRedOnTop ? '#333' : '#e53935' }"></div>
+          <div class="eval-marker" :style="{ top: currentEvalPercent + '%' }"></div>
+        </div>
 
-          <div v-if="showEvaluationBar && currentEvalPercent !== null" class="eval-bar" aria-hidden="true">
-            <div class="eval-top" :style="{ height: currentEvalPercent + '%', background: isRedOnTop ? '#e53935' : '#333' }"></div>
-            <div class="eval-bottom" :style="{ height: 100 - (currentEvalPercent as number) + '%', background: isRedOnTop ? '#333' : '#e53935' }"></div>
-            <div class="eval-marker" :style="{ top: currentEvalPercent + '%' }"></div>
-          </div>
+        <div class="pieces" @click="boardClick" @contextmenu.prevent>
+          <img v-for="p in pieces" :key="p.id" :src="img(p)" class="piece" 
+               :class="{ 
+                 animated: isAnimating && showAnimations, 
+                 inCheck: p.id === checkedKingId,
+                 // Hiệu ứng mờ quân cờ khi đang hiện menu vòng tròn bên trên
+                 'being-flipped': pendingFlip && ( (pendingFlip.row === p.row && pendingFlip.col === p.col) || (selectedPiece && p.id === selectedPiece.id) )
+               }" 
+               :style="rcStyle(p.row, p.col, p.zIndex)" />
+        </div>
 
-          <div class="pieces" @click="boardClick" @contextmenu.prevent>
-            <img v-for="p in pieces" :key="p.id" :src="img(p)" class="piece" 
-                 :class="{ 
-                   animated: isAnimating && showAnimations, 
-                   inCheck: p.id === checkedKingId,
-                   'being-flipped': pendingFlip && ( (pendingFlip.row === p.row && pendingFlip.col === p.col) || (selectedPiece && p.id === selectedPiece.id) )
-                 }" 
-                 :style="rcStyle(p.row, p.col, p.zIndex)" />
-          </div>
+        <div v-if="selectedPiece && !pendingFlip" class="selection-mark" :style="rcStyle(selectedPiece.row, selectedPiece.col, 30)">
+          <div class="corner top-left"></div><div class="corner top-right"></div>
+          <div class="corner bottom-left"></div><div class="corner bottom-right"></div>
+        </div>
 
-          <div v-if="selectedPiece && !pendingFlip" class="selection-mark" :style="rcStyle(selectedPiece.row, selectedPiece.col, 30)">
+        <div class="last-move-highlights" v-if="lastMovePositions">
+          <div class="highlight from" :class="getAnnotationClass(lastMovePositions)" :style="{ ...rcStyle(displayRow(lastMovePositions.from.row), displayCol(lastMovePositions.from.col)), width: '2.5%' }"></div>
+          <div class="highlight to" :class="getAnnotationClass(lastMovePositions)" :style="{ ...rcStyle(displayRow(lastMovePositions.to.row), displayCol(lastMovePositions.to.col)), width: '12%' }">
             <div class="corner top-left"></div><div class="corner top-right"></div>
             <div class="corner bottom-left"></div><div class="corner bottom-right"></div>
           </div>
-
-          <div class="last-move-highlights" v-if="lastMovePositions">
-            <div class="highlight from" :class="getAnnotationClass(lastMovePositions)" :style="{ ...rcStyle(displayRow(lastMovePositions.from.row), displayCol(lastMovePositions.from.col)), width: '2.5%' }"></div>
-            <div class="highlight to" :class="getAnnotationClass(lastMovePositions)" :style="{ ...rcStyle(displayRow(lastMovePositions.to.row), displayCol(lastMovePositions.to.col)), width: '12%' }">
-              <div class="corner top-left"></div><div class="corner top-right"></div>
-              <div class="corner bottom-left"></div><div class="corner bottom-right"></div>
-            </div>
-          </div>
-
-          <div v-if="lastMovePositions && getCurrentMoveAnnotation()" class="annotation-layer">
-            <div class="annotation-anchor" :class="getAnnotationClass(lastMovePositions)" :style="rcStyle(displayRow(lastMovePositions.to.row), displayCol(lastMovePositions.to.col))">
-              <div class="annotation-badge">{{ getCurrentMoveAnnotation() }}</div>
-            </div>
-          </div>
-
-          <svg class="user-drawings" viewBox="0 0 90 100" preserveAspectRatio="none">
-            <circle v-for="(circle, idx) in userCircles" :key="`circle-${idx}`" :cx="circle.x" :cy="circle.y" :r="circle.radius" fill="none" stroke="#ff6b6b" stroke-width="1" opacity="0.8" />
-            <defs>
-              <marker id="user-arrow-marker" markerWidth="3" markerHeight="3" refX="2" refY="1.5" orient="auto">
-                <polygon points="0 0, 3 1.5, 0 3" fill="#ff6b6b" />
-              </marker>
-            </defs>
-            <line v-for="(arrow, idx) in userArrows" :key="`arrow-${idx}`" :x1="arrow.x1" :y1="arrow.y1" :x2="arrow.x2" :y2="arrow.y2" stroke="#ff6b6b" stroke-width="2" marker-end="url(#user-arrow-marker)" opacity="0.8" />
-          </svg>
-
-          <svg class="ar" viewBox="0 0 90 100" preserveAspectRatio="none" v-if="showArrows">
-            <defs>
-              <marker v-for="(color, idx) in arrowColors" :key="`marker-${idx}`" :id="`ah-${idx}`" markerWidth="2.5" markerHeight="2.5" refX="1.5" refY="1.25" orient="auto"><polygon points="0 0, 2.5 1.25, 0 2.5" :fill="color" /></marker>
-              <marker id="ah-selected" markerWidth="2.5" markerHeight="2.5" refX="1.5" refY="1.25" orient="auto"><polygon points="0 0, 2.5 1.25, 0 2.5" fill="#e53935" /></marker>
-            </defs>
-            <template v-for="(a, idx) in arrs" :key="`arrow-${idx}`">
-              <line :x1="a.x1" :y1="a.y1" :x2="a.x2" :y2="a.y2" :style="{ stroke: arrowColor(idx) }" :marker-end="`url(#ah-${idx % arrowColors.length})`" class="al" />
-              <text v-if="arrs.length > 1" :x="(a.x1 + a.x2) / 2" :y="(a.y1 + a.y2) / 2" :fill="arrowColor(idx)" class="arrow-label">{{ a.pv }}</text>
-            </template>
-            <template v-if="selectedPvArrow">
-              <line :x1="selectedPvArrow.x1" :y1="selectedPvArrow.y1" :x2="selectedPvArrow.x2" :y2="selectedPvArrow.y2" marker-end="url(#ah-selected)" class="al selected-arrow-shadow" />
-              <line :x1="selectedPvArrow.x1" :y1="selectedPvArrow.y1" :x2="selectedPvArrow.x2" :y2="selectedPvArrow.y2" marker-end="url(#ah-selected)" class="al selected-arrow" />
-            </template>
-          </svg>
-
-          <div class="valid-moves-indicators" v-if="validMovesForSelectedPiece.length > 0 && !pendingFlip">
-            <div v-for="(move, index) in validMovesForSelectedPiece" :key="`valid-move-${index}`" class="valid-move-dot" :style="{ ...rcStyle(move.row, move.col), width: '2.5%' }"></div>
-          </div>
-
-          <div class="board-labels" v-if="showCoordinates">
-            <div class="rank-labels"><span v-for="(rank, index) in ranks" :key="rank" :style="rankLabelStyle(index)">{{ rank }}</span></div>
-            <div class="file-labels"><span v-for="(file, index) in files" :key="file" :style="fileLabelStyle(index)">{{ file }}</span></div>
-          </div>
-
-          <div v-if="pendingFlip" class="flip-overlay-fixed" @click.stop></div>
-
-          <div 
-            v-if="pendingFlip" 
-            class="radial-menu-container"
-            :style="{
-              ...rcStyle(
-                 radialMenuPos.row, 
-                 radialMenuPos.col, 
-                 9999
-              ),
-              width: '34%', height: 'auto', 'aspect-ratio': '1/1'
-            }"
-          >
-            <div v-for="(item, index) in flipSelectionPieces" :key="item.name" 
-                 class="radial-item" 
-                 :style="getRadialItemStyle(index, flipSelectionPieces.length)" 
-                 @click.stop="handleFlipSelect(item.name)"
-                 @mousedown.stop @touchstart.stop>
-              <img :src="getPieceImageUrl(item.name)" class="radial-img" />
-              <div class="radial-count">{{ item.count }}</div>
-            </div>
-
-            <div v-if="flipSelectionPieces.length === 0" class="radial-error-btn" @click.stop="handleFlipRandom">
-               <span>Hết quân! Bấm để bỏ qua</span>
-            </div>
-          </div>
-          <ClearHistoryConfirmDialog :visible="showClearHistoryDialog" :onConfirm="onConfirmClearHistory" :onCancel="onCancelClearHistory" />
         </div>
 
-        <div v-if="pendingFlip" class="flip-hint-area">
-          <div class="flip-hint-text">
-            <v-icon icon="mdi-gesture-tap" size="small" class="mr-1"></v-icon>
-            Vui lòng chọn quân {{ pendingFlip.side === 'red' ? 'Đỏ' : 'Đen' }} cần lật
+        <div v-if="lastMovePositions && getCurrentMoveAnnotation()" class="annotation-layer">
+          <div class="annotation-anchor" :class="getAnnotationClass(lastMovePositions)" :style="rcStyle(displayRow(lastMovePositions.to.row), displayCol(lastMovePositions.to.col))">
+            <div class="annotation-badge">{{ getCurrentMoveAnnotation() }}</div>
+          </div>
+        </div>
+
+        <svg class="user-drawings" viewBox="0 0 90 100" preserveAspectRatio="none">
+          <circle v-for="(circle, idx) in userCircles" :key="`circle-${idx}`" :cx="circle.x" :cy="circle.y" :r="circle.radius" fill="none" stroke="#ff6b6b" stroke-width="1" opacity="0.8" />
+          <defs>
+            <marker id="user-arrow-marker" markerWidth="3" markerHeight="3" refX="2" refY="1.5" orient="auto">
+              <polygon points="0 0, 3 1.5, 0 3" fill="#ff6b6b" />
+            </marker>
+          </defs>
+          <line v-for="(arrow, idx) in userArrows" :key="`arrow-${idx}`" :x1="arrow.x1" :y1="arrow.y1" :x2="arrow.x2" :y2="arrow.y2" stroke="#ff6b6b" stroke-width="2" marker-end="url(#user-arrow-marker)" opacity="0.8" />
+        </svg>
+
+        <svg class="ar" viewBox="0 0 90 100" preserveAspectRatio="none" v-if="showArrows">
+          <defs>
+            <marker v-for="(color, idx) in arrowColors" :key="`marker-${idx}`" :id="`ah-${idx}`" markerWidth="2.5" markerHeight="2.5" refX="1.5" refY="1.25" orient="auto"><polygon points="0 0, 2.5 1.25, 0 2.5" :fill="color" /></marker>
+            <marker id="ah-selected" markerWidth="2.5" markerHeight="2.5" refX="1.5" refY="1.25" orient="auto"><polygon points="0 0, 2.5 1.25, 0 2.5" fill="#e53935" /></marker>
+          </defs>
+          <template v-for="(a, idx) in arrs" :key="`arrow-${idx}`">
+            <line :x1="a.x1" :y1="a.y1" :x2="a.x2" :y2="a.y2" :style="{ stroke: arrowColor(idx) }" :marker-end="`url(#ah-${idx % arrowColors.length})`" class="al" />
+            <text v-if="arrs.length > 1" :x="(a.x1 + a.x2) / 2" :y="(a.y1 + a.y2) / 2" :fill="arrowColor(idx)" class="arrow-label">{{ a.pv }}</text>
+          </template>
+          <template v-if="selectedPvArrow">
+            <line :x1="selectedPvArrow.x1" :y1="selectedPvArrow.y1" :x2="selectedPvArrow.x2" :y2="selectedPvArrow.y2" marker-end="url(#ah-selected)" class="al selected-arrow-shadow" />
+            <line :x1="selectedPvArrow.x1" :y1="selectedPvArrow.y1" :x2="selectedPvArrow.x2" :y2="selectedPvArrow.y2" marker-end="url(#ah-selected)" class="al selected-arrow" />
+          </template>
+        </svg>
+
+        <div class="valid-moves-indicators" v-if="validMovesForSelectedPiece.length > 0 && !pendingFlip">
+          <div v-for="(move, index) in validMovesForSelectedPiece" :key="`valid-move-${index}`" class="valid-move-dot" :style="{ ...rcStyle(move.row, move.col), width: '2.5%' }"></div>
+        </div>
+
+        <div class="board-labels" v-if="showCoordinates">
+          <div class="rank-labels"><span v-for="(rank, index) in ranks" :key="rank" :style="rankLabelStyle(index)">{{ rank }}</span></div>
+          <div class="file-labels"><span v-for="(file, index) in files" :key="file" :style="fileLabelStyle(index)">{{ file }}</span></div>
+        </div>
+
+        <div v-if="pendingFlip" class="flip-overlay-fixed" @click.stop></div>
+
+        <div 
+          v-if="pendingFlip" 
+          class="radial-menu-container"
+          :style="{
+            ...rcStyle(
+               radialMenuPos.row, 
+               radialMenuPos.col, 
+               9999
+            ),
+            width: '34%', height: 'auto', 'aspect-ratio': '1/1'
+          }"
+        >
+          <div v-for="(item, index) in flipSelectionPieces" :key="item.name" 
+               class="radial-item" 
+               :style="getRadialItemStyle(index, flipSelectionPieces.length)" 
+               @click.stop="handleFlipSelect(item.name)"
+               @mousedown.stop @touchstart.stop>
+            <img :src="getPieceImageUrl(item.name)" class="radial-img" />
+            <div class="radial-count">{{ item.count }}</div>
+          </div>
+
+          <div v-if="flipSelectionPieces.length === 0" class="radial-error-btn" @click.stop="handleFlipRandom">
+             <span>Hết quân! Bấm để bỏ qua</span>
+          </div>
+        </div>
+        <ClearHistoryConfirmDialog :visible="showClearHistoryDialog" :onConfirm="onConfirmClearHistory" :onCancel="onCancelClearHistory" />
+      </div>
+
+      <div v-if="pendingFlip" class="flip-hint-area">
+        <div class="flip-hint-text">
+          <v-icon icon="mdi-gesture-tap" size="small" class="mr-1"></v-icon>
+          Vui lòng chọn quân {{ pendingFlip.side === 'red' ? 'Đỏ' : 'Đen' }} cần lật
+        </div>
+      </div>
+    </div>
+
+    <div class="side-panel">
+      <div class="pool-section top-pool">
+        <div v-for="item in (isRedOnTop ? redPool : blackPool)" :key="item.char" class="pool-row">
+          <img :src="getPieceImageUrl(item.name)" class="pool-img" />
+          <div class="pool-controls">
+             <span class="pool-num" :class="isRedOnTop ? 'red-num' : 'black-num'">{{ item.count }}</span>
+             <div class="pool-btns">
+                <button class="tiny-btn" @click="adjustUnrevealedCount(item.char, 1)" :disabled="item.count >= item.max">+</button>
+                <button class="tiny-btn" @click="adjustUnrevealedCount(item.char, -1)" :disabled="item.count <= 0">-</button>
+             </div>
           </div>
         </div>
       </div>
-
-      <div class="side-panel">
-        <div class="pool-section top-pool">
-          <div v-for="item in (isRedOnTop ? redPool : blackPool)" :key="item.char" class="pool-row">
-            <img :src="getPieceImageUrl(item.name)" class="pool-img" />
-            <div class="pool-controls">
-               <span class="pool-num" :class="isRedOnTop ? 'red-num' : 'black-num'">{{ item.count }}</span>
-               <div class="pool-btns">
-                  <button class="tiny-btn" @click="adjustUnrevealedCount(item.char, 1)" :disabled="item.count >= item.max">+</button>
-                  <button class="tiny-btn" @click="adjustUnrevealedCount(item.char, -1)" :disabled="item.count <= 0">-</button>
-               </div>
-            </div>
-          </div>
-        </div>
-        
-        <div class="pool-divider">
-          <div v-if="poolErrorMessage" class="pool-error">
-            <v-icon icon="mdi-alert-circle" size="x-small" color="error"></v-icon>
-            <span>{{ poolErrorMessage }}</span>
-          </div>
-        </div>
-
-        <div class="pool-section bottom-pool">
-          <div v-for="item in (isRedOnTop ? blackPool : redPool)" :key="item.char" class="pool-row">
-            <img :src="getPieceImageUrl(item.name)" class="pool-img" />
-            <div class="pool-controls">
-               <span class="pool-num" :class="isRedOnTop ? 'black-num' : 'red-num'">{{ item.count }}</span>
-               <div class="pool-btns">
-                  <button class="tiny-btn" @click="adjustUnrevealedCount(item.char, 1)" :disabled="item.count >= item.max">+</button>
-                  <button class="tiny-btn" @click="adjustUnrevealedCount(item.char, -1)" :disabled="item.count <= 0">-</button>
-               </div>
-            </div>
-          </div>
+      
+      <div class="pool-divider">
+        <div v-if="poolErrorMessage" class="pool-error">
+          <v-icon icon="mdi-alert-circle" size="x-small" color="error"></v-icon>
+          <span>{{ poolErrorMessage }}</span>
         </div>
       </div>
 
-    </div> <EvaluationChart v-if="showPositionChart" :history="history" :current-move-index="currentMoveIndex" :initial-fen="unref(gs?.initialFen)" @seek="handleChartSeek" />
+      <div class="pool-section bottom-pool">
+        <div v-for="item in (isRedOnTop ? blackPool : redPool)" :key="item.char" class="pool-row">
+          <img :src="getPieceImageUrl(item.name)" class="pool-img" />
+          <div class="pool-controls">
+             <span class="pool-num" :class="isRedOnTop ? 'black-num' : 'red-num'">{{ item.count }}</span>
+             <div class="pool-btns">
+                <button class="tiny-btn" @click="adjustUnrevealedCount(item.char, 1)" :disabled="item.count >= item.max">+</button>
+                <button class="tiny-btn" @click="adjustUnrevealedCount(item.char, -1)" :disabled="item.count <= 0">-</button>
+             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <EvaluationChart v-if="showPositionChart" :history="history" :current-move-index="currentMoveIndex" :initial-fen="unref(gs?.initialFen)" @seek="handleChartSeek" />
   </div>
 </template>
 
@@ -182,17 +181,18 @@
   // FIX: Lưu tọa độ click cuối cùng để menu không bị nhảy về (4,4)
   const lastClickPos = ref({ row: 4, col: 4 })
   
-  // Logic hiển thị menu chọn quân (Ưu tiên: AI/Game -> Người click -> Giữa bàn)
+  // FIX: Logic tính toán vị trí menu vòng tròn (ĐÃ SỬA)
   const radialMenuPos = computed(() => {
+    // Ưu tiên TUYỆT ĐỐI: Lấy tọa độ từ chính yêu cầu lật (pendingFlip)
+    // Dù là người click hay AI đi, biến pendingFlip luôn chứa tọa độ chính xác của quân cần lật.
     if (pendingFlip.value && typeof pendingFlip.value.row === 'number' && typeof pendingFlip.value.col === 'number') {
       return { row: pendingFlip.value.row, col: pendingFlip.value.col }
     }
-    if (selectedPiece.value) {
-      return { row: selectedPiece.value.row, col: selectedPiece.value.col }
-    }
-    if (lastClickPos.value) {
-      return lastClickPos.value
-    }
+
+    // Các trường hợp dự phòng (Fallback)
+    if (selectedPiece.value) return { row: selectedPiece.value.row, col: selectedPiece.value.col }
+    if (lastClickPos.value) return lastClickPos.value
+    
     return { row: 4, col: 4 }
   })
 
@@ -300,7 +300,7 @@
     const finalRow = Math.max(0, Math.min(ROWS - 1, row))
     const finalCol = Math.max(0, Math.min(COLS - 1, col))
     
-    // Cập nhật vị trí click
+    // FIX: Cập nhật vị trí click ngay lập tức
     lastClickPos.value = { row: finalRow, col: finalCol }
 
     const result = handleBoardClick(finalRow, finalCol)
@@ -351,188 +351,158 @@
 </script>
 
 <style scoped lang="scss">
-  /* --- 1. LỚP VỎ NGOÀI CÙNG (Căn giữa & Chống tràn) --- */
+  /* --- LAYOUT CHÍNH --- */
   .chessboard-wrapper {
-    position: fixed; /* Ghim cứng vào viewport */
-    top: 0; left: 0;
-    width: 100vw;
-    height: 100dvh; /* Chiều cao an toàn trên mobile */
-    
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    padding: 10px;
-    box-sizing: border-box;
-    overflow: hidden;
-    z-index: 1;
-  }
-
-  /* --- 2. KHUNG CHỨA GAME (ASPECT RATIO CONTAINER) --- */
-  /* Đây là khung "bất tử" - tự động co giãn theo tỷ lệ cố định */
-  .game-layout-container {
     display: flex;
     flex-direction: row;
-    align-items: stretch;
-    gap: 2%; 
-    
+    align-items: stretch; /* Side-panel cao bằng bàn cờ */
+    justify-content: center;
+    gap: 15px; /* Tăng khoảng cách giữa bàn cờ và kho quân một chút */
     width: 100%;
-    height: 100%;
+    max-width: 98vmin; /* Nới rộng tối đa một chút để chứa kho quân to hơn */
+    margin: 0 auto;
+    padding: 20px;
     
-    /* Tỷ lệ vàng: Bàn cờ (9) + Kho quân (1.8 - 2.0) -> ~ 1.15/1 */
-    aspect-ratio: 1.15 / 1; 
-    
-    max-width: 95vw;
-    max-height: 95dvh;
-    
-    @media (orientation: portrait) {
+    @media (max-width: 768px) {
       flex-direction: column;
-      /* Mobile: Bàn cờ (10 cao) + Kho quân (2 cao) -> Tỷ lệ ~ 9 / 12 */
-      aspect-ratio: 9 / 12; 
+      align-items: center;
+      gap: 12px;
+      padding: 10px;
     }
   }
 
-  /* --- 3. BÀN CỜ --- */
   .main-column {
-    flex: 1;
     display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100%;
-    overflow: hidden;
+    flex-direction: column;
+    flex: 1; /* Tự động co giãn */
+    width: 100%; 
   }
 
   .chessboard-container {
     position: relative;
-    height: 100%;
-    width: auto;
-    aspect-ratio: 9/10; /* Tỷ lệ cố định của bàn cờ tướng */
+    width: 100%;
+    aspect-ratio: 9/10;
     margin: auto;
     user-select: none;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    overflow: visible !important;
+    z-index: 1;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
   }
 
-  /* --- 4. KHO QUÂN ÚP (THIẾT KẾ MỚI) --- */
+  /* --- SIDE PANEL / KHO QUÂN ÚP (Đã chỉnh TO HƠN) --- */
   .side-panel {
-    /* Nền xám đậm (#a0a0a0) theo yêu cầu */
-    background: #a0a0a0; 
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.25);
-    
-    /* Layout */
-    flex: 0 0 16%; /* Chiếm 16% chiều ngang */
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: 1%;
     
-    @media (orientation: portrait) {
-      flex: 0 0 15%; /* Mobile: Chiếm 15% chiều cao */
+    /* --- THAY ĐỔI CHÍNH Ở ĐÂY: Tăng chiều rộng --- */
+    width: 150px;  /* Tăng từ 100px lên 150px */
+    min-width: 130px;
+    
+    height: auto; 
+    background: rgba(0,0,0,0.25);
+    padding: 12px; /* Tăng padding cho thoáng */
+    border-radius: 12px;
+    backdrop-filter: blur(5px);
+    
+    @media (max-width: 768px) {
       width: 100%;
-      height: auto;
       flex-direction: row;
-      padding: 5px;
+      height: auto;
+      overflow-x: auto;
+      padding: 8px;
     }
   }
 
   .pool-section {
     display: flex;
     flex-direction: column;
-    justify-content: space-evenly; 
+    justify-content: center;
+    gap: 4px; /* Tăng khoảng cách giữa các dòng */
     flex: 1;
-    gap: 1px;
     
-    @media (orientation: portrait) {
+    @media (max-width: 768px) {
       flex-direction: row;
-      align-items: center;
-      gap: 2%;
+      flex-wrap: wrap;
+      gap: 2px;
     }
   }
   
   .top-pool {
-    border-bottom: 1px solid rgba(255,255,255,0.2);
-    @media (orientation: portrait) {
+    border-bottom: 1px solid rgba(255,255,255,0.15);
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+    @media (max-width: 768px) {
       border-bottom: none;
-      border-right: 1px solid rgba(255,255,255,0.2);
+      border-right: 1px solid rgba(255,255,255,0.1);
+      padding-bottom: 0; margin-bottom: 0;
+      padding-right: 5px; margin-right: 5px;
     }
   }
 
-  /* --- DÒNG QUÂN (CARD SLOT) --- */
   .pool-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    background: rgba(255,255,255,0.1);
+    padding: 4px 8px; /* Tăng padding trong mỗi dòng */
+    border-radius: 8px;
+    transition: background 0.2s;
+    height: 100%;
+    max-height: 55px; /* Cho phép dòng cao hơn */
+    gap: 8px; /* Khoảng cách giữa ảnh và cụm điều khiển */
     
-    /* Hiệu ứng thẻ bài: Nền sáng hơn, bo góc 4px */
-    background: rgba(255, 255, 255, 0.3); 
-    border-radius: 4px;
-    box-shadow: inset 0 1px 2px rgba(255,255,255,0.1), 0 1px 2px rgba(0,0,0,0.1);
-    
-    height: 13%; /* Mỗi dòng cao ~13% kho quân */
-    padding: 0 4%;
-    
-    @media (orientation: portrait) {
-       height: 80%; width: 45%; padding: 0 2%;
+    &:hover { background: rgba(255,255,255,0.2); }
+    @media (max-width: 768px) {
+       width: 48%; padding: 2px 4px; gap: 2px;
     }
   }
 
-  /* Ảnh quân cờ */
+  /* --- THAY ĐỔI CHÍNH: Icon quân cờ to hơn --- */
   .pool-img {
-    height: 85%; width: auto;
-    aspect-ratio: 1/1;
+    width: 36px; height: 36px; /* Tăng từ 24px lên 36px */
     object-fit: contain;
-    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2));
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3)); /* Thêm bóng nhẹ cho nổi */
   }
 
-  /* Khu vực điều khiển */
   .pool-controls {
-    display: flex; align-items: center; gap: 4%; height: 100%; flex: 1; justify-content: flex-end;
+    display: flex; align-items: center; gap: 6px; /* Tăng gap */
   }
   
-  /* Số lượng */
+  /* --- THAY ĐỔI CHÍNH: Số lượng to rõ hơn --- */
   .pool-num {
-    font-weight: bold;
-    font-size: 45%; /* Font size ăn theo chiều cao dòng */
-    line-height: 1;
-    text-align: center;
-    text-shadow: 0 1px 0 rgba(255,255,255,0.4);
-    
-    font-size: clamp(10px, 1.8vh, 18px);
+    color: #fff; font-weight: bold; 
+    font-size: 1.25rem; /* Tăng font size từ 0.9 lên 1.25rem */
+    min-width: 22px; text-align: center;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
   }
-  .red-num { color: #b71c1c; } 
-  .black-num { color: #212121; }
+  
+  .red-num { color: #ff6b6b; }
+  .black-num { color: #eee; }
 
-  /* Nút bấm nhỏ vuông xếp dọc */
   .pool-btns {
-    display: flex; flex-direction: column; 
-    justify-content: center;
-    gap: 2px;
-    height: 100%; 
+    display: flex; flex-direction: column; gap: 2px;
   }
 
+  /* Nút bấm cũng cho to lên một chút cho cân đối */
   .tiny-btn {
-    height: 38%; /* Nút cao bằng 38% dòng */
-    aspect-ratio: 1/1; /* Hình vuông */
-    display: flex; align-items: center; justify-content: center;
-    
-    /* Style nút xám đậm */
-    background: #616161; 
-    color: white;
-    border: none;
-    border-radius: 2px;
-    
-    font-size: 8px; font-weight: bold; cursor: pointer;
-    &:hover:not(:disabled) { background: #424242; }
-    &:disabled { opacity: 0.4; cursor: default; }
+    width: 18px; height: 16px; line-height: 14px; /* Tăng kích thước nút */
+    font-size: 11px; font-weight: bold;
+    background: rgba(0,0,0,0.5);
+    color: #fff; border: 1px solid rgba(255,255,255,0.2);
+    cursor: pointer; border-radius: 3px;
+    &:hover:not(:disabled) { background: #007bff; border-color: #007bff; }
+    &:disabled { opacity: 0.3; cursor: default; }
   }
 
   .pool-divider {
-    flex: 0 0 auto;
-    min-height: 2%;
+    display: flex; align-items: center; justify-content: center;
+    min-height: 15px;
   }
   .pool-error {
-    font-size: 10px; color: #ff5252; text-align: center;
-    white-space: nowrap; overflow: hidden;
+    display: flex; align-items: center; gap: 4px;
+    font-size: 11px; color: #ff5252; text-align: center;
+    line-height: 1.1; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;
   }
 
   /* --- CÁC PHẦN KHÁC GIỮ NGUYÊN --- */
@@ -546,12 +516,15 @@
   .radial-img { width: 85%; height: 85%; object-fit: contain; pointer-events: none; }
   .radial-count { position: absolute; top: -5px; right: -5px; background: #f44336; color: white; font-size: 10px; font-weight: bold; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid #fff; pointer-events: none; }
   .radial-error-btn { position: absolute; transform: translate(-50%, -50%); background: #f44336; color: white; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 12px; cursor: pointer; white-space: nowrap; box-shadow: 0 4px 10px rgba(0,0,0,0.5); pointer-events: auto; z-index: 10001; }
+  
+  /* Selection Mark (Bo góc) */
   .selection-mark { position: absolute; width: 12%; aspect-ratio: 1; transform: translate(-50%, -50%); z-index: 30; pointer-events: none; }
   .corner { position: absolute; width: 25%; height: 25%; border: 3px solid #007bff; box-shadow: 0 0 4px rgba(0, 123, 255, 0.6); }
   .top-left { top: 0; left: 0; border-right: none; border-bottom: none; border-top-left-radius: 10px; }
   .top-right { top: 0; right: 0; border-left: none; border-bottom: none; border-top-right-radius: 10px; }
   .bottom-left { bottom: 0; left: 0; border-right: none; border-top: none; border-bottom-left-radius: 10px; }
   .bottom-right { bottom: 0; right: 0; border-left: none; border-top: none; border-bottom-right-radius: 10px; }
+  
   .highlight.from { position: absolute; transform: translate(-50%,-50%); width: 2.5%; aspect-ratio: 1; background: rgba(255,0,0,0.5); border-radius: 50%; pointer-events: none; }
   .highlight.to { position: absolute; transform: translate(-50%,-50%); width: 12%; aspect-ratio: 1; border: 2px solid rgba(0,255,255,0.7); pointer-events: none; border-radius: 8px; }
   .valid-move-dot { position: absolute; transform: translate(-50%,-50%); width: 2.5%; aspect-ratio: 1; background: #4caf50; border-radius: 50%; pointer-events: none; z-index: 15; box-shadow: 0 0 5px #4caf50; }
