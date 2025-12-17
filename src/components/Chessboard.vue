@@ -327,7 +327,10 @@
   display: flex;
   flex-direction: row;
   align-items: stretch;
-  gap: 2vmin; 
+  
+  /* [ĐÃ CHỈNH SỬA] Nhích lại gần nhau hơn (0.5vmin thay vì 2vmin) */
+  gap: 0.5vmin; 
+  
   padding: 0.8vmin;
 }
 
@@ -413,22 +416,17 @@
   position: absolute;
   top: -0.2vmin;
   right: -0.2vmin;
-  
   background-color: #f44336; 
   color: white;
-  
   width: 1.8vmin;
   height: 1.8vmin;
-  
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  
   font-size: 1.1vmin;
   font-weight: bold;
   line-height: 1;
-  
   border: 0.15vmin solid #fff;
   box-shadow: 0 0.2vmin 0.4vmin rgba(0,0,0,0.3);
   z-index: 10;
@@ -441,7 +439,7 @@
 /* ẢNH */
 .pool-img { height: auto; width: auto; max-height: 100%; max-width: 100%; object-fit: contain; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5)); }
 
-/* --- NÚT BẤM (+ ĐỎ, - ĐEN, RESIZABLE) --- */
+/* --- NÚT BẤM (ĐỎ/ĐEN) --- */
 .pool-btns {
   display: flex;
   flex-direction: column;
@@ -457,10 +455,7 @@
   width: 100%;
   border: none;
   background: transparent;
-  
-  /* [MỚI] Dùng vmin để to nhỏ theo bàn cờ */
   font-size: 2.2vmin; 
-  
   font-weight: 900;
   padding: 0;
   cursor: pointer;
@@ -469,8 +464,7 @@
   justify-content: center;
   transition: all 0.15s ease;
   line-height: 0.8;
-
-  /* Viền trắng cho chữ để nổi bật */
+  
   text-shadow: 
       1px 1px 0 #fff, 
      -1px -1px 0 #fff, 
@@ -482,13 +476,9 @@
   &:disabled { opacity: 0.15; cursor: default; color: #ccc; }
 }
 
-/* [MỚI] MÀU SẮC RIÊNG BIỆT */
-.btn-inc {
-  color: #d32f2f; /* Đỏ */
-}
-.btn-dec {
-  color: #000000; /* Đen */
-}
+/* MÀU SẮC RIÊNG BIỆT */
+.btn-inc { color: #d32f2f; }
+.btn-dec { color: #000000; }
 
 /* Các phần khác giữ nguyên */
 .pool-error-floating { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5vmin; color: #ffeb3b; background: rgba(0,0,0,0.8); padding: 0.5vmin 1vmin; border-radius: 0.5vmin; white-space: nowrap; pointer-events: none; z-index: 10; }
