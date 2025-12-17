@@ -80,7 +80,7 @@
             <div class="radial-count">{{ item.count }}</div>
           </div>
           <div v-if="flipSelectionPieces.length === 0" class="radial-error-btn" @click.stop="handleFlipRandom">
-             <span>Hết quân! Bỏ qua</span>
+              <span>Hết quân! Bỏ qua</span>
           </div>
         </div>
         <ClearHistoryConfirmDialog :visible="showClearHistoryDialog" :onConfirm="onConfirmClearHistory" :onCancel="onCancelClearHistory" />
@@ -94,28 +94,25 @@
     </div>
 
     <div class="side-panel">
-      <div class="pool-section top-pool">
+      
+      <div class="absolute-pool top-zone">
         <div v-for="item in (isRedOnTop ? redPool : blackPool)" :key="item.char" class="pool-row">
           <div class="pool-img-wrapper">
              <img :src="getPieceImageUrl(item.name)" class="pool-img" />
           </div>
-          
           <span class="pool-num" :class="isRedOnTop ? 'red-num' : 'black-num'">{{ item.count }}</span>
-          
           <div class="pool-btns">
              <button class="tiny-btn btn-inc" @click="adjustUnrevealedCount(item.char, 1)" :disabled="item.count >= item.max">+</button>
              <button class="tiny-btn btn-dec" @click="adjustUnrevealedCount(item.char, -1)" :disabled="item.count <= 0">-</button>
           </div>
         </div>
       </div>
-      
-      <div class="pool-divider">
-        <div v-if="poolErrorMessage" class="pool-error">
-          <span>{{ poolErrorMessage }}</span>
-        </div>
+
+      <div v-if="poolErrorMessage" class="pool-error-floating">
+        <span>{{ poolErrorMessage }}</span>
       </div>
 
-      <div class="pool-section bottom-pool">
+      <div class="absolute-pool bottom-zone">
         <div v-for="item in (isRedOnTop ? blackPool : redPool)" :key="item.char" class="pool-row">
           <div class="pool-img-wrapper">
              <img :src="getPieceImageUrl(item.name)" class="pool-img" />
@@ -127,6 +124,7 @@
           </div>
         </div>
       </div>
+
     </div>
 
     <EvaluationChart v-if="showPositionChart" :history="history" :current-move-index="currentMoveIndex" :initial-fen="unref(gs?.initialFen)" @seek="handleChartSeek" />
@@ -134,7 +132,7 @@
 </template>
 
 <script setup lang="ts">
-  /* GIỮ NGUYÊN TOÀN BỘ PHẦN SCRIPT, KHÔNG THAY ĐỔI GÌ */
+  /* GIỮ NGUYÊN TOÀN BỘ PHẦN SCRIPT */
   import { inject, ref, watch, computed, watchEffect, onMounted, onUnmounted, unref } from 'vue'
   import { useI18n } from 'vue-i18n'
   import type { Piece } from '@/composables/useChessGame'
@@ -325,10 +323,7 @@
   aspect-ratio: 1.2 / 1; 
   display: flex;
   flex-direction: row;
-  
-  /* QUAN TRỌNG: Kéo dãn chiều cao side-panel bằng 100% bàn cờ */
-  align-items: stretch; 
-  
+  align-items: stretch; /* Kéo dãn khung chứa */
   gap: 2vmin; 
   padding: 0.8vmin;
 }
@@ -348,43 +343,46 @@
   z-index: 1;
 }
 
-/* --- SIDE PANEL (CỘT BÊN PHẢI) --- */
+/* --- SIDE PANEL (KHUNG CHỨA RELATIVE) --- */
 .side-panel {
   flex: 0 0 16%; 
   min-width: 0;
   
-  /* Chiều cao 100% để căn đều từ đỉnh xuống đáy bàn cờ */
-  height: 100%; 
+  /* Cột này sẽ làm mốc tọa độ cho 2 khối Absolute con */
+  position: relative; 
   
   background: transparent; 
-  box-shadow: none;
   border: none;
-  padding: 0; /* Sát mép tuyệt đối */
-  
-  display: flex;
-  flex-direction: column;
-  
-  /* KHOẢNG TRỐNG Ở GIỮA 2 PHE: Chỉnh số này để tăng/giảm khoảng cách giữa Đen và Đỏ */
-  gap: 8vmin; 
-  
-  overflow: hidden;
+  padding: 0;
+  overflow: visible; /* Để cho phép quân được nhích ra ngoài khung */
 }
 
-/* --- CẤU HÌNH NHÓM QUÂN (POOL SECTION) --- */
-.pool-section {
-  /* Tự động giãn ra để chiếm phần không gian còn lại */
-  flex: 1; 
-  
+/* --- CLASS CHUNG CHO 2 KHỐI TRÊN & DƯỚI --- */
+.absolute-pool {
+  position: absolute; 
+  left: 0;
+  width: 100%; 
   display: flex;
   flex-direction: column;
-  
-  /* QUAN TRỌNG: Tự động chia đều khoảng cách giữa các quân bên trong */
-  justify-content: space-between; 
-  
-  min-height: 0;
+  gap: 0.2vmin; /* Khoảng cách giữa các quân cùng màu */
 }
 
-/* --- TỪNG DÒNG (SLOT) QUÂN --- */
+/* --- KHỐI TRÊN (TOP ZONE) --- */
+.top-zone {
+  top: 0; /* Neo chặt lên đỉnh */
+  justify-content: flex-start;
+}
+
+/* --- KHỐI DƯỚI (BOTTOM ZONE) --- */
+.bottom-zone {
+  /* Neo chặt xuống đáy. */
+  /* Muốn nhích toàn bộ khối này xuống? Chỉnh số này thành số âm (ví dụ -1vmin) */
+  bottom: -1vmin; 
+
+  justify-content: flex-end;
+}
+
+/* --- CẤU HÌNH TỪNG DÒNG QUÂN --- */
 .pool-row {
   display: flex;
   align-items: center; 
@@ -392,14 +390,9 @@
   background: transparent;
   padding: 0;
   width: 100%;
-  
-  /* Để height auto hoặc fix nhỏ để Flexbox tự chia khoảng cách */
-  height: 5.5vmin; 
-  
-  min-height: 0;
+  height: 6vmin; /* Chiều cao mỗi slot quân */
 }
 
-/* --- WRAPPER ẢNH --- */
 .pool-img-wrapper {
   width: 35%;
   height: 100%;
@@ -408,21 +401,16 @@
   align-items: center; 
 }
 
-/* --- CĂN CHỈNH 2 ĐẦU MÚT (Không cần chỉnh tay nữa) --- */
-/* Flex space-between đã tự lo việc đẩy quân đầu lên đỉnh và quân cuối xuống đáy */
-
-/* 1. Xe đen (Trên cùng): Căn đỉnh */
-.top-pool .pool-row:first-child .pool-img-wrapper {
-  align-items: flex-start; 
+/* Xe đen (đầu bảng trên): Căn đỉnh */
+.top-zone .pool-row:first-child .pool-img-wrapper {
+  align-items: flex-start;
+}
+/* Tốt đỏ (cuối bảng dưới): Căn đáy */
+.bottom-zone .pool-row:last-child .pool-img-wrapper {
+  align-items: flex-end;
 }
 
-/* 2. Tốt đỏ (Dưới cùng): Căn đáy */
-.bottom-pool .pool-row:last-child .pool-img-wrapper {
-  align-items: flex-end; 
-  /* Xóa transform chỉnh tay để nó tự động theo Flexbox */
-  transform: none; 
-}
-
+/* Ảnh quân cờ */
 .pool-img {
   height: auto;
   width: auto;
@@ -432,16 +420,11 @@
   filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5)); 
 }
 
-/* Số lượng quân */
+/* Số lượng */
 .pool-num {
   font-weight: 900;
   font-size: 2.2vmin;
-  text-shadow: 
-    -1px -1px 0 #fff,  
-     1px -1px 0 #fff,
-    -1px  1px 0 #fff,
-     1px  1px 0 #fff,
-     0 0 4px rgba(0,0,0,0.8);
+  text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 0 4px rgba(0,0,0,0.8);
   flex: 1;
   text-align: center;
   line-height: 1;
@@ -450,7 +433,7 @@
 .red-num { color: #d32f2f; }
 .black-num { color: #000000; }
 
-/* Nút bấm */
+/* Nút bấm + - */
 .pool-btns {
   display: flex;
   flex-direction: column;
@@ -477,24 +460,25 @@
   transition: all 0.15s ease;
   text-shadow: 0 0 3px rgba(0,0,0,1);
 
-  &:hover:not(:disabled) {
-    color: #4caf50; 
-    transform: scale(1.3); 
-  }
-  
-  &:active:not(:disabled) {
-    transform: scale(0.9);
-  }
-
-  &:disabled {
-    opacity: 0.15; 
-    cursor: default;
-    color: #ccc;
-  }
+  &:hover:not(:disabled) { color: #4caf50; transform: scale(1.3); }
+  &:active:not(:disabled) { transform: scale(0.9); }
+  &:disabled { opacity: 0.15; cursor: default; color: #ccc; }
 }
 
-.pool-divider { display: none; }
-.pool-error { font-size: 1.5vmin; color: #ffeb3b; background: rgba(0,0,0,0.8); padding: 0.2vmin 0.8vmin; border-radius: 0.5vmin; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Thông báo lỗi nổi */
+.pool-error-floating {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.5vmin; 
+  color: #ffeb3b; 
+  background: rgba(0,0,0,0.8); 
+  padding: 0.5vmin 1vmin; 
+  border-radius: 0.5vmin; 
+  white-space: nowrap; 
+  pointer-events: none;
+  z-index: 10;
+}
 
 /* --- CÁC STYLE CŨ (GIỮ NGUYÊN) --- */
 .bg { width: 100%; height: 100%; display: block; }
