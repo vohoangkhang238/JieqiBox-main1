@@ -383,12 +383,12 @@ const currentEvalPercent = computed(() => 50)
 
 /* --- KHỐI TRÊN (QUÂN ĐEN) --- */
 .top-zone {
-  top: 0; 
-  bottom: 51%; 
-  justify-content: flex-start;
+  top: 5%; 
+  bottom: 47%; 
+  justify-content: space-between;
   gap: 0;
 }
-.top-zone .pool-row { height: 5vmin; }
+
 
 
 /* --- KHỐI DƯỚI (QUÂN ĐỎ) - ĐÃ CẬP NHẬT --- */
