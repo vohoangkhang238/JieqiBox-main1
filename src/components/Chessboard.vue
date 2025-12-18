@@ -137,13 +137,20 @@ import { useInterfaceSettings } from '@/composables/useInterfaceSettings'
 import ClearHistoryConfirmDialog from './ClearHistoryConfirmDialog.vue'
 import EvaluationChart from './EvaluationChart.vue'
 
-// --- [CẤU HÌNH] CHỈNH VỊ TRÍ & MŨI TÊN TẠI ĐÂY ---
+// --- [CẤU HÌNH] CHỈNH VỊ TRÍ & ĐỘ LỆCH (2 PHE RIÊNG BIỆT) ---
 const PAD_X = 17.5; // Lề trái phải
 const PAD_Y = 20.5; // Lề trên dưới
-// CHỈNH LỆCH MŨI TÊN THỦ CÔNG:
-const ARROW_OFFSET_X = 0;   // Số dương (+) dịch phải, Số âm (-) dịch trái
-const ARROW_OFFSET_Y = 10;   // Số dương (+) dịch xuống, Số âm (-) dịch lên
-// --------------------------------------------------
+
+// 1. CHỈNH PHE TRÊN (BLACK - Rows 0-4)
+// Vì phe trên bị lệch lên cao quá -> Cần số Dương (+) để đẩy xuống
+const TOP_OFFSET_X = 0;   
+const TOP_OFFSET_Y = 0.0; // <--- TĂNG SỐ NÀY ĐỂ ĐẨY QUÂN TRÊN XUỐNG (Thử 1.5, 2.0, 2.5...)
+
+// 2. CHỈNH PHE DƯỚI (RED - Rows 5-9)
+// Phe dưới đã chuẩn thì để 0
+const BOTTOM_OFFSET_X = 0;   
+const BOTTOM_OFFSET_Y = 0;   
+// -------------------------------------------------------------
 
 const COLS = 9, ROWS = 10;
 const GX = 100 - PAD_X, GY = 100 - PAD_Y;
@@ -249,20 +256,28 @@ const checkedKingId = computed(() => {
   return null
 })
 
-// 1. Hàm tính vị trí quân cờ (CSS)
-const percentFromRC = (row: number, col: number) => ({ 
-  x: OX + (col / (COLS - 1)) * GX, 
-  y: OY + (row / (ROWS - 1)) * GY 
-})
+// 1. Hàm tính tọa độ quân cờ (CSS) + TỰ ĐỘNG CHỈNH LỆCH THEO PHE
+const percentFromRC = (row: number, col: number) => { 
+  let x = OX + (col / (COLS - 1)) * GX;
+  let y = OY + (row / (ROWS - 1)) * GY;
 
-// 2. Hàm tính vị trí mũi tên (SVG)
-// SỬA: Lấy kết quả từ hàm xếp quân VÀ CỘNG THÊM OFFSET CỦA BẠN
-const percentToSvgCoords = (row: number, col: number) => {
-  const { x, y } = percentFromRC(row, col)
-  return { 
-    x: x + ARROW_OFFSET_X, 
-    y: y + ARROW_OFFSET_Y 
+  // Logic: Nếu hàng < 5 (Nửa trên) -> Dùng offset của phe trên
+  // Nếu hàng >= 5 (Nửa dưới) -> Dùng offset của phe dưới
+  // Điều này giúp khắc phục lỗi ảnh nền không đối xứng
+  if (row < 5) {
+     x += TOP_OFFSET_X;
+     y += TOP_OFFSET_Y;
+  } else {
+     x += BOTTOM_OFFSET_X;
+     y += BOTTOM_OFFSET_Y;
   }
+
+  return { x, y };
+}
+
+// 2. Hàm mũi tên (SVG) - Gọi hàm trên để đồng bộ vị trí
+const percentToSvgCoords = (row: number, col: number) => {
+  return percentFromRC(row, col);
 }
 
 const img = (p: Piece) => new URL(`../assets/${p.isKnown ? p.name : 'dark_piece'}.png`, import.meta.url).href
