@@ -264,7 +264,7 @@ const percentToSvgCoords = (row: number, col: number) => ({ x: (OX + (col / (COL
 const img = (p: Piece) => new URL(`../assets/${p.isKnown ? p.name : 'dark_piece'}.png`, import.meta.url).href
 const rcStyle = (r: number, c: number, zIndex?: number) => {
   const { x, y } = percentFromRC(r, c)
-  return { top: `${y}%`, left: `${x}%`, width: '12%', transform: 'translate(-50%,-50%)', ...(zIndex !== undefined && { zIndex: zIndex }) }
+  return { top: `${y}%`, left: `${x}%`, width: '11.5%', transform: 'translate(-50%,-50%)', ...(zIndex !== undefined && { zIndex: zIndex }) }
 }
 const rankLabelStyle = (index: number) => ({ top: `${percentFromRC(index, 0).y}%`, transform: 'translateY(-50%)' })
 const fileLabelStyle = (index: number) => ({ left: `${percentFromRC(0, index).x}%`, transform: 'translateX(-50%)' })
