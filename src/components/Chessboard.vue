@@ -97,12 +97,10 @@
       
       <div class="absolute-pool top-zone">
         <div v-for="item in (isRedOnTop ? redPool : blackPool)" :key="item.char" class="pool-row">
-          
           <div class="pool-img-wrapper">
              <img :src="getPieceImageUrl(item.name)" class="pool-img" />
              <div v-if="item.count > 0" class="pool-num-badge">{{ item.count }}</div>
           </div>
-
           <div class="pool-btns">
              <button class="tiny-btn btn-inc" @click="adjustUnrevealedCount(item.char, 1)" :disabled="item.count >= item.max">+</button>
              <button class="tiny-btn btn-dec" @click="adjustUnrevealedCount(item.char, -1)" :disabled="item.count <= 0">-</button>
@@ -116,12 +114,10 @@
 
       <div class="absolute-pool bottom-zone">
         <div v-for="item in (isRedOnTop ? blackPool : redPool)" :key="item.char" class="pool-row">
-          
           <div class="pool-img-wrapper">
              <img :src="getPieceImageUrl(item.name)" class="pool-img" />
              <div v-if="item.count > 0" class="pool-num-badge">{{ item.count }}</div>
           </div>
-
           <div class="pool-btns">
              <button class="tiny-btn btn-inc" @click="adjustUnrevealedCount(item.char, 1)" :disabled="item.count >= item.max">+</button>
              <button class="tiny-btn btn-dec" @click="adjustUnrevealedCount(item.char, -1)" :disabled="item.count <= 0">-</button>
@@ -316,6 +312,7 @@ const currentEvalPercent = computed(() => 50)
 </script>
 
 <style scoped lang="scss">
+/* --- LAYOUT --- */
 .chessboard-wrapper {
   width: 100%;
   height: 100%;
@@ -350,11 +347,9 @@ const currentEvalPercent = computed(() => 50)
   min-width: 0;
   height: 100%; 
   position: relative; 
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(10px);
-  border-radius: 1vmin;
+  background: transparent; 
   border: none;
-  padding: 1vmin;
+  padding: 0;
   overflow: visible;
 }
 
@@ -381,6 +376,7 @@ const currentEvalPercent = computed(() => 50)
   gap: 0; 
 }
 
+/* --- DÒNG QUÂN (HÀNG) --- */
 .pool-row {
   display: flex;
   align-items: center; 
@@ -393,6 +389,7 @@ const currentEvalPercent = computed(() => 50)
   min-height: 0;
 }
 
+/* --- ẢNH + BADGE --- */
 .pool-img-wrapper {
   width: 45%; 
   height: 100%;
@@ -428,23 +425,38 @@ const currentEvalPercent = computed(() => 50)
 
 .pool-img { height: auto; width: auto; max-height: 100%; max-width: 100%; object-fit: contain; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5)); }
 
+/* --- [CHỈNH SỬA] NÚT BẤM (CONTAINER) --- */
 .pool-btns {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 0.3vmin; 
+  
+  /* Tạo khoảng cách rõ ràng giữa 2 nút */
+  gap: 0.5vmin; 
+  
+  /* Container trong suốt, không nền */
+  background: transparent; 
+  
   height: 40%; 
   width: 20%; 
   margin-right: 0;
 }
 
+/* --- [CHỈNH SỬA] NÚT BẤM (RIÊNG BIỆT) --- */
 .tiny-btn {
   flex: 1;
   width: 100%;
   border: none;
-  background: #ffffff; 
-  border-radius: 0.6vmin; 
+  
+  /* 1. Nền trắng riêng biệt cho từng nút */
+  background: #ffffff;
+  
+  /* 2. Bo góc từng nút */
+  border-radius: 0.5vmin; 
+  
+  /* 3. Đổ bóng riêng */
   box-shadow: 0 0.2vmin 0.5vmin rgba(0,0,0,0.2); 
+  
   font-size: 2.2vmin; 
   font-weight: 900;
   padding: 0;
@@ -454,20 +466,26 @@ const currentEvalPercent = computed(() => 50)
   justify-content: center;
   transition: all 0.15s ease;
   line-height: 0.8;
+  
+  /* Chữ không cần viền vì nền trắng đã nổi rồi */
   text-shadow: none;
 
   &:hover:not(:disabled) { transform: scale(1.1); box-shadow: 0 0.3vmin 0.8vmin rgba(0,0,0,0.3); }
   &:active:not(:disabled) { transform: scale(0.95); }
   
+  /* Disabled thì mờ đi, vẫn giữ nền trắng và màu chữ */
   &:disabled { 
     opacity: 0.5; 
     cursor: default; 
   }
 }
 
+/* Màu chữ Đỏ và Đen */
 .btn-inc { color: #e53935; }
 .btn-dec { color: #000000; }
 
+
+/* --- CÁC PHẦN KHÁC (GIỮ NGUYÊN) --- */
 .pool-error-floating { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5vmin; color: #ffeb3b; background: rgba(0,0,0,0.8); padding: 0.5vmin 1vmin; border-radius: 0.5vmin; white-space: nowrap; pointer-events: none; z-index: 10; }
 .bg { width: 100%; height: 100%; display: block; }
 .pieces { position: absolute; inset: 0; z-index: 20; }
