@@ -443,17 +443,17 @@ const currentEvalPercent = computed(() => 50)
   z-index: 10;
 }
 
-/* [MỚI] MÀU BADGE ĐỎ (QUÂN ĐỎ) */
+/* [ĐÃ SỬA] BADGE ĐỎ */
 .badge-red {
   background-color: #f44336; 
   color: white;
 }
 
-/* [MỚI] MÀU BADGE ĐEN (QUÂN ĐEN) */
+/* [ĐÃ SỬA] BADGE ĐEN (NỀN ĐEN - CHỮ TRẮNG) */
 .badge-black {
   background-color: #000000; 
   color: white;
-  border-color: #444; /* Viền xám nhẹ cho nổi trên nền tối */
+  border-color: #666; /* Viền xám để nổi trên nền tối */
 }
 
 
@@ -474,7 +474,7 @@ const currentEvalPercent = computed(() => 50)
   margin-right: 0;
 }
 
-/* --- STYLE CƠ BẢN CỦA NÚT --- */
+/* --- STYLE NÚT BẤM --- */
 .tiny-btn {
   flex: 1;
   width: 100%;
@@ -496,18 +496,18 @@ const currentEvalPercent = computed(() => 50)
   &:disabled { opacity: 0.5; cursor: default; }
 }
 
-/* --- STYLE RIÊNG CHO NÚT ĐỎ (QUÂN ĐỎ) --- */
+/* [ĐÃ SỬA] NÚT ĐỎ: NỀN TRẮNG - CHỮ ĐỎ */
 .tiny-btn.btn-red {
-  background: #ffffff;
-  color: #e53935;
+  background-color: #ffffff !important;
+  color: #e53935 !important;
   box-shadow: 0 0.2vmin 0.5vmin rgba(0,0,0,0.2); 
 }
 
-/* --- STYLE RIÊNG CHO NÚT ĐEN (QUÂN ĐEN) --- */
+/* [ĐÃ SỬA] NÚT ĐEN: NỀN ĐEN - CHỮ TRẮNG (TUYỆT ĐỐI) */
 .tiny-btn.btn-black {
-  background: #000000;
-  color: #ffffff;
-  border: 1px solid #444; 
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border: 1px solid #555; 
   box-shadow: 0 0.2vmin 0.5vmin rgba(255,255,255,0.2); 
 }
 
