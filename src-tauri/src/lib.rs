@@ -34,8 +34,8 @@ struct TemplateState {
 }
 
 // --- CẤU HÌNH TỌA ĐỘ MUMU (BẠN CẦN ĐO LẠI TRÊN MÁY BẠN) ---
-const BOARD_X: i32 = 100;  // Tọa độ X góc trái trên bàn cờ
-const BOARD_Y: i32 = 200;  // Tọa độ Y góc trái trên bàn cờ
+const BOARD_X: i32 = 112;  // Tọa độ X góc trái trên bàn cờ
+const BOARD_Y: i32 = 813;  // Tọa độ Y góc trái trên bàn cờ
 const CELL_SIZE: u32 = 50; // Kích thước ô cờ (50x50)
 // -------------------------------------------------------------
 
