@@ -108,12 +108,10 @@
           </div>
 
           <div class="pool-btns">
-             <button class="tiny-btn" 
-                     :class="item.name.startsWith('red') ? 'btn-red' : 'btn-black'" 
+             <button class="tiny-btn btn-red" 
                      @click="adjustUnrevealedCount(item.char, 1)" 
                      :disabled="item.count >= item.max">+</button>
-             <button class="tiny-btn" 
-                     :class="item.name.startsWith('red') ? 'btn-red' : 'btn-black'" 
+             <button class="tiny-btn btn-red" 
                      @click="adjustUnrevealedCount(item.char, -1)" 
                      :disabled="item.count <= 0">-</button>
           </div>
@@ -137,12 +135,10 @@
           </div>
 
           <div class="pool-btns">
-             <button class="tiny-btn" 
-                     :class="item.name.startsWith('red') ? 'btn-red' : 'btn-black'" 
+             <button class="tiny-btn btn-red" 
                      @click="adjustUnrevealedCount(item.char, 1)" 
                      :disabled="item.count >= item.max">+</button>
-             <button class="tiny-btn" 
-                     :class="item.name.startsWith('red') ? 'btn-red' : 'btn-black'" 
+             <button class="tiny-btn btn-red" 
                      @click="adjustUnrevealedCount(item.char, -1)" 
                      :disabled="item.count <= 0">-</button>
           </div>
@@ -201,9 +197,8 @@ const flipSelectionPieces = computed(() => {
     })
 })
 
-// [ĐÃ SỬA] Radius nhỏ gọn hơn (19) để menu 3.5vmin chụm lại đẹp
 const getRadialItemStyle = (index: number, total: number) => {
-  const radiusPercent = 19
+  const radiusPercent = 22
   const angleStep = (2 * Math.PI) / total
   const angle = index * angleStep - (Math.PI / 2)
   const x = 50 + radiusPercent * Math.cos(angle)
@@ -450,7 +445,7 @@ const currentEvalPercent = computed(() => 50)
   color: white;
 }
 
-/* BADGE ĐEN (Nền đen - Chữ trắng) */
+/* BADGE ĐEN */
 .badge-black {
   background-color: #000000; 
   color: white;
@@ -504,13 +499,7 @@ const currentEvalPercent = computed(() => 50)
   box-shadow: 0 0.2vmin 0.5vmin rgba(0,0,0,0.2); 
 }
 
-/* [ĐÃ SỬA] NÚT ĐEN (NỀN ĐEN - CHỮ TRẮNG) */
-.tiny-btn.btn-black {
-  background-color: #000000 !important;
-  color: #ffffff !important;
-  border: 1px solid #555; 
-  box-shadow: 0 0.2vmin 0.5vmin rgba(255,255,255,0.2); 
-}
+/* [ĐÃ XÓA] Style nút đen không còn cần thiết */
 
 
 /* --- CÁC PHẦN KHÁC (GIỮ NGUYÊN) --- */
@@ -539,7 +528,7 @@ const currentEvalPercent = computed(() => 50)
 .board-labels { overflow: visible; .rank-labels span { position: absolute; right: -1.5vmin; color: #888; font-weight: bold; font-size: 1.5vmin; } .file-labels span { position: absolute; bottom: -2vmin; color: #888; font-weight: bold; font-size: 1.5vmin; } }
 .al { stroke-width: 1.5; stroke-opacity: 0.8; }
 
-/* --- MENU LẬT QUÂN NHỎ GỌN (3.5vmin) --- */
+/* --- MENU LẬT QUÂN NHỎ GỌN (4.5vmin) --- */
 .radial-menu-container {
   position: absolute;
   transform: translate(-50%, -50%);
@@ -558,10 +547,10 @@ const currentEvalPercent = computed(() => 50)
 
 .radial-item {
   position: absolute;
-  width: 3.5vmin; 
-  height: 3.5vmin;
-  margin-left: -1.75vmin; 
-  margin-top: -1.75vmin;
+  width: 4.5vmin; 
+  height: 4.5vmin;
+  margin-left: -2.25vmin; 
+  margin-top: -2.25vmin;
   border-radius: 50%;
   background: rgba(30, 30, 30, 0.95);
   border: 0.2vmin solid rgba(255, 255, 255, 0.5);
@@ -599,9 +588,9 @@ const currentEvalPercent = computed(() => 50)
   right: -0.5vmin;
   background: #f44336;
   color: white;
-  font-size: 0.9vmin; 
-  width: 1.5vmin;
-  height: 1.5vmin;
+  font-size: 1vmin; 
+  width: 1.8vmin;
+  height: 1.8vmin;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -619,7 +608,7 @@ const currentEvalPercent = computed(() => 50)
   padding: 1vmin 2vmin; 
   border-radius: 0.8vmin;
   font-weight: bold;
-  font-size: 1.6vmin; 
+  font-size: 1.8vmin; 
   cursor: pointer;
   white-space: nowrap;
   box-shadow: 0 0.5vmin 1.5vmin rgba(0,0,0,0.5);
