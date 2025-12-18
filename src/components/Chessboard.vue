@@ -100,12 +100,22 @@
           
           <div class="pool-img-wrapper">
              <img :src="getPieceImageUrl(item.name)" class="pool-img" />
-             <div v-if="item.count > 0" class="pool-num-badge">{{ item.count }}</div>
+             <div v-if="item.count > 0" 
+                  class="pool-num-badge"
+                  :class="item.name.startsWith('red') ? 'badge-red' : 'badge-black'">
+                  {{ item.count }}
+             </div>
           </div>
 
           <div class="pool-btns">
-             <button class="tiny-btn btn-inc" @click="adjustUnrevealedCount(item.char, 1)" :disabled="item.count >= item.max">+</button>
-             <button class="tiny-btn btn-dec" @click="adjustUnrevealedCount(item.char, -1)" :disabled="item.count <= 0">-</button>
+             <button class="tiny-btn" 
+                     :class="item.name.startsWith('red') ? 'btn-red' : 'btn-black'" 
+                     @click="adjustUnrevealedCount(item.char, 1)" 
+                     :disabled="item.count >= item.max">+</button>
+             <button class="tiny-btn" 
+                     :class="item.name.startsWith('red') ? 'btn-red' : 'btn-black'" 
+                     @click="adjustUnrevealedCount(item.char, -1)" 
+                     :disabled="item.count <= 0">-</button>
           </div>
         </div>
       </div>
@@ -119,12 +129,22 @@
           
           <div class="pool-img-wrapper">
              <img :src="getPieceImageUrl(item.name)" class="pool-img" />
-             <div v-if="item.count > 0" class="pool-num-badge">{{ item.count }}</div>
+             <div v-if="item.count > 0" 
+                  class="pool-num-badge"
+                  :class="item.name.startsWith('red') ? 'badge-red' : 'badge-black'">
+                  {{ item.count }}
+             </div>
           </div>
 
           <div class="pool-btns">
-             <button class="tiny-btn btn-inc" @click="adjustUnrevealedCount(item.char, 1)" :disabled="item.count >= item.max">+</button>
-             <button class="tiny-btn btn-dec" @click="adjustUnrevealedCount(item.char, -1)" :disabled="item.count <= 0">-</button>
+             <button class="tiny-btn" 
+                     :class="item.name.startsWith('red') ? 'btn-red' : 'btn-black'" 
+                     @click="adjustUnrevealedCount(item.char, 1)" 
+                     :disabled="item.count >= item.max">+</button>
+             <button class="tiny-btn" 
+                     :class="item.name.startsWith('red') ? 'btn-red' : 'btn-black'" 
+                     @click="adjustUnrevealedCount(item.char, -1)" 
+                     :disabled="item.count <= 0">-</button>
           </div>
         </div>
       </div>
@@ -181,7 +201,6 @@ const flipSelectionPieces = computed(() => {
     })
 })
 
-// [ĐÃ SỬA] Thu nhỏ bán kính (radiusPercent) xuống 22 để các quân gom lại gọn hơn
 const getRadialItemStyle = (index: number, total: number) => {
   const radiusPercent = 22
   const angleStep = (2 * Math.PI) / total
@@ -405,12 +424,11 @@ const currentEvalPercent = computed(() => 50)
   overflow: visible; 
 }
 
+/* BADGE CƠ BẢN */
 .pool-num-badge {
   position: absolute;
   top: -0.2vmin;
   right: -0.2vmin;
-  background-color: #f44336; 
-  color: white;
   width: 1.8vmin;
   height: 1.8vmin;
   border-radius: 50%;
@@ -425,12 +443,26 @@ const currentEvalPercent = computed(() => 50)
   z-index: 10;
 }
 
+/* [MỚI] MÀU BADGE ĐỎ (QUÂN ĐỎ) */
+.badge-red {
+  background-color: #f44336; 
+  color: white;
+}
+
+/* [MỚI] MÀU BADGE ĐEN (QUÂN ĐEN) */
+.badge-black {
+  background-color: #000000; 
+  color: white;
+  border-color: #444; /* Viền xám nhẹ cho nổi trên nền tối */
+}
+
+
 .top-zone .pool-row:first-child .pool-img-wrapper { align-items: flex-start; }
 .bottom-zone .pool-row:last-child .pool-img-wrapper { align-items: flex-end; transform: none; }
 
 .pool-img { height: auto; width: auto; max-height: 100%; max-width: 100%; object-fit: contain; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5)); }
 
-/* --- NÚT BẤM (Ô VUÔNG TRẮNG) --- */
+/* --- NÚT BẤM (CONTAINER) --- */
 .pool-btns {
   display: flex;
   flex-direction: column;
@@ -442,13 +474,12 @@ const currentEvalPercent = computed(() => 50)
   margin-right: 0;
 }
 
+/* --- STYLE CƠ BẢN CỦA NÚT --- */
 .tiny-btn {
   flex: 1;
   width: 100%;
   border: none;
-  background: #ffffff;
   border-radius: 0.5vmin; 
-  box-shadow: 0 0.2vmin 0.5vmin rgba(0,0,0,0.2); 
   font-size: 2.2vmin; 
   font-weight: 900;
   padding: 0;
@@ -465,10 +496,49 @@ const currentEvalPercent = computed(() => 50)
   &:disabled { opacity: 0.5; cursor: default; }
 }
 
-.btn-inc { color: #e53935; }
-.btn-dec { color: #000000; }
+/* --- STYLE RIÊNG CHO NÚT ĐỎ (QUÂN ĐỎ) --- */
+.tiny-btn.btn-red {
+  background: #ffffff;
+  color: #e53935;
+  box-shadow: 0 0.2vmin 0.5vmin rgba(0,0,0,0.2); 
+}
 
-/* --- [ĐÃ SỬA] MENU LẬT QUÂN NHỎ GỌN (4.5vmin) --- */
+/* --- STYLE RIÊNG CHO NÚT ĐEN (QUÂN ĐEN) --- */
+.tiny-btn.btn-black {
+  background: #000000;
+  color: #ffffff;
+  border: 1px solid #444; 
+  box-shadow: 0 0.2vmin 0.5vmin rgba(255,255,255,0.2); 
+}
+
+
+/* --- CÁC PHẦN KHÁC (GIỮ NGUYÊN) --- */
+.pool-error-floating { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5vmin; color: #ffeb3b; background: rgba(0,0,0,0.8); padding: 0.5vmin 1vmin; border-radius: 0.5vmin; white-space: nowrap; pointer-events: none; z-index: 10; }
+.bg { width: 100%; height: 100%; display: block; }
+.pieces { position: absolute; inset: 0; z-index: 20; }
+.piece { position: absolute; aspect-ratio: 1; pointer-events: none; &.animated { transition: all 0.2s ease; } &.inCheck { transform: translate(-50%, -50%) scale(1.1); filter: drop-shadow(0 0 10px red); z-index: 100; } &.being-flipped { opacity: 0.3; filter: grayscale(1); } }
+.flip-overlay-fixed { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.3); z-index: 9000; cursor: not-allowed; }
+.selection-mark { position: absolute; width: 12%; aspect-ratio: 1; transform: translate(-50%, -50%); z-index: 30; pointer-events: none; }
+.corner { position: absolute; width: 25%; height: 25%; border: 3px solid #007bff; box-shadow: 0 0 4px rgba(0, 123, 255, 0.6); }
+.top-left { top: 0; left: 0; border-right: none; border-bottom: none; border-top-left-radius: 10px; }
+.top-right { top: 0; right: 0; border-left: none; border-bottom: none; border-top-right-radius: 10px; }
+.bottom-left { bottom: 0; left: 0; border-right: none; border-top: none; border-bottom-left-radius: 10px; }
+.bottom-right { bottom: 0; right: 0; border-left: none; border-top: none; border-bottom-right-radius: 10px; }
+.highlight.from { position: absolute; transform: translate(-50%,-50%); width: 2.5%; aspect-ratio: 1; background: rgba(255,0,0,0.5); border-radius: 50%; pointer-events: none; }
+.highlight.to { position: absolute; transform: translate(-50%,-50%); width: 12%; aspect-ratio: 1; border: 2px solid rgba(0,255,255,0.7); pointer-events: none; border-radius: 8px; }
+.valid-move-dot { position: absolute; transform: translate(-50%,-50%); width: 2.5%; aspect-ratio: 1; background: #4caf50; border-radius: 50%; pointer-events: none; z-index: 15; box-shadow: 0 0 5px #4caf50; }
+.eval-bar { position: absolute; top: 0; bottom: 0; left: -1.5vmin; width: 1vmin; background: #ddd; border-radius: 0.5vmin; overflow: hidden; z-index: 5; border: 1px solid #999; }
+.eval-top { width: 100%; transition: height 0.5s ease-in-out; }
+.eval-bottom { width: 100%; transition: height 0.5s ease-in-out; }
+.eval-marker { position: absolute; left: 0; right: 0; height: 2px; background: #fff; box-shadow: 0 0 2px #000; }
+.flip-hint-area { margin-top: 10px; background: rgba(0,0,0,0.7); color: #fff; padding: 8px; border-radius: 6px; text-align: center; font-size: 14px; backdrop-filter: blur(4px); }
+.ar, .user-drawings, .board-labels { position: absolute; inset: 0; pointer-events: none; }
+.annotation-layer { position: absolute; inset: 0; pointer-events: none; z-index: 50; }
+.annotation-badge { position: absolute; top: -1vmin; right: -1vmin; width: 2.5vmin; height: 2.5vmin; background: #007bff; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2vmin; border: 0.2vmin solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+.board-labels { overflow: visible; .rank-labels span { position: absolute; right: -1.5vmin; color: #888; font-weight: bold; font-size: 1.5vmin; } .file-labels span { position: absolute; bottom: -2vmin; color: #888; font-weight: bold; font-size: 1.5vmin; } }
+.al { stroke-width: 1.5; stroke-opacity: 0.8; }
+
+/* --- MENU LẬT QUÂN NHỎ GỌN (4.5vmin) --- */
 .radial-menu-container {
   position: absolute;
   transform: translate(-50%, -50%);
@@ -487,14 +557,10 @@ const currentEvalPercent = computed(() => 50)
 
 .radial-item {
   position: absolute;
-  /* Kích thước nhỏ xíu như yêu cầu */
   width: 4.5vmin; 
   height: 4.5vmin;
-  
-  /* Căn tâm */
   margin-left: -2.25vmin; 
   margin-top: -2.25vmin;
-  
   border-radius: 50%;
   background: rgba(30, 30, 30, 0.95);
   border: 0.2vmin solid rgba(255, 255, 255, 0.5);
@@ -526,19 +592,15 @@ const currentEvalPercent = computed(() => 50)
   pointer-events: none;
 }
 
-/* Số trên menu lật (cũng thu nhỏ) */
 .radial-count {
   position: absolute;
   top: -0.5vmin;
   right: -0.5vmin;
   background: #f44336;
   color: white;
-  
-  /* Font và kích thước nhỏ lại */
   font-size: 1vmin; 
   width: 1.8vmin;
   height: 1.8vmin;
-  
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -548,7 +610,6 @@ const currentEvalPercent = computed(() => 50)
   font-weight: bold;
 }
 
-/* Nút báo lỗi trên menu lật */
 .radial-error-btn {
   position: absolute;
   transform: translate(-50%, -50%);
@@ -564,30 +625,4 @@ const currentEvalPercent = computed(() => 50)
   pointer-events: auto;
   z-index: 10001;
 }
-
-/* Các phần khác */
-.pool-error-floating { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5vmin; color: #ffeb3b; background: rgba(0,0,0,0.8); padding: 0.5vmin 1vmin; border-radius: 0.5vmin; white-space: nowrap; pointer-events: none; z-index: 10; }
-.bg { width: 100%; height: 100%; display: block; }
-.pieces { position: absolute; inset: 0; z-index: 20; }
-.piece { position: absolute; aspect-ratio: 1; pointer-events: none; &.animated { transition: all 0.2s ease; } &.inCheck { transform: translate(-50%, -50%) scale(1.1); filter: drop-shadow(0 0 10px red); z-index: 100; } &.being-flipped { opacity: 0.3; filter: grayscale(1); } }
-.flip-overlay-fixed { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.3); z-index: 9000; cursor: not-allowed; }
-.selection-mark { position: absolute; width: 12%; aspect-ratio: 1; transform: translate(-50%, -50%); z-index: 30; pointer-events: none; }
-.corner { position: absolute; width: 25%; height: 25%; border: 3px solid #007bff; box-shadow: 0 0 4px rgba(0, 123, 255, 0.6); }
-.top-left { top: 0; left: 0; border-right: none; border-bottom: none; border-top-left-radius: 10px; }
-.top-right { top: 0; right: 0; border-left: none; border-bottom: none; border-top-right-radius: 10px; }
-.bottom-left { bottom: 0; left: 0; border-right: none; border-top: none; border-bottom-left-radius: 10px; }
-.bottom-right { bottom: 0; right: 0; border-left: none; border-top: none; border-bottom-right-radius: 10px; }
-.highlight.from { position: absolute; transform: translate(-50%,-50%); width: 2.5%; aspect-ratio: 1; background: rgba(255,0,0,0.5); border-radius: 50%; pointer-events: none; }
-.highlight.to { position: absolute; transform: translate(-50%,-50%); width: 12%; aspect-ratio: 1; border: 2px solid rgba(0,255,255,0.7); pointer-events: none; border-radius: 8px; }
-.valid-move-dot { position: absolute; transform: translate(-50%,-50%); width: 2.5%; aspect-ratio: 1; background: #4caf50; border-radius: 50%; pointer-events: none; z-index: 15; box-shadow: 0 0 5px #4caf50; }
-.eval-bar { position: absolute; top: 0; bottom: 0; left: -1.5vmin; width: 1vmin; background: #ddd; border-radius: 0.5vmin; overflow: hidden; z-index: 5; border: 1px solid #999; }
-.eval-top { width: 100%; transition: height 0.5s ease-in-out; }
-.eval-bottom { width: 100%; transition: height 0.5s ease-in-out; }
-.eval-marker { position: absolute; left: 0; right: 0; height: 2px; background: #fff; box-shadow: 0 0 2px #000; }
-.flip-hint-area { margin-top: 10px; background: rgba(0,0,0,0.7); color: #fff; padding: 8px; border-radius: 6px; text-align: center; font-size: 14px; backdrop-filter: blur(4px); }
-.ar, .user-drawings, .board-labels { position: absolute; inset: 0; pointer-events: none; }
-.annotation-layer { position: absolute; inset: 0; pointer-events: none; z-index: 50; }
-.annotation-badge { position: absolute; top: -1vmin; right: -1vmin; width: 2.5vmin; height: 2.5vmin; background: #007bff; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2vmin; border: 0.2vmin solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
-.board-labels { overflow: visible; .rank-labels span { position: absolute; right: -1.5vmin; color: #888; font-weight: bold; font-size: 1.5vmin; } .file-labels span { position: absolute; bottom: -2vmin; color: #888; font-weight: bold; font-size: 1.5vmin; } }
-.al { stroke-width: 1.5; stroke-opacity: 0.8; }
 </style>
