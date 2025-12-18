@@ -365,7 +365,7 @@
   flex-direction: column;
 }
 
-/* --- [GIỮ NGUYÊN] KHỐI TRÊN (QUÂN ĐEN) --- */
+/* --- [VÙNG TRÊN] QUÂN ĐEN --- */
 .top-zone {
   top: 0; 
   bottom: 49%; 
@@ -375,7 +375,7 @@
 .top-zone .pool-row { height: 5vmin; }
 
 
-/* --- [GIỮ NGUYÊN] KHỐI DƯỚI (QUÂN ĐỎ) --- */
+/* --- [VÙNG DƯỚI] QUÂN ĐỎ --- */
 .bottom-zone {
   top: 60%; 
   bottom: -12%; 
@@ -388,10 +388,8 @@
 .pool-row {
   display: flex;
   align-items: center; 
-  
-  /* [ĐÃ CHỈNH SỬA] Nhích nút lại gần ảnh hơn (0.5vmin thay vì 1.5vmin) */
+  /* Khoảng cách giữa Ảnh và cụm Nút */
   gap: 1.3vmin; 
-  
   justify-content: center; 
   background: transparent;
   padding: 0;
@@ -439,22 +437,38 @@
 /* ẢNH */
 .pool-img { height: auto; width: auto; max-height: 100%; max-width: 100%; object-fit: contain; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5)); }
 
-/* --- NÚT BẤM --- */
+/* --- [ĐÃ SỬA] CONTAINER NÚT BẤM --- */
 .pool-btns {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  height: 35%; 
+  
+  /* Tạo khoảng cách giữa 2 nút trắng (như ảnh mẫu) */
+  gap: 0.3vmin; 
+  
+  /* Tăng chiều cao lên 40% để chứa đủ 2 ô vuông trắng có gap */
+  height: 40%; 
+  
   width: 20%; 
-  gap: 0; 
   margin-right: 0;
 }
 
+/* --- [ĐÃ SỬA] STYLE NÚT BẤM (Ô TRẮNG BO GÓC) --- */
 .tiny-btn {
   flex: 1;
   width: 100%;
   border: none;
-  background: transparent;
+  
+  /* 1. Nền trắng */
+  background: #ffffff; 
+  
+  /* 2. Bo góc */
+  border-radius: 0.6vmin; 
+  
+  /* 3. Đổ bóng nhẹ */
+  box-shadow: 0 0.2vmin 0.5vmin rgba(0,0,0,0.2); 
+  
+  /* Font chữ */
   font-size: 2.2vmin; 
   font-weight: 900;
   padding: 0;
@@ -465,25 +479,110 @@
   transition: all 0.15s ease;
   line-height: 0.8;
   
-  text-shadow: 
-      1px 1px 0 #fff, 
-     -1px -1px 0 #fff, 
-      1px -1px 0 #fff, 
-     -1px 1px 0 #fff;
+  /* Bỏ viền chữ (text-shadow) cũ vì nền đã trắng rồi */
+  text-shadow: none;
 
-  &:hover:not(:disabled) { transform: scale(1.3); }
-  &:active:not(:disabled) { transform: scale(0.9); }
+  &:hover:not(:disabled) { transform: scale(1.1); box-shadow: 0 0.3vmin 0.8vmin rgba(0,0,0,0.3); }
+  &:active:not(:disabled) { transform: scale(0.95); }
   
-  /* [QUAN TRỌNG] Vẫn giữ màu, chỉ mờ 50% khi disabled */
   &:disabled { 
     opacity: 0.5; 
     cursor: default; 
   }
 }
 
-/* MÀU SẮC RIÊNG BIỆT */
+/* MÀU SẮC RIÊNG BIỆT (Vẫn giữ Đỏ/Đen) */
 .btn-inc { color: #e53935; }
 .btn-dec { color: #000000; }
+
+
+/* --- MENU LẬT QUÂN --- */
+.radial-menu-container {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 9999;
+  animation: popIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  pointer-events: auto;
+  width: 0;
+  height: 0;
+  overflow: visible;
+}
+
+@keyframes popIn {
+  from { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+  to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+
+.radial-item {
+  position: absolute;
+  width: 9vmin; 
+  height: 9vmin;
+  margin-left: -4.5vmin; 
+  margin-top: -4.5vmin;
+  border-radius: 50%;
+  background: rgba(30, 30, 30, 0.95);
+  border: 0.3vmin solid rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 0.5vmin 1.5vmin rgba(0,0,0,0.6);
+  transition: all 0.1s;
+  pointer-events: auto;
+
+  &:hover {
+    transform: scale(1.2);
+    background: #222;
+    border-color: #00d2ff;
+    z-index: 10000;
+  }
+  
+  &:active {
+    transform: scale(0.95);
+    background: #000;
+  }
+}
+
+.radial-img {
+  width: 85%;
+  height: 85%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.radial-count {
+  position: absolute;
+  top: -0.5vmin;
+  right: -0.5vmin;
+  background: #f44336;
+  color: white;
+  font-size: 1.8vmin; 
+  width: 3vmin;
+  height: 3vmin;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0.2vmin solid #fff;
+  pointer-events: none;
+  font-weight: bold;
+}
+
+.radial-error-btn {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  background: #f44336;
+  color: white;
+  padding: 1.5vmin 2.5vmin; 
+  border-radius: 1vmin;
+  font-weight: bold;
+  font-size: 2vmin; 
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 0.5vmin 1.5vmin rgba(0,0,0,0.5);
+  pointer-events: auto;
+  z-index: 10001;
+}
 
 /* Các phần khác giữ nguyên */
 .pool-error-floating { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5vmin; color: #ffeb3b; background: rgba(0,0,0,0.8); padding: 0.5vmin 1vmin; border-radius: 0.5vmin; white-space: nowrap; pointer-events: none; z-index: 10; }
@@ -491,12 +590,6 @@
 .pieces { position: absolute; inset: 0; z-index: 20; }
 .piece { position: absolute; aspect-ratio: 1; pointer-events: none; &.animated { transition: all 0.2s ease; } &.inCheck { transform: translate(-50%, -50%) scale(1.1); filter: drop-shadow(0 0 10px red); z-index: 100; } &.being-flipped { opacity: 0.3; filter: grayscale(1); } }
 .flip-overlay-fixed { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.3); z-index: 9000; cursor: not-allowed; }
-.radial-menu-container { position: absolute; transform: translate(-50%, -50%); z-index: 9999; animation: popIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: auto; width: 0; height: 0; overflow: visible; }
-@keyframes popIn { from { transform: translate(-50%, -50%) scale(0); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
-.radial-item { position: absolute; width: 45px; height: 45px; border-radius: 50%; background: rgba(30, 30, 30, 0.95); border: 2px solid rgba(255, 255, 255, 0.5); display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.6); transition: all 0.1s; pointer-events: auto; margin-left: -22.5px; margin-top: -22.5px; &:hover { transform: scale(1.2); background: #222; border-color: #00d2ff; z-index: 10000; } &:active { transform: scale(0.95); background: #000; } }
-.radial-img { width: 85%; height: 85%; object-fit: contain; pointer-events: none; }
-.radial-count { position: absolute; top: -5px; right: -5px; background: #f44336; color: white; font-size: 10px; font-weight: bold; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid #fff; pointer-events: none; }
-.radial-error-btn { position: absolute; transform: translate(-50%, -50%); background: #f44336; color: white; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 12px; cursor: pointer; white-space: nowrap; box-shadow: 0 4px 10px rgba(0,0,0,0.5); pointer-events: auto; z-index: 10001; }
 .selection-mark { position: absolute; width: 12%; aspect-ratio: 1; transform: translate(-50%, -50%); z-index: 30; pointer-events: none; }
 .corner { position: absolute; width: 25%; height: 25%; border: 3px solid #007bff; box-shadow: 0 0 4px rgba(0, 123, 255, 0.6); }
 .top-left { top: 0; left: 0; border-right: none; border-bottom: none; border-top-left-radius: 10px; }
