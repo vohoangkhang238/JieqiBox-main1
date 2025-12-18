@@ -198,7 +198,7 @@ const flipSelectionPieces = computed(() => {
 })
 
 const getRadialItemStyle = (index: number, total: number) => {
-  const radiusPercent = 22
+  const radiusPercent = 30 // [ĐÃ CHỈNH] Tăng bán kính lên 30 cho thoáng
   const angleStep = (2 * Math.PI) / total
   const angle = index * angleStep - (Math.PI / 2)
   const x = 50 + radiusPercent * Math.cos(angle)
@@ -381,17 +381,23 @@ const currentEvalPercent = computed(() => 50)
   flex-direction: column;
 }
 
+/* --- KHỐI TRÊN (QUÂN ĐEN) --- */
 .top-zone {
   top: 0; 
-  bottom: 49%; 
+  bottom: 51%; 
   justify-content: flex-start;
   gap: 0;
 }
 .top-zone .pool-row { height: 5vmin; }
 
+
+/* --- KHỐI DƯỚI (QUÂN ĐỎ) - ĐÃ CẬP NHẬT --- */
 .bottom-zone {
-  top: 60%; 
+  top: 61%; 
+  
+  /* ĐẨY MẠNH XUỐNG DƯỚI NỮA (-12%) */
   bottom: -12%; 
+  
   justify-content: space-between; 
   gap: 0; 
 }
@@ -499,9 +505,6 @@ const currentEvalPercent = computed(() => 50)
   box-shadow: 0 0.2vmin 0.5vmin rgba(0,0,0,0.2); 
 }
 
-/* [ĐÃ XÓA] Style nút đen không còn cần thiết */
-
-
 /* --- CÁC PHẦN KHÁC (GIỮ NGUYÊN) --- */
 .pool-error-floating { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5vmin; color: #ffeb3b; background: rgba(0,0,0,0.8); padding: 0.5vmin 1vmin; border-radius: 0.5vmin; white-space: nowrap; pointer-events: none; z-index: 10; }
 .bg { width: 100%; height: 100%; display: block; }
@@ -547,10 +550,15 @@ const currentEvalPercent = computed(() => 50)
 
 .radial-item {
   position: absolute;
+  
+  /* [ĐÃ CHỈNH] Kích thước 4.5vmin */
   width: 4.5vmin; 
   height: 4.5vmin;
+  
+  /* [ĐÃ CHỈNH] Căn giữa tâm (một nửa của 4.5 là 2.25) */
   margin-left: -2.25vmin; 
   margin-top: -2.25vmin;
+  
   border-radius: 50%;
   background: rgba(30, 30, 30, 0.95);
   border: 0.2vmin solid rgba(255, 255, 255, 0.5);
