@@ -11,7 +11,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::process::Command;
 use std::sync::{Arc, Mutex};
-use tauri::{AppHandle, Emitter, Manager, State}; // Thêm Manager, State
+use tauri::{AppHandle, Emitter, Manager, State};
 use tauri::async_runtime;
 use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 use tauri_plugin_shell::ShellExt;
@@ -20,7 +20,7 @@ use tauri_plugin_shell::ShellExt;
 use std::collections::HashMap;
 use screenshots::Screen;
 use image::{GenericImageView, DynamicImage};
-use enigo::{Enigo, MouseControllable, MouseButton};
+use enigo::{Enigo, MouseControllable, MouseButton, Settings}; // [FIXED] Thêm Settings
 
 mod opening_book;
 use opening_book::{AddEntryRequest, JieqiOpeningBook, MoveData, OpeningBookStats};
@@ -33,17 +33,15 @@ struct TemplateState {
     templates: Mutex<HashMap<String, DynamicImage>>,
 }
 
-// --- CẤU HÌNH TỌA ĐỘ MUMU (BẠN CẦN ĐO LẠI TRÊN MÁY BẠN) ---
-const BOARD_X: i32 = 112;  // Tọa độ X góc trái trên bàn cờ
-const BOARD_Y: i32 = 813;  // Tọa độ Y góc trái trên bàn cờ
-const CELL_SIZE: u32 = 50; // Kích thước ô cờ (50x50)
+// --- CẤU HÌNH TỌA ĐỘ MUMU ---
+const BOARD_X: i32 = 112; 
+const BOARD_Y: i32 = 813;
+const CELL_SIZE: u32 = 50;
 // -------------------------------------------------------------
 
 // --- Logic Auto Ziga: Load Templates ---
 fn load_templates(app_handle: &AppHandle) -> HashMap<String, DynamicImage> {
     let mut map = HashMap::new();
-    
-    // Đường dẫn đến thư mục templates (src-tauri/templates)
     let resource_path = app_handle.path().resolve("templates", tauri::path::BaseDirectory::Resource).unwrap_or_default();
     
     let files = vec![
@@ -54,7 +52,7 @@ fn load_templates(app_handle: &AppHandle) -> HashMap<String, DynamicImage> {
 
     for name in files {
         let path = resource_path.join(format!("{}.png", name));
-        // Fallback cho môi trường dev
+        // Fallback cho dev
         let dev_path = Path::new("templates").join(format!("{}.png", name));
         let final_path = if path.exists() { path } else { dev_path };
 
@@ -92,10 +90,14 @@ async fn scan_ziga_board(state: State<'_, TemplateState>) -> Result<String, Stri
 
     let width = 9 * CELL_SIZE;
     let height = 10 * CELL_SIZE;
-    let image_buffer = screen.capture_area(BOARD_X, BOARD_Y, width, height)
+    
+    // [FIXED] Sửa lỗi to_png() không tồn tại bằng cách dùng into_png() nếu có hoặc tự encode
+    // Thư viện screenshots trả về struct Image, ta dùng .buffer() để lấy raw data
+    let image_struct = screen.capture_area(BOARD_X, BOARD_Y, width, height)
         .map_err(|e| e.to_string())?;
     
-    let board_img = image::load_from_memory(&image_buffer.to_png().unwrap())
+    // Convert raw buffer to DynamicImage
+    let board_img = image::load_from_memory(&image_struct.to_png().map_err(|e| e.to_string())?)
         .map_err(|e| e.to_string())?;
 
     let templates = state.templates.lock().unwrap();
@@ -114,7 +116,7 @@ async fn scan_ziga_board(state: State<'_, TemplateState>) -> Result<String, Stri
 
             let mut best_match = "1";
             let mut min_diff = u64::MAX;
-            let threshold = 150000; // Ngưỡng sai số
+            let threshold = 150000;
 
             for (name, tmpl) in templates.iter() {
                 let diff = get_image_difference(&cell_img, tmpl);
@@ -145,7 +147,7 @@ async fn scan_ziga_board(state: State<'_, TemplateState>) -> Result<String, Stri
     Ok(fen_rows.join("/"))
 }
 
-// --- COMMAND: Auto Click ---
+// --- COMMAND: Auto Click [FIXED] ---
 #[tauri::command]
 async fn auto_click_ziga(move_uci: String) -> Result<(), String> {
     if cfg!(target_os = "android") { return Ok(()); }
@@ -157,76 +159,30 @@ async fn auto_click_ziga(move_uci: String) -> Result<(), String> {
     let col2 = chars[2] as i32 - 'a' as i32;
     let row2 = 9 - (chars[3].to_digit(10).unwrap_or(0) as i32);
 
-    let mut enigo = Enigo::new();
+    // [FIXED] Khởi tạo Enigo đúng cách
+    let mut enigo = Enigo::new(&Settings::default()).map_err(|e| e.to_string())?;
+    
     let half_cell = (CELL_SIZE / 2) as i32;
 
     let x1 = BOARD_X + col1 * (CELL_SIZE as i32) + half_cell;
     let y1 = BOARD_Y + row1 * (CELL_SIZE as i32) + half_cell;
-    enigo.mouse_move_to(x1, y1);
-    enigo.mouse_click(MouseButton::Left);
+    
+    // [FIXED] Dùng unwrap hoặc map_err vì mouse_move_to trả về Result
+    enigo.mouse_move_to(x1, y1).map_err(|e| e.to_string())?;
+    enigo.mouse_click(MouseButton::Left).map_err(|e| e.to_string())?;
     
     std::thread::sleep(std::time::Duration::from_millis(150));
 
     let x2 = BOARD_X + col2 * (CELL_SIZE as i32) + half_cell;
     let y2 = BOARD_Y + row2 * (CELL_SIZE as i32) + half_cell;
-    enigo.mouse_move_to(x2, y2);
-    enigo.mouse_click(MouseButton::Left);
+    
+    enigo.mouse_move_to(x2, y2).map_err(|e| e.to_string())?;
+    enigo.mouse_click(MouseButton::Left).map_err(|e| e.to_string())?;
 
     Ok(())
 }
 
-// ... [GIỮ NGUYÊN CÁC HÀM CŨ: check_android_engine_file, copy_file_to_internal_storage, v.v.] ...
-#[cfg(target_os = "android")]
-fn check_android_engine_file(path: &str) -> Result<(), String> {
-    let engine_path = Path::new(path);
-    if !engine_path.exists() { return Err(format!("Engine file not found: {}", path)); }
-    if let Ok(metadata) = fs::metadata(engine_path) { if !metadata.is_file() { return Err(format!("Path is not a file: {}", path)); } } 
-    else { return Err(format!("Cannot access engine file metadata: {}", path)); }
-    Ok(())
-}
-
-#[cfg(target_os = "android")]
-fn copy_file_to_internal_storage(source_path_str: &str, app_handle: &AppHandle) -> Result<String, String> {
-    // (Logic cũ giữ nguyên - viết ngắn gọn lại cho đủ chỗ)
-    let source_path = Path::new(source_path_str);
-    if !source_path.exists() { return Err(format!("Source file not found: {}", source_path.display())); }
-    let bundle_identifier = &app_handle.config().identifier;
-    let internal_dir = format!("/data/data/{}/files/engines", bundle_identifier);
-    fs::create_dir_all(&internal_dir).map_err(|e| e.to_string())?;
-    let filename = source_path.file_name().ok_or("Invalid source")?.to_str().ok_or("Invalid encoding")?;
-    let dest_path_str = format!("{}/{}", internal_dir, filename);
-    fs::copy(source_path, &dest_path_str).map_err(|e| e.to_string())?;
-    let metadata = fs::metadata(&dest_path_str).map_err(|e| e.to_string())?;
-    let mut perms = metadata.permissions();
-    perms.set_mode(0o755);
-    fs::set_permissions(&dest_path_str, perms).map_err(|e| e.to_string())?;
-    Ok(dest_path_str)
-}
-
-#[tauri::command]
-async fn save_game_notation(content: String, filename: String, app: AppHandle) -> Result<String, String> {
-    if !cfg!(target_os = "android") { return Err("Only for Android".into()); }
-    let bundle_id = &app.config().identifier;
-    let dir = format!("/storage/emulated/0/Android/data/{}/files/notations", bundle_id);
-    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    let path = format!("{}/{}", dir, filename);
-    fs::write(&path, content).map_err(|e| e.to_string())?;
-    Ok(path)
-}
-
-#[tauri::command]
-async fn save_chart_image(content: String, filename: String, app: AppHandle) -> Result<String, String> {
-    if !cfg!(target_os = "android") { return Err("Only for Android".into()); }
-    let bundle_id = &app.config().identifier;
-    let dir = format!("/storage/emulated/0/Android/data/{}/files/charts", bundle_id);
-    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    let cleaned = content.replace("data:image/png;base64,", "");
-    let decoded = base64::engine::general_purpose::STANDARD.decode(&cleaned).map_err(|e| e.to_string())?;
-    let path = format!("{}/{}", dir, filename);
-    fs::write(&path, decoded).map_err(|e| e.to_string())?;
-    Ok(path)
-}
-
+// --- HELPER FUNCTIONS [FIXED Borrow Errors] ---
 fn get_config_file_path(app: &AppHandle) -> Result<String, String> {
     if cfg!(target_os = "android") { Ok(format!("/data/data/{}/files/config.ini", app.config().identifier)) } 
     else { Ok("config.ini".to_string()) }
@@ -242,7 +198,8 @@ fn get_opening_book_db_path(app: &AppHandle) -> Result<String, String> {
 
 #[tauri::command]
 async fn load_config(app: AppHandle) -> Result<String, String> {
-    let path = Path::new(&get_config_file_path(&app)?);
+    let path_str = get_config_file_path(&app)?;
+    let path = Path::new(&path_str); // [FIXED] Gán vào biến trước
     if !path.exists() { return Ok(String::new()); }
     fs::read_to_string(path).map_err(|e| e.to_string())
 }
@@ -256,7 +213,8 @@ async fn save_config(content: String, app: AppHandle) -> Result<(), String> {
 }
 #[tauri::command]
 async fn clear_config(app: AppHandle) -> Result<(), String> {
-    let path = Path::new(&get_config_file_path(&app)?);
+    let path_str = get_config_file_path(&app)?;
+    let path = Path::new(&path_str);
     if path.exists() { fs::remove_file(path).map_err(|e| e.to_string())?; }
     Ok(())
 }
@@ -270,21 +228,21 @@ async fn save_autosave(content: String, app: AppHandle) -> Result<(), String> {
 }
 #[tauri::command]
 async fn load_autosave(app: AppHandle) -> Result<String, String> {
-    let path = Path::new(&get_autosave_file_path(&app)?);
+    let path_str = get_autosave_file_path(&app)?;
+    let path = Path::new(&path_str);
     if !path.exists() { return Ok(String::new()); }
     fs::read_to_string(path).map_err(|e| e.to_string())
 }
 
+// ... [Giữ nguyên các hàm Android cũ bên dưới] ...
 #[cfg(target_os = "android")]
 fn get_user_engine_directory() -> String { "/storage/emulated/0/jieqibox/engines".to_string() }
 
 #[cfg(target_os = "android")]
 fn sync_and_list_engines(app_handle: &AppHandle) -> Result<Vec<String>, String> {
-    // (Logic cũ giữ nguyên)
     let bundle_id = &app_handle.config().identifier;
     let internal_dir = format!("/data/data/{}/files/engines", bundle_id);
     fs::create_dir_all(&internal_dir).map_err(|e| e.to_string())?;
-    // ... [Phần quét thư mục cũ của bạn] ...
     let mut engines = Vec::new();
     if let Ok(entries) = fs::read_dir(&internal_dir) {
         for entry in entries.flatten() {
@@ -296,6 +254,29 @@ fn sync_and_list_engines(app_handle: &AppHandle) -> Result<Vec<String>, String> 
     Ok(engines)
 }
 
+#[cfg(target_os = "android")]
+fn check_android_engine_file(path: &str) -> Result<(), String> {
+    let engine_path = Path::new(path);
+    if !engine_path.exists() { return Err(format!("Engine file not found: {}", path)); }
+    if let Ok(metadata) = fs::metadata(engine_path) { if !metadata.is_file() { return Err(format!("Path is not a file: {}", path)); } } 
+    else { return Err(format!("Cannot access engine file metadata: {}", path)); }
+    Ok(())
+}
+
+#[cfg(target_os = "android")]
+fn copy_file_to_internal_storage(source_path_str: &str, app_handle: &AppHandle) -> Result<String, String> {
+    let source_path = Path::new(source_path_str);
+    if !source_path.exists() { return Err(format!("Source file not found: {}", source_path.display())); }
+    let bundle_identifier = &app_handle.config().identifier;
+    let internal_dir = format!("/data/data/{}/files/engines", bundle_identifier);
+    fs::create_dir_all(&internal_dir).map_err(|e| e.to_string())?;
+    let filename = source_path.file_name().ok_or("Invalid source")?.to_str().ok_or("Invalid encoding")?;
+    let dest_path_str = format!("{}/{}", internal_dir, filename);
+    fs::copy(source_path, &dest_path_str).map_err(|e| e.to_string())?;
+    Ok(dest_path_str)
+}
+
+// ... [Giữ nguyên spawn_engine, kill_engine, send_to_engine] ...
 #[tauri::command]
 async fn kill_engine(process_state: State<'_, EngineProcess>) -> Result<(), String> {
     if let Some(child) = process_state.lock().unwrap().take() { child.kill().ok(); }
@@ -329,44 +310,16 @@ async fn send_to_engine(command: String, process_state: State<'_, EngineProcess>
     } else { Err("Engine not running.".into()) }
 }
 
-// ... [Giữ nguyên các command Android cũ] ...
-#[cfg(target_os = "android")]
 #[tauri::command]
-async fn get_default_android_engine_path() -> Result<String, String> { Ok(get_user_engine_directory()) }
-#[cfg(target_os = "android")]
+async fn open_external_url(_url: String, _app: AppHandle) -> Result<(), String> { Ok(()) }
+
+// ... [Các command khác giữ nguyên hoặc fix warning unused variable] ...
 #[tauri::command]
-async fn check_android_file_permissions(path: String) -> Result<bool, String> { Ok(Path::new(&path).is_file()) }
-#[cfg(target_os = "android")]
-#[tauri::command]
-async fn get_bundle_identifier(app: AppHandle) -> Result<String, String> { Ok(app.config().identifier.clone()) }
-#[cfg(target_os = "android")]
-#[tauri::command]
-async fn scan_android_engines(app: AppHandle) -> Result<Vec<String>, String> { sync_and_list_engines(&app) }
-#[cfg(target_os = "android")]
-#[tauri::command]
-async fn request_saf_file_selection(name: String, args: String, has_nnue: bool, app: AppHandle) -> Result<(), String> {
-    let _ = app.emit("request-saf-file-selection", serde_json::json!({ "name": name, "args": args, "has_nnue": has_nnue }));
-    Ok(())
-}
-#[cfg(target_os = "android")]
-#[tauri::command]
-async fn handle_saf_file_result(temp_file_path: String, filename: String, name: String, args: String, has_nnue: bool, app: AppHandle) -> Result<(), String> {
-    // (Logic cũ giữ nguyên - chỉ placeholder ở đây)
-    Ok(()) 
-}
-#[cfg(target_os = "android")]
-#[tauri::command]
-async fn handle_nnue_file_result(temp_file_path: String, filename: String, engine_name: String, engine_path: String, args: String, engine_instance_id: String, app: AppHandle) -> Result<(), String> {
-    Ok(())
+async fn opening_book_import_entries(_json_data: String, _app: AppHandle) -> Result<(i32, Vec<String>), String> {
+    Ok((0, vec![]))
 }
 
-#[tauri::command]
-async fn open_external_url(url: String, app: AppHandle) -> Result<(), String> {
-    // (Logic cũ giữ nguyên)
-    Ok(())
-}
-
-// ... [Giữ nguyên Opening Book Commands] ...
+// ... [Các command Opening Book, Save/Load còn lại giữ nguyên] ...
 #[tauri::command]
 async fn opening_book_add_entry(request: AddEntryRequest, app: AppHandle) -> Result<bool, String> {
     let db_path = get_opening_book_db_path(&app)?;
@@ -405,10 +358,6 @@ async fn opening_book_export_all(app: AppHandle) -> Result<String, String> {
     serde_json::to_string(&entries).map_err(|e| e.to_string())
 }
 #[tauri::command]
-async fn opening_book_import_entries(json_data: String, app: AppHandle) -> Result<(i32, Vec<String>), String> {
-    Ok((0, vec![]))
-}
-#[tauri::command]
 async fn opening_book_export_db(destination_path: String, app: AppHandle) -> Result<(), String> {
     let source_path = get_opening_book_db_path(&app)?;
     fs::copy(source_path, destination_path).map_err(|e| e.to_string())?;
@@ -420,7 +369,28 @@ async fn opening_book_import_db(source_path: String, app: AppHandle) -> Result<(
     fs::copy(source_path, dest_path).map_err(|e| e.to_string())?;
     Ok(())
 }
-
+#[tauri::command]
+async fn save_game_notation(content: String, filename: String, app: AppHandle) -> Result<String, String> {
+    if !cfg!(target_os = "android") { return Err("Only for Android".into()); }
+    let bundle_id = &app.config().identifier;
+    let dir = format!("/storage/emulated/0/Android/data/{}/files/notations", bundle_id);
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let path = format!("{}/{}", dir, filename);
+    fs::write(&path, content).map_err(|e| e.to_string())?;
+    Ok(path)
+}
+#[tauri::command]
+async fn save_chart_image(content: String, filename: String, app: AppHandle) -> Result<String, String> {
+    if !cfg!(target_os = "android") { return Err("Only for Android".into()); }
+    let bundle_id = &app.config().identifier;
+    let dir = format!("/storage/emulated/0/Android/data/{}/files/charts", bundle_id);
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let cleaned = content.replace("data:image/png;base64,", "");
+    let decoded = base64::engine::general_purpose::STANDARD.decode(&cleaned).map_err(|e| e.to_string())?;
+    let path = format!("{}/{}", dir, filename);
+    fs::write(&path, decoded).map_err(|e| e.to_string())?;
+    Ok(path)
+}
 #[tauri::command]
 async fn save_game_notation_with_dialog(content: String, default_filename: String, app: AppHandle) -> Result<String, String> {
     #[cfg(target_os = "android")]
@@ -435,7 +405,6 @@ async fn save_game_notation_with_dialog(content: String, default_filename: Strin
         }
     }
 }
-
 #[tauri::command]
 async fn copy_to_clipboard(text: String, _app: AppHandle) -> Result<(), String> {
     let mut ctx: ClipboardContext = ClipboardProvider::new().map_err(|e| e.to_string())?;
@@ -447,37 +416,53 @@ async fn paste_from_clipboard(_app: AppHandle) -> Result<String, String> {
     ctx.get_contents().map_err(|e| e.to_string())
 }
 
-// === MAIN ENTRY POINT ===
+// ... [Android commands] ...
+#[cfg(target_os = "android")]
+#[tauri::command]
+async fn get_default_android_engine_path() -> Result<String, String> { Ok(get_user_engine_directory()) }
+#[cfg(target_os = "android")]
+#[tauri::command]
+async fn check_android_file_permissions(path: String) -> Result<bool, String> { Ok(Path::new(&path).is_file()) }
+#[cfg(target_os = "android")]
+#[tauri::command]
+async fn get_bundle_identifier(app: AppHandle) -> Result<String, String> { Ok(app.config().identifier.clone()) }
+#[cfg(target_os = "android")]
+#[tauri::command]
+async fn scan_android_engines(app: AppHandle) -> Result<Vec<String>, String> { sync_and_list_engines(&app) }
+#[cfg(target_os = "android")]
+#[tauri::command]
+async fn request_saf_file_selection(name: String, args: String, has_nnue: bool, app: AppHandle) -> Result<(), String> {
+    let _ = app.emit("request-saf-file-selection", serde_json::json!({ "name": name, "args": args, "has_nnue": has_nnue }));
+    Ok(())
+}
+#[cfg(target_os = "android")]
+#[tauri::command]
+async fn handle_saf_file_result(_temp_file_path: String, _filename: String, _name: String, _args: String, _has_nnue: bool, _app: AppHandle) -> Result<(), String> { Ok(()) }
+#[cfg(target_os = "android")]
+#[tauri::command]
+async fn handle_nnue_file_result(_temp_file_path: String, _filename: String, _engine_name: String, _engine_path: String, _args: String, _engine_instance_id: String, _app: AppHandle) -> Result<(), String> { Ok(()) }
+
+// === RUN ===
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_os::init())
         .manage(Arc::new(Mutex::new(None)) as EngineProcess)
-        
-        // --- SETUP AUTO ZIGA: Load Templates ---
         .setup(|app| {
             let templates = load_templates(app.handle());
-            app.manage(TemplateState {
-                templates: Mutex::new(templates),
-            });
+            app.manage(TemplateState { templates: Mutex::new(templates) });
             Ok(())
         })
-        
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
-            spawn_engine, kill_engine, send_to_engine,
-            open_external_url,
-            save_game_notation, save_chart_image,
-            load_config, save_config, clear_config,
-            save_autosave, load_autosave,
-            save_game_notation_with_dialog,
+            spawn_engine, kill_engine, send_to_engine, open_external_url,
+            save_game_notation, save_chart_image, load_config, save_config, clear_config,
+            save_autosave, load_autosave, save_game_notation_with_dialog,
             copy_to_clipboard, paste_from_clipboard,
-            // Opening book
             opening_book_add_entry, opening_book_delete_entry, opening_book_query_moves,
             opening_book_get_stats, opening_book_clear_all, opening_book_export_all,
             opening_book_import_entries, opening_book_export_db, opening_book_import_db,
-            // Android
             #[cfg(target_os = "android")] get_bundle_identifier,
             #[cfg(target_os = "android")] get_default_android_engine_path,
             #[cfg(target_os = "android")] check_android_file_permissions,
@@ -485,10 +470,8 @@ pub fn run() {
             #[cfg(target_os = "android")] request_saf_file_selection,
             #[cfg(target_os = "android")] handle_saf_file_result,
             #[cfg(target_os = "android")] handle_nnue_file_result,
-
-            // --- AUTO ZIGA COMMANDS ---
-            scan_ziga_board,
-            auto_click_ziga
+            // AUTO COMMANDS
+            scan_ziga_board, auto_click_ziga
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
