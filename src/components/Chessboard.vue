@@ -136,187 +136,186 @@
 </template>
 
 <script setup lang="ts">
-  import { inject, ref, watch, computed, watchEffect, onMounted, onUnmounted, unref } from 'vue'
-  import { useI18n } from 'vue-i18n'
-  import type { Piece } from '@/composables/useChessGame'
-  import { useInterfaceSettings } from '@/composables/useInterfaceSettings'
-  import ClearHistoryConfirmDialog from './ClearHistoryConfirmDialog.vue'
-  import EvaluationChart from './EvaluationChart.vue'
-  
-  const handleChartSeek = (idx: number) => { try { const gsAny: any = gs; if (gsAny?.replayToMove) gsAny.replayToMove(idx) } catch {} }
-  const { t } = useI18n()
-  const PAD_X = 11, PAD_Y = 11, COLS = 9, ROWS = 10, GX = 100 - PAD_X, GY = 100 - PAD_Y, OX = PAD_X / 2, OY = PAD_Y / 2
-  const files = computed(() => { const baseFiles = 'abcdefghi'.split(''); return gs.isBoardFlipped.value ? baseFiles.slice().reverse() : baseFiles })
-  const ranks = computed(() => { const baseRanks = Array.from({ length: 10 }, (_, i) => 9 - i); return gs.isBoardFlipped.value ? baseRanks.slice().reverse() : baseRanks })
-  const { showCoordinates, showAnimations, showPositionChart, showEvaluationBar, showArrows } = useInterfaceSettings()
-  const gs: any = inject('game-state')
-  const es = inject('engine-state') as { pvMoves: any; bestMove: any; isThinking: any; multiPvMoves: any; stopAnalysis: any; isPondering: any; isInfinitePondering: any; ponderMove: any; ponderhit: any; analysis?: any }
-  const jaiEngine = inject('jai-engine-state') as any
-  const isMatchRunning = computed(() => jaiEngine?.isMatchRunning?.value || false)
-  const { pieces, selectedPieceId, handleBoardClick, isAnimating, lastMovePositions, registerArrowClearCallback, history, currentMoveIndex, unrevealedPieceCounts, adjustUnrevealedCount, getPieceNameFromChar, validationStatus, pendingFlip } = gs
+import { inject, ref, watch, computed, watchEffect, onMounted, onUnmounted, unref } from 'vue'
+import { useI18n } from 'vue-i18n'
+import type { Piece } from '@/composables/useChessGame'
+import { useInterfaceSettings } from '@/composables/useInterfaceSettings'
+import ClearHistoryConfirmDialog from './ClearHistoryConfirmDialog.vue'
+import EvaluationChart from './EvaluationChart.vue'
 
-  const selectedPiece = computed(() => { if (!unref(selectedPieceId)) return null; return unref(pieces).find((p: Piece) => p.id === unref(selectedPieceId)) })
-  
-  const lastClickPos = ref({ row: 4, col: 4 })
-  const radialMenuPos = computed(() => {
-    if (pendingFlip.value && typeof pendingFlip.value.row === 'number' && typeof pendingFlip.value.col === 'number') {
-      return { row: pendingFlip.value.row, col: pendingFlip.value.col }
+const handleChartSeek = (idx: number) => { try { const gsAny: any = gs; if (gsAny?.replayToMove) gsAny.replayToMove(idx) } catch {} }
+const { t } = useI18n()
+const PAD_X = 11, PAD_Y = 11, COLS = 9, ROWS = 10, GX = 100 - PAD_X, GY = 100 - PAD_Y, OX = PAD_X / 2, OY = PAD_Y / 2
+const files = computed(() => { const baseFiles = 'abcdefghi'.split(''); return gs.isBoardFlipped.value ? baseFiles.slice().reverse() : baseFiles })
+const ranks = computed(() => { const baseRanks = Array.from({ length: 10 }, (_, i) => 9 - i); return gs.isBoardFlipped.value ? baseRanks.slice().reverse() : baseRanks })
+const { showCoordinates, showAnimations, showPositionChart, showEvaluationBar, showArrows } = useInterfaceSettings()
+const gs: any = inject('game-state')
+const es = inject('engine-state') as { pvMoves: any; bestMove: any; isThinking: any; multiPvMoves: any; stopAnalysis: any; isPondering: any; isInfinitePondering: any; ponderMove: any; ponderhit: any; analysis?: any }
+const jaiEngine = inject('jai-engine-state') as any
+const isMatchRunning = computed(() => jaiEngine?.isMatchRunning?.value || false)
+const { pieces, selectedPieceId, handleBoardClick, isAnimating, lastMovePositions, registerArrowClearCallback, history, currentMoveIndex, unrevealedPieceCounts, adjustUnrevealedCount, getPieceNameFromChar, validationStatus, pendingFlip } = gs
+
+const selectedPiece = computed(() => { if (!unref(selectedPieceId)) return null; return unref(pieces).find((p: Piece) => p.id === unref(selectedPieceId)) })
+
+const lastClickPos = ref({ row: 4, col: 4 })
+const radialMenuPos = computed(() => {
+  if (pendingFlip.value && typeof pendingFlip.value.row === 'number' && typeof pendingFlip.value.col === 'number') {
+    return { row: pendingFlip.value.row, col: pendingFlip.value.col }
+  }
+  if (selectedPiece.value) return { row: selectedPiece.value.row, col: selectedPiece.value.col }
+  if (lastClickPos.value) return lastClickPos.value
+  return { row: 4, col: 4 }
+})
+
+const flipSelectionPieces = computed(() => {
+  if (!pendingFlip.value) return []
+  const requiredSide = pendingFlip.value.side
+  return Object.entries(unrevealedPieceCounts.value)
+    .map(([char, count]) => {
+      const name = getPieceNameFromChar(char)
+      return { name, char, count: Number(count) }
+    })
+    .filter(item => {
+      const pieceSide = item.name.startsWith('red') ? 'red' : 'black'
+      return pieceSide === requiredSide && item.count > 0
+    })
+})
+
+const getRadialItemStyle = (index: number, total: number) => {
+  const radiusPercent = 37 
+  const angleStep = (2 * Math.PI) / total
+  const angle = index * angleStep - (Math.PI / 2)
+  const x = 50 + radiusPercent * Math.cos(angle)
+  const y = 50 + radiusPercent * Math.sin(angle)
+  return { left: `${x}%`, top: `${y}%` }
+}
+
+const handleFlipSelect = (pieceName: string) => {
+  if (pendingFlip.value && pendingFlip.value.callback) {
+    pendingFlip.value.callback(pieceName)
+  }
+}
+
+const handleFlipRandom = () => {
+  if (pendingFlip.value && pendingFlip.value.callback) {
+    const pieces = flipSelectionPieces.value
+    if (pieces.length === 0) {
+      const side = pendingFlip.value.side
+      pendingFlip.value.callback(side === 'red' ? 'red_pawn' : 'black_pawn')
+      return
     }
-    if (selectedPiece.value) return { row: selectedPiece.value.row, col: selectedPiece.value.col }
-    if (lastClickPos.value) return lastClickPos.value
-    return { row: 4, col: 4 }
-  })
-
-  const flipSelectionPieces = computed(() => {
-    if (!pendingFlip.value) return []
-    const requiredSide = pendingFlip.value.side
-    return Object.entries(unrevealedPieceCounts.value)
-      .map(([char, count]) => {
-        const name = getPieceNameFromChar(char)
-        return { name, char, count: Number(count) }
-      })
-      .filter(item => {
-        const pieceSide = item.name.startsWith('red') ? 'red' : 'black'
-        return pieceSide === requiredSide && item.count > 0
-      })
-  })
-
-  const getRadialItemStyle = (index: number, total: number) => {
-    const radiusPercent = 37 
-    const angleStep = (2 * Math.PI) / total
-    const angle = index * angleStep - (Math.PI / 2)
-    const x = 50 + radiusPercent * Math.cos(angle)
-    const y = 50 + radiusPercent * Math.sin(angle)
-    return { left: `${x}%`, top: `${y}%` }
-  }
-
-  const handleFlipSelect = (pieceName: string) => {
-    if (pendingFlip.value && pendingFlip.value.callback) {
-      pendingFlip.value.callback(pieceName)
+    const pool: string[] = []
+    pieces.forEach((p: any) => {
+      for(let i=0; i < (p.count as number); i++) { pool.push(p.name) }
+    })
+    if (pool.length > 0) {
+      const randomIndex = Math.floor(Math.random() * pool.length)
+      pendingFlip.value.callback(pool[randomIndex])
     }
   }
+}
 
-  const handleFlipRandom = () => {
-    if (pendingFlip.value && pendingFlip.value.callback) {
-      const pieces = flipSelectionPieces.value
-      if (pieces.length === 0) {
-        const side = pendingFlip.value.side
-        pendingFlip.value.callback(side === 'red' ? 'red_pawn' : 'black_pawn')
-        return
-      }
-      const pool: string[] = []
-      pieces.forEach((p: any) => {
-        for(let i=0; i < (p.count as number); i++) { pool.push(p.name) }
-      })
-      if (pool.length > 0) {
-        const randomIndex = Math.floor(Math.random() * pool.length)
-        pendingFlip.value.callback(pool[randomIndex])
-      }
-    }
-  }
+const poolErrorMessage = computed(() => {
+  if (!validationStatus.value) return null
+  const s = validationStatus.value
+  if (s.includes('正常') || s.toLowerCase().includes('normal')) return null
+  let msg = s.replace(/^Error:\s*|^错误:\s*/i, '').trim()
+  return `Lỗi: ${msg}`
+})
 
-  const poolErrorMessage = computed(() => {
-    if (!validationStatus.value) return null
-    const s = validationStatus.value
-    if (s.includes('正常') || s.toLowerCase().includes('normal')) return null
-    let msg = s.replace(/^Error:\s*|^错误:\s*/i, '').trim()
-    return `Lỗi: ${msg}`
-  })
+const INITIAL_PIECE_COUNTS: { [k: string]: number } = { r: 2, n: 2, b: 2, a: 2, c: 2, p: 5, k: 1, R: 2, N: 2, B: 2, A: 2, C: 2, P: 5, K: 1 }
+const blackPool = computed(() => { const chars = ['r', 'n', 'c', 'a', 'b', 'p']; return chars.map(char => ({ char, name: getPieceNameFromChar(char), count: unrevealedPieceCounts?.value?.[char] || 0, max: INITIAL_PIECE_COUNTS[char] })) })
+const redPool = computed(() => { const chars = ['R', 'N', 'C', 'A', 'B', 'P']; return chars.map(char => ({ char, name: getPieceNameFromChar(char), count: unrevealedPieceCounts?.value?.[char] || 0, max: INITIAL_PIECE_COUNTS[char] })) })
 
-  const INITIAL_PIECE_COUNTS: { [k: string]: number } = { r: 2, n: 2, b: 2, a: 2, c: 2, p: 5, k: 1, R: 2, N: 2, B: 2, A: 2, C: 2, P: 5, K: 1 }
-  const blackPool = computed(() => { const chars = ['r', 'n', 'c', 'a', 'b', 'p']; return chars.map(char => ({ char, name: getPieceNameFromChar(char), count: unrevealedPieceCounts?.value?.[char] || 0, max: INITIAL_PIECE_COUNTS[char] })) })
-  const redPool = computed(() => { const chars = ['R', 'N', 'C', 'A', 'B', 'P']; return chars.map(char => ({ char, name: getPieceNameFromChar(char), count: unrevealedPieceCounts?.value?.[char] || 0, max: INITIAL_PIECE_COUNTS[char] })) })
-  
-  function getPieceImageUrl(pieceName: string): string { 
-    return new URL(`../assets/${pieceName}.png`, import.meta.url).href 
-  }
+function getPieceImageUrl(pieceName: string): string { 
+  return new URL(`../assets/${pieceName}.png`, import.meta.url).href 
+}
 
-  const userCircles = ref<Array<any>>([])
-  const userArrows = ref<Array<any>>([])
-  const { bestMove, isThinking, multiPvMoves, isPondering, isInfinitePondering, ponderMove, ponderhit } = es
-  const isCurrentPositionInCheck = gs.isCurrentPositionInCheck
-  const validMovesForSelectedPiece = computed(() => gs.getValidMovesForSelectedPiece.value)
-  const isRedOnTop = computed(() => { try { return !!gs?.isBoardFlipped?.value } catch { return false } })
-  const checkedKingId = computed(() => {
-    if (isCurrentPositionInCheck('red')) { const king = gs.pieces.value.find((p: Piece) => p.isKnown && p.name === 'red_king'); return king ? king.id : null }
-    if (isCurrentPositionInCheck('black')) { const king = gs.pieces.value.find((p: Piece) => p.isKnown && p.name === 'black_king'); return king ? king.id : null }
-    return null
-  })
+const userCircles = ref<Array<any>>([])
+const userArrows = ref<Array<any>>([])
+const { bestMove, isThinking, multiPvMoves, isPondering, isInfinitePondering, ponderMove, ponderhit } = es
+const isCurrentPositionInCheck = gs.isCurrentPositionInCheck
+const validMovesForSelectedPiece = computed(() => gs.getValidMovesForSelectedPiece.value)
+const isRedOnTop = computed(() => { try { return !!gs?.isBoardFlipped?.value } catch { return false } })
+const checkedKingId = computed(() => {
+  if (isCurrentPositionInCheck('red')) { const king = gs.pieces.value.find((p: Piece) => p.isKnown && p.name === 'red_king'); return king ? king.id : null }
+  if (isCurrentPositionInCheck('black')) { const king = gs.pieces.value.find((p: Piece) => p.isKnown && p.name === 'black_king'); return king ? king.id : null }
+  return null
+})
 
-  const percentFromRC = (row: number, col: number) => ({ x: OX + (col / (COLS - 1)) * GX, y: OY + (row / (ROWS - 1)) * GY })
-  const percentToSvgCoords = (row: number, col: number) => ({ x: (OX + (col / (COLS - 1)) * GX) * 0.9, y: OY + (row / (ROWS - 1)) * GY })
-  const img = (p: Piece) => new URL(`../assets/${p.isKnown ? p.name : 'dark_piece'}.png`, import.meta.url).href
-  const rcStyle = (r: number, c: number, zIndex?: number) => {
-    const { x, y } = percentFromRC(r, c)
-    return { top: `${y}%`, left: `${x}%`, width: '12%', transform: 'translate(-50%,-50%)', ...(zIndex !== undefined && { zIndex: zIndex }) }
-  }
-  const rankLabelStyle = (index: number) => ({ top: `${percentFromRC(index, 0).y}%`, transform: 'translateY(-50%)' })
-  const fileLabelStyle = (index: number) => ({ left: `${percentFromRC(0, index).x}%`, transform: 'translateX(-50%)' })
-  const displayRow = (r: number) => (gs.isBoardFlipped.value ? 9 - r : r)
-  const displayCol = (c: number) => (gs.isBoardFlipped.value ? 8 - c : c)
-  
-  const showClearHistoryDialog = ref(false)
-  const pendingMove = ref<any>(null)
-  
-  const boardClick = (e: MouseEvent) => {
-    if (isMatchRunning.value || pendingFlip.value) return
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-    const xp = ((e.clientX - rect.left) / rect.width) * 100
-    const yp = ((e.clientY - rect.top) / rect.height) * 100
-    const col = Math.round(((xp - OX) / GX) * (COLS - 1))
-    const row = Math.round(((yp - OY) / GY) * (ROWS - 1))
-    const finalRow = Math.max(0, Math.min(ROWS - 1, row))
-    const finalCol = Math.max(0, Math.min(COLS - 1, col))
-    lastClickPos.value = { row: finalRow, col: finalCol }
-    const result = handleBoardClick(finalRow, finalCol)
-    if (result && result.requireClearHistoryConfirm) { pendingMove.value = result.move; showClearHistoryDialog.value = true }
-  }
+const percentFromRC = (row: number, col: number) => ({ x: OX + (col / (COLS - 1)) * GX, y: OY + (row / (ROWS - 1)) * GY })
+const percentToSvgCoords = (row: number, col: number) => ({ x: (OX + (col / (COLS - 1)) * GX) * 0.9, y: OY + (row / (ROWS - 1)) * GY })
+const img = (p: Piece) => new URL(`../assets/${p.isKnown ? p.name : 'dark_piece'}.png`, import.meta.url).href
+const rcStyle = (r: number, c: number, zIndex?: number) => {
+  const { x, y } = percentFromRC(r, c)
+  return { top: `${y}%`, left: `${x}%`, width: '12%', transform: 'translate(-50%,-50%)', ...(zIndex !== undefined && { zIndex: zIndex }) }
+}
+const rankLabelStyle = (index: number) => ({ top: `${percentFromRC(index, 0).y}%`, transform: 'translateY(-50%)' })
+const fileLabelStyle = (index: number) => ({ left: `${percentFromRC(0, index).x}%`, transform: 'translateX(-50%)' })
+const displayRow = (r: number) => (gs.isBoardFlipped.value ? 9 - r : r)
+const displayCol = (c: number) => (gs.isBoardFlipped.value ? 8 - c : c)
 
-  const clearUserDrawings = () => { userCircles.value = []; userArrows.value = [] }
-  if (gs) gs.clearUserArrows = clearUserDrawings
+const showClearHistoryDialog = ref(false)
+const pendingMove = ref<any>(null)
 
-  const handleForceStopAi = (e: CustomEvent) => { if (e.detail?.reason === 'new-game') clearUserDrawings() }
-  const handleClearDrawingsEvent = () => clearUserDrawings()
+const boardClick = (e: MouseEvent) => {
+  if (isMatchRunning.value || pendingFlip.value) return
+  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  const xp = ((e.clientX - rect.left) / rect.width) * 100
+  const yp = ((e.clientY - rect.top) / rect.height) * 100
+  const col = Math.round(((xp - OX) / GX) * (COLS - 1))
+  const row = Math.round(((yp - OY) / GY) * (ROWS - 1))
+  const finalRow = Math.max(0, Math.min(ROWS - 1, row))
+  const finalCol = Math.max(0, Math.min(COLS - 1, col))
+  lastClickPos.value = { row: finalRow, col: finalCol }
+  const result = handleBoardClick(finalRow, finalCol)
+  if (result && result.requireClearHistoryConfirm) { pendingMove.value = result.move; showClearHistoryDialog.value = true }
+}
 
-  onMounted(() => {
-    window.addEventListener('force-stop-ai', handleForceStopAi as EventListener)
-    window.addEventListener('clear-drawings', handleClearDrawingsEvent)
-  })
-  onUnmounted(() => {
-    window.removeEventListener('force-stop-ai', handleForceStopAi as EventListener)
-    window.removeEventListener('clear-drawings', handleClearDrawingsEvent)
-  })
+const clearUserDrawings = () => { userCircles.value = []; userArrows.value = [] }
+if (gs) gs.clearUserArrows = clearUserDrawings
 
-  const onConfirmClearHistory = () => { if (pendingMove.value) gs.clearHistoryAndMove(pendingMove.value.piece, pendingMove.value.row, pendingMove.value.col); showClearHistoryDialog.value = false; pendingMove.value = null }
-  const onCancelClearHistory = () => { showClearHistoryDialog.value = false; pendingMove.value = null }
+const handleForceStopAi = (e: CustomEvent) => { if (e.detail?.reason === 'new-game') clearUserDrawings() }
+const handleClearDrawingsEvent = () => clearUserDrawings()
 
-  interface Arrow { x1: number; y1: number; x2: number; y2: number; pv: number }
-  const arrs = ref<Arrow[]>([]); const selectedPvMove = ref<string | null>(null)
-  const uciToDisplayRC = (uci: string) => {
-    const fromCol = uci.charCodeAt(0) - 'a'.charCodeAt(0), fromRow = 9 - +uci[1], toCol = uci.charCodeAt(2) - 'a'.charCodeAt(0), toRow = 9 - +uci[3]
-    return !gs.isBoardFlipped.value ? { from: { row: fromRow, col: fromCol }, to: { row: toRow, col: toCol } } : { from: { row: 9-fromRow, col: 8-fromCol }, to: { row: 9-toRow, col: 8-toCol } }
-  }
-  const updateArrow = () => {
-    if (isThinking.value && multiPvMoves.value.length) {
-      arrs.value = multiPvMoves.value.map((m: any, i: number) => {
-        const c = uciToDisplayRC(m[0]); const f = percentToSvgCoords(c.from.row, c.from.col), t = percentToSvgCoords(c.to.row, c.to.col)
-        return { x1: f.x, y1: f.y, x2: t.x, y2: t.y, pv: i + 1 }
-      })
-    } else if (bestMove.value) {
-      const c = uciToDisplayRC(bestMove.value); const f = percentToSvgCoords(c.from.row, c.from.col), t = percentToSvgCoords(c.to.row, c.to.col)
-      arrs.value = [{ x1: f.x, y1: f.y, x2: t.x, y2: t.y, pv: 1 }]
-    } else arrs.value = []
-  }
-  watchEffect(() => { void isThinking.value; void multiPvMoves.value; void bestMove.value; updateArrow() })
-  const arrowColors = ['#0066cc', '#e53935', '#43a047']; const arrowColor = (idx: number) => arrowColors[idx % 3]
-  const selectedPvArrow = computed(() => null)
-  const getAnnotationClass = () => ''
-  const getCurrentMoveAnnotation = () => null
-  const currentEvalPercent = computed(() => 50)
+onMounted(() => {
+  window.addEventListener('force-stop-ai', handleForceStopAi as EventListener)
+  window.addEventListener('clear-drawings', handleClearDrawingsEvent)
+})
+onUnmounted(() => {
+  window.removeEventListener('force-stop-ai', handleForceStopAi as EventListener)
+  window.removeEventListener('clear-drawings', handleClearDrawingsEvent)
+})
+
+const onConfirmClearHistory = () => { if (pendingMove.value) gs.clearHistoryAndMove(pendingMove.value.piece, pendingMove.value.row, pendingMove.value.col); showClearHistoryDialog.value = false; pendingMove.value = null }
+const onCancelClearHistory = () => { showClearHistoryDialog.value = false; pendingMove.value = null }
+
+interface Arrow { x1: number; y1: number; x2: number; y2: number; pv: number }
+const arrs = ref<Arrow[]>([]); const selectedPvMove = ref<string | null>(null)
+const uciToDisplayRC = (uci: string) => {
+  const fromCol = uci.charCodeAt(0) - 'a'.charCodeAt(0), fromRow = 9 - +uci[1], toCol = uci.charCodeAt(2) - 'a'.charCodeAt(0), toRow = 9 - +uci[3]
+  return !gs.isBoardFlipped.value ? { from: { row: fromRow, col: fromCol }, to: { row: toRow, col: toCol } } : { from: { row: 9-fromRow, col: 8-fromCol }, to: { row: 9-toRow, col: 8-toCol } }
+}
+const updateArrow = () => {
+  if (isThinking.value && multiPvMoves.value.length) {
+    arrs.value = multiPvMoves.value.map((m: any, i: number) => {
+      const c = uciToDisplayRC(m[0]); const f = percentToSvgCoords(c.from.row, c.from.col), t = percentToSvgCoords(c.to.row, c.to.col)
+      return { x1: f.x, y1: f.y, x2: t.x, y2: t.y, pv: i + 1 }
+    })
+  } else if (bestMove.value) {
+    const c = uciToDisplayRC(bestMove.value); const f = percentToSvgCoords(c.from.row, c.from.col), t = percentToSvgCoords(c.to.row, c.to.col)
+    arrs.value = [{ x1: f.x, y1: f.y, x2: t.x, y2: t.y, pv: 1 }]
+  } else arrs.value = []
+}
+watchEffect(() => { void isThinking.value; void multiPvMoves.value; void bestMove.value; updateArrow() })
+const arrowColors = ['#0066cc', '#e53935', '#43a047']; const arrowColor = (idx: number) => arrowColors[idx % 3]
+const selectedPvArrow = computed(() => null)
+const getAnnotationClass = () => ''
+const getCurrentMoveAnnotation = () => null
+const currentEvalPercent = computed(() => 50)
 </script>
 
 <style scoped lang="scss">
-/* --- LAYOUT TỔNG THỂ --- */
 .chessboard-wrapper {
   width: 100%;
   height: 100%;
@@ -351,9 +350,11 @@
   min-width: 0;
   height: 100%; 
   position: relative; 
-  background: transparent; 
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  border-radius: 1vmin;
   border: none;
-  padding: 0;
+  padding: 1vmin;
   overflow: visible;
 }
 
@@ -365,7 +366,6 @@
   flex-direction: column;
 }
 
-/* --- [VÙNG TRÊN] QUÂN ĐEN --- */
 .top-zone {
   top: 0; 
   bottom: 49%; 
@@ -374,8 +374,6 @@
 }
 .top-zone .pool-row { height: 5vmin; }
 
-
-/* --- [VÙNG DƯỚI] QUÂN ĐỎ --- */
 .bottom-zone {
   top: 60%; 
   bottom: -12%; 
@@ -383,12 +381,9 @@
   gap: 0; 
 }
 
-
-/* --- TỪNG DÒNG QUÂN --- */
 .pool-row {
   display: flex;
   align-items: center; 
-  /* Khoảng cách giữa Ảnh và cụm Nút */
   gap: 1.3vmin; 
   justify-content: center; 
   background: transparent;
@@ -398,7 +393,6 @@
   min-height: 0;
 }
 
-/* --- WRAPPER ẢNH --- */
 .pool-img-wrapper {
   width: 45%; 
   height: 100%;
@@ -409,7 +403,6 @@
   overflow: visible; 
 }
 
-/* --- BADGE SỐ LƯỢNG --- */
 .pool-num-badge {
   position: absolute;
   top: -0.2vmin;
@@ -430,45 +423,28 @@
   z-index: 10;
 }
 
-/* Căn chỉnh mép ảnh */
 .top-zone .pool-row:first-child .pool-img-wrapper { align-items: flex-start; }
 .bottom-zone .pool-row:last-child .pool-img-wrapper { align-items: flex-end; transform: none; }
 
-/* ẢNH */
 .pool-img { height: auto; width: auto; max-height: 100%; max-width: 100%; object-fit: contain; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5)); }
 
-/* --- [ĐÃ SỬA] CONTAINER NÚT BẤM --- */
 .pool-btns {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  
-  /* Tạo khoảng cách giữa 2 nút trắng (như ảnh mẫu) */
   gap: 0.3vmin; 
-  
-  /* Tăng chiều cao lên 40% để chứa đủ 2 ô vuông trắng có gap */
   height: 40%; 
-  
   width: 20%; 
   margin-right: 0;
 }
 
-/* --- [ĐÃ SỬA] STYLE NÚT BẤM (Ô TRẮNG BO GÓC) --- */
 .tiny-btn {
   flex: 1;
   width: 100%;
   border: none;
-  
-  /* 1. Nền trắng */
   background: #ffffff; 
-  
-  /* 2. Bo góc */
   border-radius: 0.6vmin; 
-  
-  /* 3. Đổ bóng nhẹ */
   box-shadow: 0 0.2vmin 0.5vmin rgba(0,0,0,0.2); 
-  
-  /* Font chữ */
   font-size: 2.2vmin; 
   font-weight: 900;
   padding: 0;
@@ -478,8 +454,6 @@
   justify-content: center;
   transition: all 0.15s ease;
   line-height: 0.8;
-  
-  /* Bỏ viền chữ (text-shadow) cũ vì nền đã trắng rồi */
   text-shadow: none;
 
   &:hover:not(:disabled) { transform: scale(1.1); box-shadow: 0 0.3vmin 0.8vmin rgba(0,0,0,0.3); }
@@ -491,12 +465,34 @@
   }
 }
 
-/* MÀU SẮC RIÊNG BIỆT (Vẫn giữ Đỏ/Đen) */
 .btn-inc { color: #e53935; }
 .btn-dec { color: #000000; }
 
+.pool-error-floating { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5vmin; color: #ffeb3b; background: rgba(0,0,0,0.8); padding: 0.5vmin 1vmin; border-radius: 0.5vmin; white-space: nowrap; pointer-events: none; z-index: 10; }
+.bg { width: 100%; height: 100%; display: block; }
+.pieces { position: absolute; inset: 0; z-index: 20; }
+.piece { position: absolute; aspect-ratio: 1; pointer-events: none; &.animated { transition: all 0.2s ease; } &.inCheck { transform: translate(-50%, -50%) scale(1.1); filter: drop-shadow(0 0 10px red); z-index: 100; } &.being-flipped { opacity: 0.3; filter: grayscale(1); } }
+.flip-overlay-fixed { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.3); z-index: 9000; cursor: not-allowed; }
+.selection-mark { position: absolute; width: 12%; aspect-ratio: 1; transform: translate(-50%, -50%); z-index: 30; pointer-events: none; }
+.corner { position: absolute; width: 25%; height: 25%; border: 3px solid #007bff; box-shadow: 0 0 4px rgba(0, 123, 255, 0.6); }
+.top-left { top: 0; left: 0; border-right: none; border-bottom: none; border-top-left-radius: 10px; }
+.top-right { top: 0; right: 0; border-left: none; border-bottom: none; border-top-right-radius: 10px; }
+.bottom-left { bottom: 0; left: 0; border-right: none; border-top: none; border-bottom-left-radius: 10px; }
+.bottom-right { bottom: 0; right: 0; border-left: none; border-top: none; border-bottom-right-radius: 10px; }
+.highlight.from { position: absolute; transform: translate(-50%,-50%); width: 2.5%; aspect-ratio: 1; background: rgba(255,0,0,0.5); border-radius: 50%; pointer-events: none; }
+.highlight.to { position: absolute; transform: translate(-50%,-50%); width: 12%; aspect-ratio: 1; border: 2px solid rgba(0,255,255,0.7); pointer-events: none; border-radius: 8px; }
+.valid-move-dot { position: absolute; transform: translate(-50%,-50%); width: 2.5%; aspect-ratio: 1; background: #4caf50; border-radius: 50%; pointer-events: none; z-index: 15; box-shadow: 0 0 5px #4caf50; }
+.eval-bar { position: absolute; top: 0; bottom: 0; left: -1.5vmin; width: 1vmin; background: #ddd; border-radius: 0.5vmin; overflow: hidden; z-index: 5; border: 1px solid #999; }
+.eval-top { width: 100%; transition: height 0.5s ease-in-out; }
+.eval-bottom { width: 100%; transition: height 0.5s ease-in-out; }
+.eval-marker { position: absolute; left: 0; right: 0; height: 2px; background: #fff; box-shadow: 0 0 2px #000; }
+.flip-hint-area { margin-top: 10px; background: rgba(0,0,0,0.7); color: #fff; padding: 8px; border-radius: 6px; text-align: center; font-size: 14px; backdrop-filter: blur(4px); }
+.ar, .user-drawings, .board-labels { position: absolute; inset: 0; pointer-events: none; }
+.annotation-layer { position: absolute; inset: 0; pointer-events: none; z-index: 50; }
+.annotation-badge { position: absolute; top: -1vmin; right: -1vmin; width: 2.5vmin; height: 2.5vmin; background: #007bff; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2vmin; border: 0.2vmin solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+.board-labels { overflow: visible; .rank-labels span { position: absolute; right: -1.5vmin; color: #888; font-weight: bold; font-size: 1.5vmin; } .file-labels span { position: absolute; bottom: -2vmin; color: #888; font-weight: bold; font-size: 1.5vmin; } }
+.al { stroke-width: 1.5; stroke-opacity: 0.8; }
 
-/* --- MENU LẬT QUÂN --- */
 .radial-menu-container {
   position: absolute;
   transform: translate(-50%, -50%);
@@ -583,30 +579,4 @@
   pointer-events: auto;
   z-index: 10001;
 }
-
-/* Các phần khác giữ nguyên */
-.pool-error-floating { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5vmin; color: #ffeb3b; background: rgba(0,0,0,0.8); padding: 0.5vmin 1vmin; border-radius: 0.5vmin; white-space: nowrap; pointer-events: none; z-index: 10; }
-.bg { width: 100%; height: 100%; display: block; }
-.pieces { position: absolute; inset: 0; z-index: 20; }
-.piece { position: absolute; aspect-ratio: 1; pointer-events: none; &.animated { transition: all 0.2s ease; } &.inCheck { transform: translate(-50%, -50%) scale(1.1); filter: drop-shadow(0 0 10px red); z-index: 100; } &.being-flipped { opacity: 0.3; filter: grayscale(1); } }
-.flip-overlay-fixed { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.3); z-index: 9000; cursor: not-allowed; }
-.selection-mark { position: absolute; width: 12%; aspect-ratio: 1; transform: translate(-50%, -50%); z-index: 30; pointer-events: none; }
-.corner { position: absolute; width: 25%; height: 25%; border: 3px solid #007bff; box-shadow: 0 0 4px rgba(0, 123, 255, 0.6); }
-.top-left { top: 0; left: 0; border-right: none; border-bottom: none; border-top-left-radius: 10px; }
-.top-right { top: 0; right: 0; border-left: none; border-bottom: none; border-top-right-radius: 10px; }
-.bottom-left { bottom: 0; left: 0; border-right: none; border-top: none; border-bottom-left-radius: 10px; }
-.bottom-right { bottom: 0; right: 0; border-left: none; border-top: none; border-bottom-right-radius: 10px; }
-.highlight.from { position: absolute; transform: translate(-50%,-50%); width: 2.5%; aspect-ratio: 1; background: rgba(255,0,0,0.5); border-radius: 50%; pointer-events: none; }
-.highlight.to { position: absolute; transform: translate(-50%,-50%); width: 12%; aspect-ratio: 1; border: 2px solid rgba(0,255,255,0.7); pointer-events: none; border-radius: 8px; }
-.valid-move-dot { position: absolute; transform: translate(-50%,-50%); width: 2.5%; aspect-ratio: 1; background: #4caf50; border-radius: 50%; pointer-events: none; z-index: 15; box-shadow: 0 0 5px #4caf50; }
-.eval-bar { position: absolute; top: 0; bottom: 0; left: -1.5vmin; width: 1vmin; background: #ddd; border-radius: 0.5vmin; overflow: hidden; z-index: 5; border: 1px solid #999; }
-.eval-top { width: 100%; transition: height 0.5s ease-in-out; }
-.eval-bottom { width: 100%; transition: height 0.5s ease-in-out; }
-.eval-marker { position: absolute; left: 0; right: 0; height: 2px; background: #fff; box-shadow: 0 0 2px #000; }
-.flip-hint-area { margin-top: 10px; background: rgba(0,0,0,0.7); color: #fff; padding: 8px; border-radius: 6px; text-align: center; font-size: 14px; backdrop-filter: blur(4px); }
-.ar, .user-drawings, .board-labels { position: absolute; inset: 0; pointer-events: none; }
-.annotation-layer { position: absolute; inset: 0; pointer-events: none; z-index: 50; }
-.annotation-badge { position: absolute; top: -1vmin; right: -1vmin; width: 2.5vmin; height: 2.5vmin; background: #007bff; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2vmin; border: 0.2vmin solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
-.board-labels { overflow: visible; .rank-labels span { position: absolute; right: -1.5vmin; color: #888; font-weight: bold; font-size: 1.5vmin; } .file-labels span { position: absolute; bottom: -2vmin; color: #888; font-weight: bold; font-size: 1.5vmin; } }
-.al { stroke-width: 1.5; stroke-opacity: 0.8; }
 </style>
