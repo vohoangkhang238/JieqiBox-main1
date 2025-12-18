@@ -5,11 +5,6 @@
       <div class="chessboard-container">
         <img src="@/assets/xiangqi.png" class="bg" alt="board" />
 
-        <div class="auto-ziga-btn" @click.stop="toggleAuto" :class="{ 'active': isAutoActive }">
-          <v-icon :icon="isAutoActive ? 'mdi-eye-check' : 'mdi-eye-off'" size="small" class="mr-1"></v-icon>
-          {{ isAutoActive ? 'Đang Quan Sát' : 'Kết Nối Ziga' }}
-        </div>
-
         <div v-if="showEvaluationBar && currentEvalPercent !== null" class="eval-bar" aria-hidden="true">
           <div class="eval-top" :style="{ height: currentEvalPercent + '%', background: isRedOnTop ? '#e53935' : '#333' }"></div>
           <div class="eval-bottom" :style="{ height: 100 - (currentEvalPercent as number) + '%', background: isRedOnTop ? '#333' : '#e53935' }"></div>
@@ -161,7 +156,6 @@ import { inject, ref, watch, computed, watchEffect, onMounted, onUnmounted, unre
 import { useI18n } from 'vue-i18n'
 import type { Piece } from '@/composables/useChessGame'
 import { useInterfaceSettings } from '@/composables/useInterfaceSettings'
-import { useZigaAuto } from '@/composables/useZigaAuto' // Import Auto Ziga
 import ClearHistoryConfirmDialog from './ClearHistoryConfirmDialog.vue'
 import EvaluationChart from './EvaluationChart.vue'
 
@@ -176,10 +170,6 @@ const es = inject('engine-state') as { pvMoves: any; bestMove: any; isThinking: 
 const jaiEngine = inject('jai-engine-state') as any
 const isMatchRunning = computed(() => jaiEngine?.isMatchRunning?.value || false)
 const { pieces, selectedPieceId, handleBoardClick, isAnimating, lastMovePositions, registerArrowClearCallback, history, currentMoveIndex, unrevealedPieceCounts, adjustUnrevealedCount, getPieceNameFromChar, validationStatus, pendingFlip } = gs
-
-// --- KÍCH HOẠT LOGIC AUTO ZIGA ---
-const { isAutoActive, toggleAuto } = useZigaAuto(gs)
-// ---------------------------------
 
 const selectedPiece = computed(() => { if (!unref(selectedPieceId)) return null; return unref(pieces).find((p: Piece) => p.id === unref(selectedPieceId)) })
 
@@ -208,7 +198,7 @@ const flipSelectionPieces = computed(() => {
 })
 
 const getRadialItemStyle = (index: number, total: number) => {
-  const radiusPercent = 30 
+  const radiusPercent = 30 // [ĐÃ CHỈNH] Tăng bán kính lên 30 cho thoáng
   const angleStep = (2 * Math.PI) / total
   const angle = index * angleStep - (Math.PI / 2)
   const x = 50 + radiusPercent * Math.cos(angle)
@@ -342,39 +332,6 @@ const currentEvalPercent = computed(() => 50)
 </script>
 
 <style scoped lang="scss">
-/* --- NÚT AUTO ZIGA (CSS MỚI) --- */
-.auto-ziga-btn {
-  position: absolute;
-  top: 1vmin;
-  right: 1vmin;
-  z-index: 100;
-  
-  background: rgba(0, 0, 0, 0.6);
-  color: white;
-  padding: 0.8vmin 1.2vmin;
-  border-radius: 2vmin;
-  cursor: pointer;
-  font-weight: bold;
-  font-size: 1.5vmin;
-  display: flex;
-  align-items: center;
-  border: 0.1vmin solid rgba(255, 255, 255, 0.3);
-  transition: all 0.3s ease;
-  user-select: none;
-  white-space: nowrap;
-
-  &:hover {
-    background: rgba(0, 0, 0, 0.8);
-    transform: scale(1.05);
-  }
-
-  &.active {
-    background: #2e7d32;
-    border-color: #4caf50;
-    box-shadow: 0 0 1vmin rgba(76, 175, 80, 0.5);
-  }
-}
-
 /* --- LAYOUT --- */
 .chessboard-wrapper {
   width: 100%;
@@ -432,10 +389,15 @@ const currentEvalPercent = computed(() => 50)
   gap: 0;
 }
 
-/* --- KHỐI DƯỚI (QUÂN ĐỎ) --- */
+
+
+/* --- KHỐI DƯỚI (QUÂN ĐỎ) - ĐÃ CẬP NHẬT --- */
 .bottom-zone {
   top: 61%; 
+  
+  /* ĐẨY MẠNH XUỐNG DƯỚI NỮA (-12%) */
   bottom: -12%; 
+  
   justify-content: space-between; 
   gap: 0; 
 }
@@ -464,6 +426,7 @@ const currentEvalPercent = computed(() => 50)
   overflow: visible; 
 }
 
+/* BADGE CƠ BẢN */
 .pool-num-badge {
   position: absolute;
   top: -0.2vmin;
@@ -482,8 +445,19 @@ const currentEvalPercent = computed(() => 50)
   z-index: 10;
 }
 
-.badge-red { background-color: #f44336; color: white; }
-.badge-black { background-color: #000000; color: white; border-color: #666; }
+/* BADGE ĐỎ */
+.badge-red {
+  background-color: #f44336; 
+  color: white;
+}
+
+/* BADGE ĐEN */
+.badge-black {
+  background-color: #000000; 
+  color: white;
+  border-color: #666;
+}
+
 
 .top-zone .pool-row:first-child .pool-img-wrapper { align-items: flex-start; }
 .bottom-zone .pool-row:last-child .pool-img-wrapper { align-items: flex-end; transform: none; }
@@ -524,13 +498,14 @@ const currentEvalPercent = computed(() => 50)
   &:disabled { opacity: 0.5; cursor: default; }
 }
 
+/* NÚT ĐỎ (Dùng chung cho cả 2 phe) */
 .tiny-btn.btn-red {
   background-color: #ffffff !important;
   color: #e53935 !important;
   box-shadow: 0 0.2vmin 0.5vmin rgba(0,0,0,0.2); 
 }
 
-/* --- CÁC PHẦN KHÁC --- */
+/* --- CÁC PHẦN KHÁC (GIỮ NGUYÊN) --- */
 .pool-error-floating { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5vmin; color: #ffeb3b; background: rgba(0,0,0,0.8); padding: 0.5vmin 1vmin; border-radius: 0.5vmin; white-space: nowrap; pointer-events: none; z-index: 10; }
 .bg { width: 100%; height: 100%; display: block; }
 .pieces { position: absolute; inset: 0; z-index: 20; }
@@ -556,7 +531,7 @@ const currentEvalPercent = computed(() => 50)
 .board-labels { overflow: visible; .rank-labels span { position: absolute; right: -1.5vmin; color: #888; font-weight: bold; font-size: 1.5vmin; } .file-labels span { position: absolute; bottom: -2vmin; color: #888; font-weight: bold; font-size: 1.5vmin; } }
 .al { stroke-width: 1.5; stroke-opacity: 0.8; }
 
-/* --- MENU LẬT QUÂN --- */
+/* --- MENU LẬT QUÂN NHỎ GỌN (4.5vmin) --- */
 .radial-menu-container {
   position: absolute;
   transform: translate(-50%, -50%);
@@ -575,10 +550,15 @@ const currentEvalPercent = computed(() => 50)
 
 .radial-item {
   position: absolute;
+  
+  /* [ĐÃ CHỈNH] Kích thước 4.5vmin */
   width: 4.5vmin; 
   height: 4.5vmin;
+  
+  /* [ĐÃ CHỈNH] Căn giữa tâm (một nửa của 4.5 là 2.25) */
   margin-left: -2.25vmin; 
   margin-top: -2.25vmin;
+  
   border-radius: 50%;
   background: rgba(30, 30, 30, 0.95);
   border: 0.2vmin solid rgba(255, 255, 255, 0.5);
