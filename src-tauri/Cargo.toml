@@ -33,7 +33,7 @@ sha2 = "0.10"
 hex = "0.4"
 tauri-plugin-os = "2"
 
-# --- Thư viện cho Auto Ziga ---
-screenshots = "0.8"  # Chụp màn hình
-image = "0.24"       # Xử lý ảnh
-enigo = "0.2"        # Điều khiển chuột (Auto click)
+# --- THÊM 3 DÒNG NÀY CHO AUTO ZIGA ---
+screenshots = "0.8"
+image = "0.24"
+enigo = "0.2"
