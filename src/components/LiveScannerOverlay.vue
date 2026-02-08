@@ -113,7 +113,7 @@ onUnmounted(() => {
   font-size: 10px;
   color: #fff;
   display: flex;
-  align-center;
+  align-items: center;
 }
 .dot {
   width: 8px;
