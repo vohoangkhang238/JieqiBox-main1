@@ -13,7 +13,6 @@ export function useLiveScanner() {
       const boxes = await processLiveFrame(video)
       if (boxes.length > 0) {
         const grid = updateBoardGrid(boxes)
-        // Chuyển grid thành FEN
         let fen = ""
         for (let j=0; j<10; j++) {
           let empty = 0
@@ -30,12 +29,12 @@ export function useLiveScanner() {
           if (j < 9) fen += "/"
         }
         const finalFen = fen + " w - - 0 1"
-        if (finalFen !== lastFen.value) {
+        if (finalFen !== lastFen.value && finalFen.length > 25) {
           lastFen.value = finalFen; onDetected(finalFen)
-          console.log("✅ Cập nhật bàn cờ:", finalFen)
+          console.log("♟️ Bàn cờ cập nhật:", finalFen)
         }
       }
-      setTimeout(loop, 300)
+      setTimeout(loop, 250) // Quét 4 lần mỗi giây
     }
     loop()
   }
