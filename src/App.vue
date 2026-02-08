@@ -27,17 +27,19 @@
 </script>
 
 <template>
-  <div class="app-container">
+  <div class="app-container" :lang="htmlLang">
     <TopToolbar />
     <div class="main-layout">
-      <div class="side-controls mr-4" style="width: 300px">
-        <LiveScannerOverlay :game-state="game" />
+      <div class="side-controls mr-4" style="width: 320px">
+        <LiveScannerOverlay /> <AnalysisSidebar />
       </div>
+
       <div class="chessboard-area" :class="{ 'with-chart': showPositionChart }">
         <Chessboard />
       </div>
-      <AnalysisSidebar />
+
       <FenInputDialog v-model="game.isFenInputDialogVisible.value" @confirm="game.confirmFenInput" />
+      <GameEndDialog :visible="game.isGameEndDialogVisible.value" />
     </div>
   </div>
 </template>
