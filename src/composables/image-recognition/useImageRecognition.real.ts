@@ -2,7 +2,6 @@ import { ref } from 'vue'
 import * as ort from 'onnxruntime-web'
 import { LABELS, type DetectionBox, type ProcessedImage } from './types'
 
-// Mapping quân cờ Standard (Cờ ngửa)
 const LABELS_STANDARD: Record<number, string> = {
   0: 'b_horse', 1: 'b_elephant', 2: 'b_advisor', 3: 'b_general', 
   4: 'b_chariot', 5: 'b_cannon', 6: 'b_soldier', 7: 'r_chariot', 
@@ -14,6 +13,7 @@ export const useImageRecognition = () => {
   const sessionJieqi = ref<ort.InferenceSession | null>(null)
   const sessionStandard = ref<ort.InferenceSession | null>(null)
   const isModelLoading = ref(false)
+  const isInferenceBusy = ref(false) // Biến khóa bảo vệ
 
   const initializeModel = async (): Promise<void> => {
     if (sessionJieqi.value && sessionStandard.value) return
@@ -23,12 +23,11 @@ export const useImageRecognition = () => {
       ort.env.wasm.wasmPaths = base + 'ort/'
       
       const [s1, s2] = await Promise.all([
-        ort.InferenceSession.create(base + 'models/best.onnx', { executionProviders: ['wasm'] }),
-        ort.InferenceSession.create(base + 'models/standard.onnx', { executionProviders: ['wasm'] })
+        ort.InferenceSession.create(base + 'models/best.onnx', { executionProviders: ['wasm'], graphOptimizationLevel: 'all' }),
+        ort.InferenceSession.create(base + 'models/standard.onnx', { executionProviders: ['wasm'], graphOptimizationLevel: 'all' })
       ])
       sessionJieqi.value = s1
       sessionStandard.value = s2
-      console.log("AI: Đã nạp thành công cả 2 model.");
     } catch (error) {
       console.error('AI: Lỗi tải model:', error)
     } finally {
@@ -79,8 +78,7 @@ export const useImageRecognition = () => {
         const scoreIdx = isV8 ? (4 + c) * stride + i : i * (numClasses + 5) + (5 + c)
         if (data[scoreIdx] > maxScore) { maxScore = data[scoreIdx]; labelIdx = c }
       }
-      // Hạ ngưỡng xuống 0.25 để nhận diện quân úp nhạy hơn
-      if (maxScore > 0.25) {
+      if (maxScore > 0.3) {
         const cx = isV8 ? data[0 * stride + i] : data[i * (numClasses + 5) + 0]
         const cy = isV8 ? data[1 * stride + i] : data[i * (numClasses + 5) + 1]
         const w = isV8 ? data[2 * stride + i] : data[i * (numClasses + 5) + 2]
@@ -97,33 +95,41 @@ export const useImageRecognition = () => {
 
   const processLiveFrame = async (source: CanvasImageSource): Promise<DetectionBox[]> => {
     if (!sessionJieqi.value || !sessionStandard.value) await initializeModel()
-    const prep = await preprocess(source)
-    const feeds = { [sessionJieqi.value!.inputNames[0]]: prep.tensor }
+    
+    // NẾU AI ĐANG BẬN, THOÁT LUÔN KHÔNG CHẠY TRÙNG
+    if (isInferenceBusy.value) return []
+    
+    try {
+      isInferenceBusy.value = true // Đóng khóa
+      const prep = await preprocess(source)
+      
+      // Chạy tuần tự thay vì Promise.all để tránh lỗi Session already started trong WASM
+      const resJieqi = await sessionJieqi.value!.run({ [sessionJieqi.value!.inputNames[0]]: prep.tensor })
+      const resStandard = await sessionStandard.value!.run({ [sessionStandard.value!.inputNames[0]]: prep.tensor })
 
-    const [resJieqi, resStandard] = await Promise.all([
-      sessionJieqi.value!.run(feeds),
-      sessionStandard.value!.run(feeds)
-    ])
+      const boxesJieqi = parseOutput(resJieqi.output0 || Object.values(resJieqi)[0], prep.meta, 34)
+      const boxesStandard = parseOutput(resStandard.output0 || Object.values(resStandard)[0], prep.meta, 15)
 
-    const boxesJieqi = parseOutput(resJieqi.output0 || Object.values(resJieqi)[0], prep.meta, 34)
-    const boxesStandard = parseOutput(resStandard.output0 || Object.values(resStandard)[0], prep.meta, 15)
-
-    // Lấy Board và Dark từ model Jieqi
-    const jieqiRes = boxesJieqi.filter(b => {
-      const name = LABELS[b.labelIndex].name
-      return name === 'Board' || name.toLowerCase().includes('dark')
-    })
-
-    // Lấy quân ngửa từ model Standard
-    const standardRes = boxesStandard
-      .filter(b => LABELS_STANDARD[b.labelIndex] !== 'empty')
-      .map(b => {
-        const name = LABELS_STANDARD[b.labelIndex]
-        const globalIdx = Object.keys(LABELS).find(k => LABELS[Number(k)].name === name)
-        return { ...b, labelIndex: Number(globalIdx || b.labelIndex) }
+      const jieqiRes = boxesJieqi.filter(b => {
+        const name = LABELS[b.labelIndex].name
+        return name === 'Board' || name.toLowerCase().includes('dark')
       })
 
-    return [...jieqiRes, ...standardRes]
+      const standardRes = boxesStandard
+        .filter(b => LABELS_STANDARD[b.labelIndex] !== 'empty')
+        .map(b => {
+          const name = LABELS_STANDARD[b.labelIndex]
+          const globalIdx = Object.keys(LABELS).find(k => LABELS[Number(k)].name === name)
+          return { ...b, labelIndex: Number(globalIdx || b.labelIndex) }
+        })
+
+      return [...jieqiRes, ...standardRes]
+    } catch (e) {
+      console.error("Lỗi Inference:", e)
+      return []
+    } finally {
+      isInferenceBusy.value = false // Mở khóa cho lượt sau
+    }
   }
 
   const updateBoardGrid = (boxes: DetectionBox[]) => {

@@ -34,36 +34,41 @@ export function useLiveScanner() {
   }
 
   const startScanning = async (video: HTMLVideoElement, onDetected: (fen: string) => void) => {
+    if (isScanning.value) return // Không cho phép chạy 2 vòng lặp
     isScanning.value = true
-    console.log("Scanner: Bắt đầu vòng lặp quét.");
 
     const loop = async () => {
       if (!isScanning.value) return
+
       try {
         const boxes = await processLiveFrame(video)
         
-        // Kiểm tra xem có thấy bàn cờ không
-        const hasBoard = boxes.some(b => LABELS[b.labelIndex].name === 'Board')
-        if (!hasBoard) {
-          console.warn("Scanner: Không tìm thấy bàn cờ (Board). Hãy đảm bảo bàn cờ nằm trong khung hình.");
-        }
-
-        const grid = updateBoardGrid(boxes)
-        const currentFen = gridToFen(grid)
-        
-        // Chỉ cập nhật nếu thế cờ khác nước trước
-        if (currentFen !== lastFen.value && currentFen.length > 20) {
-          console.log("Scanner: Phát hiện thế cờ mới ->", currentFen)
-          lastFen.value = currentFen
-          onDetected(currentFen)
+        // Chỉ xử lý nếu kết quả trả về hợp lệ (không bị khóa bởi isInferenceBusy)
+        if (boxes.length > 0) {
+          const grid = updateBoardGrid(boxes)
+          const currentFen = gridToFen(grid)
+          
+          if (currentFen !== lastFen.value && currentFen.length > 20) {
+            lastFen.value = currentFen
+            onDetected(currentFen)
+          }
         }
       } catch (e) {
-        console.error("Scanner: Lỗi thực thi ->", e)
+        console.error("Scanner Error:", e)
       }
-      setTimeout(() => requestAnimationFrame(loop), 500)
+
+      // Đợi lượt này xong mới lên lịch lượt tiếp theo
+      if (isScanning.value) {
+        setTimeout(loop, 100) // 100ms nghỉ giữa các lần quét thành công
+      }
     }
+
     loop()
   }
 
-  return { isScanning, startScanning, stopScanning: () => isScanning.value = false }
+  const stopScanning = () => {
+    isScanning.value = false
+  }
+
+  return { isScanning, startScanning, stopScanning }
 }
