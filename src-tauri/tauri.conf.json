@@ -12,7 +12,17 @@
   },
 
   "app": {
-    "windows": [{ "title": "JieqiBox", "width": 800, "height": 600 }],
+    "windows": [
+  {
+    "title": "JieqiBox AI",
+    "width": 400,
+    "height": 700,
+    "alwaysOnTop": true,
+    "resizable": true,
+    "decorations": true,
+    "transparent": false
+  }
+],
     "security": { "csp": null }
   },
 

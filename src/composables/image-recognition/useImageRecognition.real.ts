@@ -14,7 +14,6 @@ export const useImageRecognition = () => {
   const outputCanvas = ref<HTMLCanvasElement | null>(null)
   const showBoundingBoxes = ref(true)
 
-  // Khởi tạo model ONNX
   const initializeModel = async (): Promise<void> => {
     if (session.value) return
     try {
@@ -36,15 +35,12 @@ export const useImageRecognition = () => {
     }
   }
 
-  // CẬP NHẬT: Letterbox chấp nhận CanvasImageSource (Video, Canvas, Image)
   const letterbox = (
     image: CanvasImageSource,
     newShape = [640, 640],
     color = 114
   ): ProcessedImage => {
     const [newH, newW] = newShape
-    
-    // Lấy kích thước thực tế từ nguồn đầu vào
     let imgW: number, imgH: number
     if (image instanceof HTMLVideoElement) {
       imgW = image.videoWidth
@@ -67,98 +63,90 @@ export const useImageRecognition = () => {
 
     context.fillStyle = `rgb(${color}, ${color}, ${color})`
     context.fillRect(0, 0, newW, newH)
+    context.drawImage(image, 0, 0, imgW, imgH, Math.round(dw), Math.round(dh), newUnpadW, newUnpadH)
 
-    context.drawImage(
-      image,
-      0, 0, imgW, imgH,
-      Math.round(dw), Math.round(dh), newUnpadW, newUnpadH
-    )
-
-    return {
-      canvas,
-      context,
-      meta: { r, dw, dh, newW, newH, imgW, imgH },
-    }
+    return { canvas, context, meta: { r, dw, dh, newW, newH, imgW, imgH } }
   }
 
-  // CẬP NHẬT: Preprocess chấp nhận CanvasImageSource
-  const preprocess = async (
-    image: CanvasImageSource
-  ): Promise<{ tensor: ort.Tensor; meta: ProcessedImage['meta'] }> => {
+  const preprocess = async (image: CanvasImageSource) => {
     const modelW = 640
     const modelH = 640
-
     const { canvas, meta } = letterbox(image, [modelH, modelW], 114)
     const context = canvas.getContext('2d')!
     const imageData = context.getImageData(0, 0, modelW, modelH)
     const { data } = imageData
-
-    const red = new Float32Array(modelW * modelH)
-    const green = new Float32Array(modelW * modelH)
-    const blue = new Float32Array(modelW * modelH)
+    const [red, green, blue] = [new Float32Array(modelW * modelH), new Float32Array(modelW * modelH), new Float32Array(modelW * modelH)]
 
     for (let i = 0, p = 0; i < data.length; i += 4, p++) {
-      red[p] = data[i] / 255
-      green[p] = data[i + 1] / 255
-      blue[p] = data[i + 2] / 255
+      red[p] = data[i] / 255; green[p] = data[i + 1] / 255; blue[p] = data[i + 2] / 255
     }
 
     const input = new Float32Array(modelW * modelH * 3)
-    input.set(red, 0)
-    input.set(green, modelW * modelH)
-    input.set(blue, modelW * modelH * 2)
-
-    const tensor = new ort.Tensor('float32', input, [1, 3, modelH, modelW])
-    return { tensor, meta }
+    input.set(red, 0); input.set(green, modelW * modelH); input.set(blue, modelW * modelH * 2)
+    return { tensor: new ort.Tensor('float32', input, [1, 3, modelH, modelW]), meta }
   }
 
-  // BỔ SUNG: Hàm xử lý nhận diện cho một khung hình duy nhất
   const processLiveFrame = async (source: CanvasImageSource): Promise<DetectionBox[]> => {
     if (!session.value) await initializeModel()
-
     try {
-      // 1. Tiền xử lý khung hình hiện tại
       const prep = await preprocess(source)
-
-      // 2. Chạy model inference
-      const inputName = session.value!.inputNames.includes('images')
-        ? 'images'
-        : session.value!.inputNames[0]
-      const feeds = { [inputName]: prep.tensor }
-      const results = await session.value!.run(feeds)
-
+      const inputName = session.value!.inputNames.includes('images') ? 'images' : session.value!.inputNames[0]
+      const results = await session.value!.run({ [inputName]: prep.tensor })
       const firstOut = results.output0 || results[Object.keys(results)[0]]
-      const outputData = firstOut.data as unknown as number[]
-      const outShape = firstOut.dims as number[]
+      return postprocess(firstOut.data as any, firstOut.dims as any, prep.meta)
+    } catch (e) { return [] }
+  }
 
-      // 3. Hậu xử lý (postprocess có sẵn trong project)
-      return postprocess(outputData, outShape, prep.meta)
-    } catch (error) {
-      console.error('Lỗi khi nhận diện khung hình:', error)
-      return []
+  const iou = (boxA: DetectionBox, boxB: DetectionBox): number => {
+    const [x1A, y1A, wA, hA] = boxA.box, [x1B, y1B, wB, hB] = boxB.box
+    const inter = Math.max(0, Math.min(x1A + wA, x1B + wB) - Math.max(x1A, x1B)) * Math.max(0, Math.min(y1A + hA, y1B + hB) - Math.max(y1A, y1B))
+    return inter / (wA * hA + wB * hB - inter || 1)
+  }
+
+  const nms = (boxes: DetectionBox[], iouThresh = 0.7): DetectionBox[] => {
+    boxes.sort((a, b) => b.score - a.score)
+    const result: DetectionBox[] = [], removed = new Array(boxes.length).fill(false)
+    for (let i = 0; i < boxes.length; i++) {
+      if (removed[i]) continue
+      result.push(boxes[i])
+      for (let j = i + 1; j < boxes.length; j++) if (iou(boxes[i], boxes[j]) > iouThresh) removed[j] = true
     }
+    return result
   }
 
-  // --- Các hàm tiện ích NMS, IOU, Postprocess giữ nguyên như code cũ của bạn ---
-  const sigmoid = (x: number): number => 1 / (1 + Math.exp(-x))
-  const iou = (boxA: DetectionBox, boxB: DetectionBox): number => { /* ... giữ nguyên ... */ }
-  const nms = (boxes: DetectionBox[], iouThresh = 0.7, classAgnostic = false): DetectionBox[] => { /* ... giữ nguyên ... */ }
-  const doBoxesOverlap = (boxA: [number, number, number, number], boxB: [number, number, number, number]): boolean => { /* ... giữ nguyên ... */ }
-  const postprocess = (outputDataRaw: any, outShape: number[], meta: ProcessedImage['meta']): DetectionBox[] => { /* ... giữ nguyên ... */ }
-  const updateBoardGrid = (boxes: DetectionBox[]): (DetectionBox | null)[][] => { /* ... giữ nguyên ... */ }
-
-  return {
-    session,
-    isModelLoading,
-    isProcessing,
-    status,
-    detectedBoxes,
-    inputImage,
-    outputCanvas,
-    showBoundingBoxes,
-    processImage: async (file: File) => { /* ... hàm cũ dùng cho ảnh tĩnh ... */ },
-    processLiveFrame, // Xuất hàm mới để dùng cho quét liên tục
-    updateBoardGrid,
-    initializeModel,
+  const postprocess = (data: Float32Array, shape: number[], meta: any): DetectionBox[] => {
+    const boxes: DetectionBox[] = [], confThresh = 0.25
+    const num_coords = 4, num_classes = 34
+    const r = meta.r, dw = meta.dw, dh = meta.dh
+    
+    // Hỗ trợ định dạng YOLOv11 [1, 38, 8400]
+    for (let i = 0; i < shape[2]; i++) {
+      let maxScore = -1, maxIdx = -1
+      for (let c = 0; c < num_classes; c++) {
+        const score = data[(num_coords + c) * shape[2] + i]
+        if (score > maxScore) { maxScore = score; maxIdx = c }
+      }
+      if (maxScore > confThresh) {
+        const cx = data[0 * shape[2] + i], cy = data[1 * shape[2] + i]
+        const w = data[2 * shape[2] + i], h = data[3 * shape[2] + i]
+        boxes.push({ box: [(cx - w / 2 - dw) / r, (cy - h / 2 - dh) / r, w / r, h / r], score: maxScore, labelIndex: maxIdx })
+      }
+    }
+    return nms(boxes)
   }
+
+  const updateBoardGrid = (boxes: DetectionBox[]) => {
+    const board = boxes.filter(b => LABELS[b.labelIndex]?.name === 'Board').sort((a, b) => b.score - a.score)[0]
+    const grid: (DetectionBox | null)[][] = Array(10).fill(null).map(() => Array(9).fill(null))
+    if (!board) return grid
+    const [bx, by, bw, bh] = board.box
+    boxes.filter(p => LABELS[p.labelIndex]?.name !== 'Board').forEach(p => {
+      const [px, py, pw, ph] = p.box, cx = px + pw/2, cy = py + ph/2
+      const i = Math.round(((cx - bx) / bw) * 8), j = Math.round(((cy - by) / bh) * 9)
+      if (i >= 0 && i < 9 && j >= 0 && j < 10) grid[j][i] = p
+    })
+    return grid
+  }
+
+  return { isModelLoading, status, processLiveFrame, updateBoardGrid, initializeModel }
 }
