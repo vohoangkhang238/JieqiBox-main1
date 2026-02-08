@@ -3,7 +3,7 @@ import { useImageRecognition } from './useImageRecognition.real'
 import { LABELS } from './types'
 
 export function useLiveScanner() {
-  const { processLiveFrame, updateBoardGrid, isModelLoading } = useImageRecognition()
+  const { processLiveFrame, updateBoardGrid } = useImageRecognition()
   const isScanning = ref(false)
   const lastFen = ref('')
 
@@ -12,7 +12,8 @@ export function useLiveScanner() {
       'r_general': 'K', 'r_chariot': 'R', 'r_horse': 'N', 'r_cannon': 'C', 'r_advisor': 'A', 'r_elephant': 'B', 'r_soldier': 'P',
       'b_general': 'k', 'b_chariot': 'r', 'b_horse': 'n', 'b_cannon': 'c', 'b_advisor': 'a', 'b_elephant': 'b', 'b_soldier': 'p'
     }
-    return name.startsWith('dark') ? 'X' : (map[name] || '')
+    if (name.startsWith('dark') || name === 'dark') return 'X'
+    return map[name] || ''
   }
 
   const gridToFen = (grid: any[][]) => {
@@ -36,16 +37,24 @@ export function useLiveScanner() {
     isScanning.value = true
     const loop = async () => {
       if (!isScanning.value) return
-      const boxes = await processLiveFrame(video)
-      const fen = gridToFen(updateBoardGrid(boxes))
-      if (fen !== lastFen.value && fen.length > 25) {
-        lastFen.value = fen
-        onDetected(fen)
+      try {
+        const boxes = await processLiveFrame(video)
+        const grid = updateBoardGrid(boxes)
+        const fen = gridToFen(grid)
+        
+        // Chỉ cập nhật nếu phát hiện đủ quân cờ (ít nhất 10 quân để tránh lỗi quét nhầm)
+        const pieceCount = boxes.filter(b => LABELS[b.labelIndex].name !== 'Board').length
+        if (fen !== lastFen.value && pieceCount > 10) {
+          lastFen.value = fen
+          onDetected(fen)
+        }
+      } catch (err) {
+        console.error("Lỗi vòng lặp quét:", err)
       }
       setTimeout(() => requestAnimationFrame(loop), 500)
     }
     loop()
   }
 
-  return { isScanning, startScanning, stopScanning: () => isScanning.value = false, isModelLoading }
+  return { isScanning, startScanning, stopScanning: () => isScanning.value = false }
 }

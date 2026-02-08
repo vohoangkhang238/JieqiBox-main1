@@ -2,7 +2,7 @@ import { ref } from 'vue'
 import * as ort from 'onnxruntime-web'
 import { LABELS, type DetectionBox, type ProcessedImage } from './types'
 
-// Định nghĩa label của Model cờ ngửa bạn vừa cung cấp
+// Mapping chính xác theo mảng labels bạn cung cấp: {'n','b','a','k','r','c','p','R','N','A','K','B','C','P','0'}
 const LABELS_STANDARD: Record<number, string> = {
   0: 'b_horse', 1: 'b_elephant', 2: 'b_advisor', 3: 'b_general', 
   4: 'b_chariot', 5: 'b_cannon', 6: 'b_soldier', 7: 'r_chariot', 
@@ -22,13 +22,13 @@ export const useImageRecognition = () => {
       const base = (import.meta as any).env?.BASE_URL || '/'
       ort.env.wasm.wasmPaths = base + 'ort/'
       
-      // Load đồng thời 2 model
       const [s1, s2] = await Promise.all([
         ort.InferenceSession.create(base + 'models/best.onnx', { executionProviders: ['wasm'] }),
         ort.InferenceSession.create(base + 'models/standard.onnx', { executionProviders: ['wasm'] })
       ])
       sessionJieqi.value = s1
       sessionStandard.value = s2
+      console.log("Đã tải xong 2 model AI thành công.");
     } catch (error) {
       console.error('Lỗi tải model:', error)
     } finally {
@@ -36,7 +36,6 @@ export const useImageRecognition = () => {
     }
   }
 
-  // --- Hàm tiền xử lý giữ nguyên ---
   const letterbox = (image: CanvasImageSource, newShape = [640, 640], color = 114): ProcessedImage => {
     const [newH, newW] = newShape
     let imgW = (image as any).videoWidth || (image as any).width || (image as any).naturalWidth
@@ -65,22 +64,33 @@ export const useImageRecognition = () => {
     return { tensor: new ort.Tensor('float32', input, [1, 3, 640, 640]), meta }
   }
 
-  // Hậu xử lý cho từng model
-  const postprocessModel = (output: any, meta: any, numClasses: number): DetectionBox[] => {
+  const parseOutput = (output: any, meta: any, numClasses: number, labelMap: Record<number, any>): DetectionBox[] => {
     const boxes: DetectionBox[] = []
     const data = output.data as Float32Array
-    const shape = output.dims
+    const shape = output.dims // [1, X, 8400] hoặc [1, 8400, X]
     const { r, dw, dh } = meta
 
-    for (let i = 0; i < shape[2]; i++) {
+    // Tự động nhận diện định dạng YOLO (v8-11 hay v5)
+    const isV8 = shape[1] < shape[2];
+    const numBoxes = isV8 ? shape[2] : shape[1];
+    const stride = isV8 ? shape[2] : 1;
+    const offset = isV8 ? 1 : shape[2];
+
+    for (let i = 0; i < numBoxes; i++) {
       let maxScore = 0, labelIdx = -1
       for (let c = 0; c < numClasses; c++) {
-        const score = data[(4 + c) * shape[2] + i]
+        const scoreIdx = isV8 ? (4 + c) * stride + i : i * (numClasses + 5) + (5 + c);
+        const score = data[scoreIdx]
         if (score > maxScore) { maxScore = score; labelIdx = c }
       }
-      if (maxScore > 0.3) {
-        const cx = data[0 * shape[2] + i], cy = data[1 * shape[2] + i]
-        const w = data[2 * shape[2] + i], h = data[3 * shape[2] + i]
+
+      if (maxScore > 0.4) {
+        const cxIdx = isV8 ? 0 * stride + i : i * (numClasses + 5) + 0;
+        const cyIdx = isV8 ? 1 * stride + i : i * (numClasses + 5) + 1;
+        const wIdx = isV8 ? 2 * stride + i : i * (numClasses + 5) + 2;
+        const hIdx = isV8 ? 3 * stride + i : i * (numClasses + 5) + 3;
+        
+        const cx = data[cxIdx], cy = data[cyIdx], w = data[wIdx], h = data[hIdx];
         boxes.push({
           box: [(cx - w / 2 - dw) / r, (cy - h / 2 - dh) / r, w / r, h / r],
           score: maxScore,
@@ -88,39 +98,39 @@ export const useImageRecognition = () => {
         })
       }
     }
-    return boxes
+    return boxes;
   }
 
   const processLiveFrame = async (source: CanvasImageSource): Promise<DetectionBox[]> => {
     if (!sessionJieqi.value || !sessionStandard.value) await initializeModel()
     const prep = await preprocess(source)
-    const feeds = { [sessionJieqi.value!.inputNames[0]]: prep.tensor }
-
-    // Chạy song song 2 model
-    const [resJieqi, resStandard] = await Promise.all([
-      sessionJieqi.value!.run(feeds),
-      sessionStandard.value!.run(feeds)
-    ])
-
-    // Xử lý kết quả model 1 (34 classes)
-    const boxes1 = postprocessModel(resJieqi.output0 || Object.values(resJieqi)[0], prep.meta, 34)
-    // Xử lý kết quả model 2 (15 classes)
-    const boxes2 = postprocessModel(resStandard.output0 || Object.values(resStandard)[0], prep.meta, 15)
-
-    // CHIẾN THUẬT KẾT HỢP:
-    // 1. Lấy "Board" và các quân "dark" (úp) từ Model Jieqi
-    const jieqiResult = boxes1.filter(b => LABELS[b.labelIndex].name === 'Board' || LABELS[b.labelIndex].name.startsWith('dark'))
     
-    // 2. Lấy các quân ngửa từ Model Standard (vì chính xác cao hơn)
-    const standardResult = boxes2.filter(b => LABELS_STANDARD[b.labelIndex] !== 'empty' && LABELS_STANDARD[b.labelIndex] !== 'Board')
-    // Ánh xạ labelIndex của Model Standard sang labelIndex chuẩn của hệ thống
-    const mappedStandard = standardResult.map(b => {
-      const name = LABELS_STANDARD[b.labelIndex]
-      const globalIdx = Object.keys(LABELS).find(key => LABELS[Number(key)].name === name)
-      return { ...b, labelIndex: Number(globalIdx) }
-    })
+    // Chạy model 1
+    const feeds1 = { [sessionJieqi.value!.inputNames[0]]: prep.tensor }
+    const resJieqi = await sessionJieqi.value!.run(feeds1)
+    const boxesJieqiRaw = parseOutput(resJieqi.output0 || Object.values(resJieqi)[0], prep.meta, 34, LABELS)
 
-    return [...jieqiResult, ...mappedStandard]
+    // Chạy model 2
+    const feeds2 = { [sessionStandard.value!.inputNames[0]]: prep.tensor }
+    const resStandard = await sessionStandard.value!.run(feeds2)
+    const boxesStandardRaw = parseOutput(resStandard.output0 || Object.values(resStandard)[0], prep.meta, 15, LABELS_STANDARD)
+
+    // Kết hợp kết quả
+    const board = boxesJieqiRaw.find(b => LABELS[b.labelIndex].name === 'Board')
+    const darkPieces = boxesJieqiRaw.filter(b => LABELS[b.labelIndex].name.startsWith('dark') || LABELS[b.labelIndex].name === 'dark')
+    
+    // Ánh xạ nhãn model Standard sang nhãn hệ thống
+    const lightPieces = boxesStandardRaw
+      .filter(b => LABELS_STANDARD[b.labelIndex] !== 'empty')
+      .map(b => {
+        const name = LABELS_STANDARD[b.labelIndex]
+        const systemIdx = Object.keys(LABELS).find(k => LABELS[Number(k)].name === name)
+        return { ...b, labelIndex: systemIdx ? Number(systemIdx) : b.labelIndex }
+      })
+
+    const finalBoxes = []
+    if (board) finalBoxes.push(board)
+    return [...finalBoxes, ...darkPieces, ...lightPieces]
   }
 
   const updateBoardGrid = (boxes: DetectionBox[]) => {
