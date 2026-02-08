@@ -12,7 +12,8 @@ export function useLiveScanner() {
       'r_general': 'K', 'r_chariot': 'R', 'r_horse': 'N', 'r_cannon': 'C', 'r_advisor': 'A', 'r_elephant': 'B', 'r_soldier': 'P',
       'b_general': 'k', 'b_chariot': 'r', 'b_horse': 'n', 'b_cannon': 'c', 'b_advisor': 'a', 'b_elephant': 'b', 'b_soldier': 'p'
     }
-    if (name.startsWith('dark') || name === 'dark') return 'X'
+    // SỬA LỖI: Kiểm tra nhãn chứa chữ "dark" để luôn trả về 'X'
+    if (name.toLowerCase().includes('dark')) return 'X'
     return map[name] || ''
   }
 
@@ -40,17 +41,14 @@ export function useLiveScanner() {
       try {
         const boxes = await processLiveFrame(video)
         const grid = updateBoardGrid(boxes)
-        const fen = gridToFen(grid)
+        const currentFen = gridToFen(grid)
         
-        // Chỉ cập nhật nếu phát hiện đủ quân cờ (ít nhất 10 quân để tránh lỗi quét nhầm)
-        const pieceCount = boxes.filter(b => LABELS[b.labelIndex].name !== 'Board').length
-        if (fen !== lastFen.value && pieceCount > 10) {
-          lastFen.value = fen
-          onDetected(fen)
+        // Chỉ cập nhật nếu có sự thay đổi thế cờ thực sự
+        if (currentFen !== lastFen.value && currentFen.length > 20) {
+          lastFen.value = currentFen
+          onDetected(currentFen)
         }
-      } catch (err) {
-        console.error("Lỗi vòng lặp quét:", err)
-      }
+      } catch (e) { console.error(e) }
       setTimeout(() => requestAnimationFrame(loop), 500)
     }
     loop()

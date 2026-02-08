@@ -2,7 +2,7 @@ import { ref } from 'vue'
 import * as ort from 'onnxruntime-web'
 import { LABELS, type DetectionBox, type ProcessedImage } from './types'
 
-// Mapping chính xác theo mảng labels bạn cung cấp: {'n','b','a','k','r','c','p','R','N','A','K','B','C','P','0'}
+// Mapping nhãn từ mảng bạn cung cấp: {'n','b','a','k','r','c','p','R','N','A','K','B','C','P','0'}
 const LABELS_STANDARD: Record<number, string> = {
   0: 'b_horse', 1: 'b_elephant', 2: 'b_advisor', 3: 'b_general', 
   4: 'b_chariot', 5: 'b_cannon', 6: 'b_soldier', 7: 'r_chariot', 
@@ -28,7 +28,7 @@ export const useImageRecognition = () => {
       ])
       sessionJieqi.value = s1
       sessionStandard.value = s2
-      console.log("Đã tải xong 2 model AI thành công.");
+      console.log("Hệ thống Hybrid Model đã sẵn sàng.");
     } catch (error) {
       console.error('Lỗi tải model:', error)
     } finally {
@@ -64,33 +64,28 @@ export const useImageRecognition = () => {
     return { tensor: new ort.Tensor('float32', input, [1, 3, 640, 640]), meta }
   }
 
-  const parseOutput = (output: any, meta: any, numClasses: number, labelMap: Record<number, any>): DetectionBox[] => {
+  const parseOutput = (output: any, meta: any, numClasses: number): DetectionBox[] => {
     const boxes: DetectionBox[] = []
     const data = output.data as Float32Array
-    const shape = output.dims // [1, X, 8400] hoặc [1, 8400, X]
+    const shape = output.dims
     const { r, dw, dh } = meta
 
-    // Tự động nhận diện định dạng YOLO (v8-11 hay v5)
-    const isV8 = shape[1] < shape[2];
-    const numBoxes = isV8 ? shape[2] : shape[1];
-    const stride = isV8 ? shape[2] : 1;
-    const offset = isV8 ? 1 : shape[2];
+    const isV8 = shape[1] < shape[2]
+    const numBoxes = isV8 ? shape[2] : shape[1]
+    const stride = isV8 ? shape[2] : 1
 
     for (let i = 0; i < numBoxes; i++) {
       let maxScore = 0, labelIdx = -1
       for (let c = 0; c < numClasses; c++) {
-        const scoreIdx = isV8 ? (4 + c) * stride + i : i * (numClasses + 5) + (5 + c);
-        const score = data[scoreIdx]
-        if (score > maxScore) { maxScore = score; labelIdx = c }
+        const scoreIdx = isV8 ? (4 + c) * stride + i : i * (numClasses + 5) + (5 + c)
+        if (data[scoreIdx] > maxScore) { maxScore = data[scoreIdx]; labelIdx = c }
       }
 
-      if (maxScore > 0.4) {
-        const cxIdx = isV8 ? 0 * stride + i : i * (numClasses + 5) + 0;
-        const cyIdx = isV8 ? 1 * stride + i : i * (numClasses + 5) + 1;
-        const wIdx = isV8 ? 2 * stride + i : i * (numClasses + 5) + 2;
-        const hIdx = isV8 ? 3 * stride + i : i * (numClasses + 5) + 3;
-        
-        const cx = data[cxIdx], cy = data[cyIdx], w = data[wIdx], h = data[hIdx];
+      if (maxScore > 0.35) { // Ngưỡng nhận diện
+        const cx = isV8 ? data[0 * stride + i] : data[i * (numClasses + 5) + 0]
+        const cy = isV8 ? data[1 * stride + i] : data[i * (numClasses + 5) + 1]
+        const w = isV8 ? data[2 * stride + i] : data[i * (numClasses + 5) + 2]
+        const h = isV8 ? data[3 * stride + i] : data[i * (numClasses + 5) + 3]
         boxes.push({
           box: [(cx - w / 2 - dw) / r, (cy - h / 2 - dh) / r, w / r, h / r],
           score: maxScore,
@@ -98,39 +93,39 @@ export const useImageRecognition = () => {
         })
       }
     }
-    return boxes;
+    return boxes
   }
 
   const processLiveFrame = async (source: CanvasImageSource): Promise<DetectionBox[]> => {
     if (!sessionJieqi.value || !sessionStandard.value) await initializeModel()
     const prep = await preprocess(source)
-    
-    // Chạy model 1
-    const feeds1 = { [sessionJieqi.value!.inputNames[0]]: prep.tensor }
-    const resJieqi = await sessionJieqi.value!.run(feeds1)
-    const boxesJieqiRaw = parseOutput(resJieqi.output0 || Object.values(resJieqi)[0], prep.meta, 34, LABELS)
+    const feeds = { [sessionJieqi.value!.inputNames[0]]: prep.tensor }
 
-    // Chạy model 2
-    const feeds2 = { [sessionStandard.value!.inputNames[0]]: prep.tensor }
-    const resStandard = await sessionStandard.value!.run(feeds2)
-    const boxesStandardRaw = parseOutput(resStandard.output0 || Object.values(resStandard)[0], prep.meta, 15, LABELS_STANDARD)
+    const [resJieqi, resStandard] = await Promise.all([
+      sessionJieqi.value!.run(feeds),
+      sessionStandard.value!.run(feeds)
+    ])
 
-    // Kết hợp kết quả
-    const board = boxesJieqiRaw.find(b => LABELS[b.labelIndex].name === 'Board')
-    const darkPieces = boxesJieqiRaw.filter(b => LABELS[b.labelIndex].name.startsWith('dark') || LABELS[b.labelIndex].name === 'dark')
-    
-    // Ánh xạ nhãn model Standard sang nhãn hệ thống
-    const lightPieces = boxesStandardRaw
+    const boxesJieqi = parseOutput(resJieqi.output0 || Object.values(resJieqi)[0], prep.meta, 34)
+    const boxesStandard = parseOutput(resStandard.output0 || Object.values(resStandard)[0], prep.meta, 15)
+
+    // CHIẾN THUẬT SỬA LỖI QUÂN ÚP:
+    // 1. Lấy Board và tất cả quân DARK từ Model Jieqi (best.onnx)
+    const jieqiResult = boxesJieqi.filter(b => {
+      const name = LABELS[b.labelIndex].name
+      return name === 'Board' || name.toLowerCase().includes('dark')
+    })
+
+    // 2. Lấy quân ngửa từ Model Standard, nhưng loại bỏ nếu nó đè lên vị trí Model Jieqi đã báo là quân úp
+    const standardResult = boxesStandard
       .filter(b => LABELS_STANDARD[b.labelIndex] !== 'empty')
       .map(b => {
         const name = LABELS_STANDARD[b.labelIndex]
-        const systemIdx = Object.keys(LABELS).find(k => LABELS[Number(k)].name === name)
-        return { ...b, labelIndex: systemIdx ? Number(systemIdx) : b.labelIndex }
+        const systemIdx = Object.keys(LABELS).find(key => LABELS[Number(key)].name === name)
+        return { ...b, labelIndex: Number(systemIdx) }
       })
 
-    const finalBoxes = []
-    if (board) finalBoxes.push(board)
-    return [...finalBoxes, ...darkPieces, ...lightPieces]
+    return [...jieqiResult, ...standardResult]
   }
 
   const updateBoardGrid = (boxes: DetectionBox[]) => {
