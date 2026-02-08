@@ -12,6 +12,7 @@ export function useLiveScanner() {
       'r_general': 'K', 'r_chariot': 'R', 'r_horse': 'N', 'r_cannon': 'C', 'r_advisor': 'A', 'r_elephant': 'B', 'r_soldier': 'P',
       'b_general': 'k', 'b_chariot': 'r', 'b_horse': 'n', 'b_cannon': 'c', 'b_advisor': 'a', 'b_elephant': 'b', 'b_soldier': 'p'
     }
+    // Bất kể nhãn nào có chữ "dark" đều hiểu là quân úp 'X'
     if (name.toLowerCase().includes('dark')) return 'X'
     return map[name] || ''
   }
@@ -34,35 +35,27 @@ export function useLiveScanner() {
   }
 
   const startScanning = async (video: HTMLVideoElement, onDetected: (fen: string) => void) => {
-    if (isScanning.value) return // Không cho phép chạy 2 vòng lặp
+    if (isScanning.value) return
     isScanning.value = true
 
     const loop = async () => {
       if (!isScanning.value) return
-
-      try {
-        const boxes = await processLiveFrame(video)
-        
-        // Chỉ xử lý nếu kết quả trả về hợp lệ (không bị khóa bởi isInferenceBusy)
-        if (boxes.length > 0) {
-          const grid = updateBoardGrid(boxes)
-          const currentFen = gridToFen(grid)
-          
-          if (currentFen !== lastFen.value && currentFen.length > 20) {
-            lastFen.value = currentFen
-            onDetected(currentFen)
-          }
+      
+      const boxes = await processLiveFrame(video)
+      if (boxes.length > 0) {
+        const fen = gridToFen(updateBoardGrid(boxes))
+        // Cập nhật ngay khi có sự thay đổi
+        if (fen !== lastFen.value && fen.length > 20) {
+          lastFen.value = fen
+          onDetected(fen)
         }
-      } catch (e) {
-        console.error("Scanner Error:", e)
       }
-
-      // Đợi lượt này xong mới lên lịch lượt tiếp theo
+      
+      // Chỉ lên lịch quét tiếp theo sau khi lượt này đã xong hoàn toàn
       if (isScanning.value) {
-        setTimeout(loop, 100) // 100ms nghỉ giữa các lần quét thành công
+        setTimeout(loop, 200) // Nghỉ 200ms giữa các lần quét để ổn định
       }
     }
-
     loop()
   }
 

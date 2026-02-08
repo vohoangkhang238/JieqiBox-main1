@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import * as ort from 'onnxruntime-web'
 import { LABELS, type DetectionBox, type ProcessedImage } from './types'
 
+// Mapping nhãn model Standard theo mảng bạn cung cấp: {'n','b','a','k','r','c','p','R','N','A','K','B','C','P','0'}
 const LABELS_STANDARD: Record<number, string> = {
   0: 'b_horse', 1: 'b_elephant', 2: 'b_advisor', 3: 'b_general', 
   4: 'b_chariot', 5: 'b_cannon', 6: 'b_soldier', 7: 'r_chariot', 
@@ -13,7 +14,7 @@ export const useImageRecognition = () => {
   const sessionJieqi = ref<ort.InferenceSession | null>(null)
   const sessionStandard = ref<ort.InferenceSession | null>(null)
   const isModelLoading = ref(false)
-  const isInferenceBusy = ref(false) // Biến khóa bảo vệ
+  const isInferenceBusy = ref(false) // Cờ bảo vệ để tránh lỗi "Session already started"
 
   const initializeModel = async (): Promise<void> => {
     if (sessionJieqi.value && sessionStandard.value) return
@@ -28,6 +29,7 @@ export const useImageRecognition = () => {
       ])
       sessionJieqi.value = s1
       sessionStandard.value = s2
+      console.log("AI: Cả 2 model đã được nạp thành công.");
     } catch (error) {
       console.error('AI: Lỗi tải model:', error)
     } finally {
@@ -83,52 +85,53 @@ export const useImageRecognition = () => {
         const cy = isV8 ? data[1 * stride + i] : data[i * (numClasses + 5) + 1]
         const w = isV8 ? data[2 * stride + i] : data[i * (numClasses + 5) + 2]
         const h = isV8 ? data[3 * stride + i] : data[i * (numClasses + 5) + 3]
-        boxes.push({
-          box: [(cx - w / 2 - dw) / r, (cy - h / 2 - dh) / r, w / r, h / r],
-          score: maxScore,
-          labelIndex: labelIdx
-        })
+        boxes.push({ box: [(cx - w / 2 - dw) / r, (cy - h / 2 - dh) / r, w / r, h / r], score: maxScore, labelIndex: labelIdx })
       }
     }
     return boxes
   }
 
+  const isOverlapping = (box1: [number, number, number, number], box2: [number, number, number, number]) => {
+    const [x1, y1, w1, h1] = box1, [x2, y2, w2, h2] = box2
+    const dist = Math.sqrt(Math.pow((x1+w1/2)-(x2+w2/2), 2) + Math.pow((y1+h1/2)-(y2+h2/2), 2))
+    return dist < (w1 + w2) / 4
+  }
+
   const processLiveFrame = async (source: CanvasImageSource): Promise<DetectionBox[]> => {
     if (!sessionJieqi.value || !sessionStandard.value) await initializeModel()
-    
-    // NẾU AI ĐANG BẬN, THOÁT LUÔN KHÔNG CHẠY TRÙNG
-    if (isInferenceBusy.value) return []
-    
+    if (isInferenceBusy.value) return [] // Nếu đang bận thì bỏ qua frame này
+
     try {
-      isInferenceBusy.value = true // Đóng khóa
+      isInferenceBusy.value = true
       const prep = await preprocess(source)
       
-      // Chạy tuần tự thay vì Promise.all để tránh lỗi Session already started trong WASM
-      const resJieqi = await sessionJieqi.value!.run({ [sessionJieqi.value!.inputNames[0]]: prep.tensor })
-      const resStandard = await sessionStandard.value!.run({ [sessionStandard.value!.inputNames[0]]: prep.tensor })
+      // Chạy 2 model song song
+      const [resJieqi, resStandard] = await Promise.all([
+        sessionJieqi.value!.run({ [sessionJieqi.value!.inputNames[0]]: prep.tensor }),
+        sessionStandard.value!.run({ [sessionStandard.value!.inputNames[0]]: prep.tensor })
+      ])
 
-      const boxesJieqi = parseOutput(resJieqi.output0 || Object.values(resJieqi)[0], prep.meta, 34)
-      const boxesStandard = parseOutput(resStandard.output0 || Object.values(resStandard)[0], prep.meta, 15)
+      const bJieqi = parseOutput(resJieqi.output0 || Object.values(resJieqi)[0], prep.meta, 34)
+      const bStandard = parseOutput(resStandard.output0 || Object.values(resStandard)[0], prep.meta, 15)
 
-      const jieqiRes = boxesJieqi.filter(b => {
-        const name = LABELS[b.labelIndex].name
-        return name === 'Board' || name.toLowerCase().includes('dark')
-      })
-
-      const standardRes = boxesStandard
+      // Ưu tiên Board và quân Úp từ Model Jieqi
+      const finalJieqi = bJieqi.filter(b => LABELS[b.labelIndex].name === 'Board' || LABELS[b.labelIndex].name.toLowerCase().includes('dark'))
+      
+      // Lọc quân ngửa, xóa bỏ nếu trùng vị trí với quân úp
+      const finalStandard = bStandard
         .filter(b => LABELS_STANDARD[b.labelIndex] !== 'empty')
         .map(b => {
           const name = LABELS_STANDARD[b.labelIndex]
-          const globalIdx = Object.keys(LABELS).find(k => LABELS[Number(k)].name === name)
-          return { ...b, labelIndex: Number(globalIdx || b.labelIndex) }
+          const systemIdx = Object.keys(LABELS).find(k => LABELS[Number(k)].name === name)
+          return { ...b, labelIndex: Number(systemIdx || b.labelIndex) }
         })
+        .filter(sb => !finalJieqi.some(jb => isOverlapping(sb.box, jb.box)))
 
-      return [...jieqiRes, ...standardRes]
+      return [...finalJieqi, ...finalStandard]
     } catch (e) {
-      console.error("Lỗi Inference:", e)
       return []
     } finally {
-      isInferenceBusy.value = false // Mở khóa cho lượt sau
+      isInferenceBusy.value = false // Giải phóng khóa
     }
   }
 
@@ -138,8 +141,7 @@ export const useImageRecognition = () => {
     if (!board) return grid
     const [bx, by, bw, bh] = board.box
     boxes.filter(b => LABELS[b.labelIndex].name !== 'Board').forEach(p => {
-      const cx = p.box[0] + p.box[2]/2, cy = p.box[1] + p.box[3]/2
-      const i = Math.round(((cx - bx) / bw) * 8), j = Math.round(((cy - by) / bh) * 9)
+      const i = Math.round(((p.box[0] + p.box[2]/2 - bx) / bw) * 8), j = Math.round(((p.box[1] + p.box[3]/2 - by) / bh) * 9)
       if (i >= 0 && i < 9 && j >= 0 && j < 10) grid[j][i] = p
     })
     return grid
