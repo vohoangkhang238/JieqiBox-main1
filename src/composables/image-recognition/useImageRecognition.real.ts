@@ -2,7 +2,7 @@ import { ref } from 'vue'
 import * as ort from 'onnxruntime-web'
 import { LABELS, type DetectionBox, type ProcessedImage } from './types'
 
-// Mapping nhãn từ mảng bạn cung cấp: {'n','b','a','k','r','c','p','R','N','A','K','B','C','P','0'}
+// Mapping quân cờ Standard (Cờ ngửa)
 const LABELS_STANDARD: Record<number, string> = {
   0: 'b_horse', 1: 'b_elephant', 2: 'b_advisor', 3: 'b_general', 
   4: 'b_chariot', 5: 'b_cannon', 6: 'b_soldier', 7: 'r_chariot', 
@@ -28,9 +28,9 @@ export const useImageRecognition = () => {
       ])
       sessionJieqi.value = s1
       sessionStandard.value = s2
-      console.log("Hệ thống Hybrid Model đã sẵn sàng.");
+      console.log("AI: Đã nạp thành công cả 2 model.");
     } catch (error) {
-      console.error('Lỗi tải model:', error)
+      console.error('AI: Lỗi tải model:', error)
     } finally {
       isModelLoading.value = false
     }
@@ -69,7 +69,6 @@ export const useImageRecognition = () => {
     const data = output.data as Float32Array
     const shape = output.dims
     const { r, dw, dh } = meta
-
     const isV8 = shape[1] < shape[2]
     const numBoxes = isV8 ? shape[2] : shape[1]
     const stride = isV8 ? shape[2] : 1
@@ -80,8 +79,8 @@ export const useImageRecognition = () => {
         const scoreIdx = isV8 ? (4 + c) * stride + i : i * (numClasses + 5) + (5 + c)
         if (data[scoreIdx] > maxScore) { maxScore = data[scoreIdx]; labelIdx = c }
       }
-
-      if (maxScore > 0.35) { // Ngưỡng nhận diện
+      // Hạ ngưỡng xuống 0.25 để nhận diện quân úp nhạy hơn
+      if (maxScore > 0.25) {
         const cx = isV8 ? data[0 * stride + i] : data[i * (numClasses + 5) + 0]
         const cy = isV8 ? data[1 * stride + i] : data[i * (numClasses + 5) + 1]
         const w = isV8 ? data[2 * stride + i] : data[i * (numClasses + 5) + 2]
@@ -109,23 +108,22 @@ export const useImageRecognition = () => {
     const boxesJieqi = parseOutput(resJieqi.output0 || Object.values(resJieqi)[0], prep.meta, 34)
     const boxesStandard = parseOutput(resStandard.output0 || Object.values(resStandard)[0], prep.meta, 15)
 
-    // CHIẾN THUẬT SỬA LỖI QUÂN ÚP:
-    // 1. Lấy Board và tất cả quân DARK từ Model Jieqi (best.onnx)
-    const jieqiResult = boxesJieqi.filter(b => {
+    // Lấy Board và Dark từ model Jieqi
+    const jieqiRes = boxesJieqi.filter(b => {
       const name = LABELS[b.labelIndex].name
       return name === 'Board' || name.toLowerCase().includes('dark')
     })
 
-    // 2. Lấy quân ngửa từ Model Standard, nhưng loại bỏ nếu nó đè lên vị trí Model Jieqi đã báo là quân úp
-    const standardResult = boxesStandard
+    // Lấy quân ngửa từ model Standard
+    const standardRes = boxesStandard
       .filter(b => LABELS_STANDARD[b.labelIndex] !== 'empty')
       .map(b => {
         const name = LABELS_STANDARD[b.labelIndex]
-        const systemIdx = Object.keys(LABELS).find(key => LABELS[Number(key)].name === name)
-        return { ...b, labelIndex: Number(systemIdx) }
+        const globalIdx = Object.keys(LABELS).find(k => LABELS[Number(k)].name === name)
+        return { ...b, labelIndex: Number(globalIdx || b.labelIndex) }
       })
 
-    return [...jieqiResult, ...standardResult]
+    return [...jieqiRes, ...standardRes]
   }
 
   const updateBoardGrid = (boxes: DetectionBox[]) => {
