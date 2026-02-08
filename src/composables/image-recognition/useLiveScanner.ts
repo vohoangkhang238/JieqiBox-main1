@@ -29,12 +29,12 @@ export function useLiveScanner() {
           if (j < 9) fen += "/"
         }
         const finalFen = fen + " w - - 0 1"
-        if (finalFen !== lastFen.value && finalFen.length > 25) {
+        if (finalFen !== lastFen.value) {
           lastFen.value = finalFen; onDetected(finalFen)
-          console.log("♟️ Bàn cờ cập nhật:", finalFen)
+          console.log("♟️ Bàn cờ cập nhật FEN:", finalFen)
         }
       }
-      setTimeout(loop, 250) // Quét 4 lần mỗi giây
+      setTimeout(loop, 400) // Quét ổn định 2.5 frame/giây
     }
     loop()
   }

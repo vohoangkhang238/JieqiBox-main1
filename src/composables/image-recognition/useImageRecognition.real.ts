@@ -2,12 +2,12 @@ import { ref } from 'vue'
 import * as ort from 'onnxruntime-web'
 import { LABELS, type DetectionBox, type ProcessedImage } from './types'
 
-// MAPPING NHÃN MỚI CHO MODEL YOLOv5 CỜ NGỬA CỦA BẠN
+// Mapping nhãn cho Model YOLOv5 cờ ngửa của bạn
 const LABELS_V5: Record<number, string> = {
-  0: 'b_horse', 1: 'b_elephant', 2: 'b_advisor', 3: 'b_general', 
-  4: 'b_chariot', 5: 'b_cannon', 6: 'b_soldier', 7: 'r_chariot', 
-  8: 'r_horse', 9: 'r_advisor', 10: 'r_general', 11: 'r_elephant', 
-  12: 'r_cannon', 13: 'r_soldier', 14: 'Board'
+  0: 'b_horse', 1: 'b_xiang', 2: 'b_shi', 3: 'b_jiang', 
+  4: 'b_che', 5: 'b_pao', 6: 'b_bing', 7: 'r_che', 
+  8: 'r_ma', 9: 'r_shi', 10: 'r_jiang', 11: 'r_xiang', 
+  12: 'r_pao', 13: 'r_bing', 14: 'board'
 }
 
 export const useImageRecognition = () => {
@@ -22,55 +22,38 @@ export const useImageRecognition = () => {
     try {
       sJieqi.value = await ort.InferenceSession.create(base + 'models/best.onnx', { executionProviders: ['wasm'] })
       sStand.value = await ort.InferenceSession.create(base + 'models/standard.onnx', { executionProviders: ['wasm'] })
-      console.log("✅ Đã nạp Hybrid Model: Jieqi (v8/v11) & Standard (v5)");
+      console.log("✅ Hệ thống Hybrid (v8 & v5) đã sẵn sàng.");
     } catch (e) { console.error("Lỗi nạp model:", e) }
   }
 
-  // Hàm xử lý output cho YOLOv5 (Model cờ ngửa)
+  // Parse YOLOv5 (Cờ ngửa)
   const parseV5 = (output: any, meta: any): DetectionBox[] => {
-    const boxes: DetectionBox[] = []
-    const data = output.data as Float32Array
-    const [_, numBoxes, rawValues] = output.dims // Thường là [1, 25200, 20]
-    const numClasses = 15
-
+    const boxes: DetectionBox[] = [], data = output.data as Float32Array
+    const [_, numBoxes, rawValues] = output.dims
     for (let i = 0; i < numBoxes; i++) {
-      const offset = i * rawValues
-      const confidence = data[offset + 4] // Objectness score
-      if (confidence > 0.4) {
-        let maxClassScore = 0, labelIdx = -1
-        for (let c = 0; c < numClasses; c++) {
-          if (data[offset + 5 + c] > maxClassScore) {
-            maxClassScore = data[offset + 5 + c]
-            labelIdx = c
-          }
-        }
-        if (maxClassScore * confidence > 0.4) {
-          const [cx, cy, w, h] = [data[offset], data[offset + 1], data[offset + 2], data[offset + 3]]
-          boxes.push({
-            box: [(cx - w / 2 - meta.dw) / meta.r, (cy - h / 2 - meta.dh) / meta.r, w / meta.r, h / meta.r],
-            score: maxClassScore * confidence,
-            labelIndex: labelIdx
-          })
+      const off = i * rawValues, conf = data[off + 4]
+      if (conf > 0.45) { // Tăng ngưỡng tin cậy cho cờ ngửa
+        let maxS = 0, idx = -1
+        for (let c = 0; c < 15; c++) { if (data[off + 5 + c] > maxS) { maxS = data[off + 5 + c]; idx = c } }
+        if (maxS * conf > 0.45) {
+          const [cx, cy, w, h] = [data[off], data[off+1], data[off+2], data[off+3]]
+          boxes.push({ box: [(cx-w/2-meta.dw)/meta.r, (cy-h/2-meta.dh)/meta.r, w/meta.r, h/meta.r], score: maxS*conf, labelIndex: idx })
         }
       }
     }
     return boxes
   }
 
-  // Hàm xử lý output cho YOLOv8/v11 (Model best.onnx cờ úp)
+  // Parse YOLOv8/v11 (Cờ úp)
   const parseV8 = (output: any, meta: any): DetectionBox[] => {
-    const boxes: DetectionBox[] = []
-    const data = output.data as Float32Array
-    const shape = output.dims
+    const boxes: DetectionBox[] = [], data = output.data as Float32Array, shape = output.dims
     const stride = shape[2]
     for (let i = 0; i < stride; i++) {
       let score = 0, idx = -1
-      for (let c = 0; c < 34; c++) {
-        if (data[(4 + c) * stride + i] > score) { score = data[(4 + c) * stride + i]; idx = c }
-      }
+      for (let c = 0; c < 34; c++) { if (data[(4 + c) * stride + i] > score) { score = data[(4 + c) * stride + i]; idx = c } }
       if (score > 0.4) {
-        const [cx, cy, w, h] = [data[0 * stride + i], data[1 * stride + i], data[2 * stride + i], data[3 * stride + i]]
-        boxes.push({ box: [(cx - w/2 - meta.dw)/meta.r, (cy - h/2 - meta.dh)/meta.r, w/meta.r, h/meta.r], score, labelIndex: idx })
+        const [cx, cy, w, h] = [data[stride*0+i], data[stride*1+i], data[stride*2+i], data[stride*3+i]]
+        boxes.push({ box: [(cx-w/2-meta.dw)/meta.r, (cy-h/2-meta.dh)/meta.r, w/meta.r, h/meta.r], score, labelIndex: idx })
       }
     }
     return boxes
@@ -96,18 +79,29 @@ export const useImageRecognition = () => {
       const bJ = parseV8(rJ.output0 || Object.values(rJ)[0], meta)
       const bS = parseV5(rS.output0 || Object.values(rS)[0], meta)
 
-      // GỘP KẾT QUẢ
-      const finalJ = bJ.filter(b => LABELS[b.labelIndex].name === 'Board' || LABELS[b.labelIndex].name.includes('dark'))
-      const finalS = bS.map(b => {
-        const name = LABELS_V5[b.labelIndex]
+      // --- CHIẾN THUẬT GỘP ---
+      // 1. Lấy Board từ Jieqi
+      const board = bJ.find(b => LABELS[b.labelIndex].name === 'Board')
+      
+      // 2. Chuyển đổi nhãn Stand sang nhãn hệ thống
+      const standardPieces = bS.filter(b => LABELS_V5[b.labelIndex] !== 'board').map(b => {
+        const name = LABELS_V5[b.labelIndex].replace('ma', 'horse').replace('xiang', 'elephant').replace('shi', 'advisor').replace('jiang', 'general').replace('che', 'chariot').replace('pao', 'cannon').replace('bing', 'soldier')
         const sysIdx = Object.keys(LABELS).find(k => LABELS[Number(k)].name === name)
         return { ...b, labelIndex: Number(sysIdx || 0) }
-      }).filter(sb => !finalJ.some(jb => {
-        const dist = Math.sqrt(Math.pow((sb.box[0]+sb.box[2]/2)-(jb.box[0]+jb.box[2]/2), 2) + Math.pow((sb.box[1]+sb.box[3]/2)-(jb.box[1]+jb.box[3]/2), 2))
-        return dist < (sb.box[2] + jb.box[2]) / 4
+      })
+
+      // 3. Lấy quân Úp từ Jieqi
+      const darkPieces = bJ.filter(b => LABELS[b.labelIndex].name.includes('dark'))
+
+      // 4. Lọc: Nếu một vị trí có cả quân ngửa và quân úp, ưu tiên quân ngửa (vì nó đã lật mặt)
+      const filteredDark = darkPieces.filter(db => !standardPieces.some(sb => {
+        const dist = Math.sqrt(Math.pow((sb.box[0]+sb.box[2]/2)-(db.box[0]+db.box[2]/2), 2) + Math.pow((sb.box[1]+sb.box[3]/2)-(db.box[1]+db.box[3]/2), 2))
+        return dist < (sb.box[2] + db.box[2]) / 4
       }))
 
-      return [...finalJ, ...finalS]
+      const results = [...standardPieces, ...filteredDark]
+      if (board) results.push(board)
+      return results
     } catch (e) { return [] } finally { isBusy.value = false }
   }
 
