@@ -4,41 +4,51 @@ import { LABELS } from './types'
 
 export function useLiveScanner() {
   const { processLiveFrame, updateBoardGrid, initializeModel } = useImageRecognition()
-  const isScanning = ref(false); const lastFen = ref('')
+  const isScanning = ref(false)
+  const lastFen = ref('')
+  
+  // Lưu trữ các quân cờ do người dùng sửa thủ công: { "row-col": "char" }
+  const manualOverrides = ref<Record<string, string>>({})
 
-  // HÀM SỬA LỖI NHẬN DIỆN DỰA TRÊN LUẬT CỜ TƯỚNG
-  const mapLabelToFen = (name: string, row: number, col: number): string => {
+  const mapLabelToFen = (name: string): string => {
     const map: any = { 
-      'r_jiang':'K', 'r_che':'R', 'r_ma':'N', 'r_pao':'C', 'r_shi':'A', 'r_xiang':'B', 'r_bing':'P',
-      'b_jiang':'k', 'b_che':'r', 'b_ma':'n', 'b_pao':'c', 'b_shi':'a', 'b_xiang':'b', 'b_bing':'p' 
+      'r_jiang':'K','r_che':'R','r_ma':'N','r_pao':'C','r_shi':'A','r_xiang':'B','r_bing':'P',
+      'b_jiang':'k','b_che':'r','b_ma':'n','b_pao':'c','b_shi':'a','b_xiang':'b','b_bing':'p' 
     }
-
-    // --- LOGIC CHIẾN THUẬT SỬA LỖI QUÂN ĐỎ ---
-    // 1. Sửa lỗi Tướng đỏ bị nhận nhầm thành Tượng: Tướng đỏ chỉ ở trong Cung (Hàng 7-9, Cột 3-5)
-    if (name === 'r_xiang' && row >= 7 && row <= 9 && col >= 3 && col <= 5) return 'K';
-    
-    // 2. Sửa lỗi Xe đỏ bị nhận nhầm thành Tượng: Tượng đỏ không được qua sông (Hàng 0-4)
-    if (name === 'r_xiang' && row <= 4) return 'R';
-
-    // 3. Kiểm tra 7 điểm đứng cố định của Tượng đỏ
-    const validElephantSpots = [[9,2], [9,6], [7,0], [7,4], [7,8], [5,2], [5,6]];
-    const isValidElephant = validElephantSpots.some(s => s[0] === row && s[1] === col);
-    if (name === 'r_xiang' && !isValidElephant) return 'R'; // Nếu không phải điểm Tượng, mặc định là Xe
-
-    if (name.toLowerCase().includes('dark')) return 'X';
+    if (name.toLowerCase().includes('dark')) return 'X'
     return map[name] || ''
+  }
+
+  // Hàm để component bên ngoài gọi khi người dùng chuột phải sửa quân
+  const setManualPiece = (row: number, col: number, pieceChar: string) => {
+    const key = `${row}-${col}`
+    if (pieceChar === 'empty') {
+      delete manualOverrides.value[key]
+    } else {
+      manualOverrides.value[key] = pieceChar
+    }
+    console.log(`📍 Đã ghi đè ô [${row},${col}] thành: ${pieceChar}`)
   }
 
   const gridToFen = (grid: any[][]) => {
     let fen = ""
-    for (let j=0; j<10; j++) {
+    for (let j = 0; j < 10; j++) {
       let empty = 0
-      for (let i=0; i<9; i++) {
-        const char = grid[j][i] ? mapLabelToFen(LABELS[grid[j][i].labelIndex].name, j, i) : ''
-        if (!char) empty++
-        else {
+      for (let i = 0; i < 9; i++) {
+        const key = `${j}-${i}`
+        
+        // ƯU TIÊN 1: Lấy từ ghi đè thủ công
+        if (manualOverrides.value[key]) {
           if (empty > 0) { fen += empty; empty = 0 }
-          fen += char
+          fen += manualOverrides.value[key]
+        } 
+        // ƯU TIÊN 2: Lấy từ AI
+        else if (grid[j][i]) {
+          if (empty > 0) { fen += empty; empty = 0 }
+          fen += mapLabelToFen(LABELS[grid[j][i].labelIndex].name)
+        } 
+        else {
+          empty++
         }
       }
       if (empty > 0) fen += empty
@@ -48,14 +58,17 @@ export function useLiveScanner() {
   }
 
   const startScanning = async (video: HTMLVideoElement, onDetected: (fen: string) => void) => {
-    await initializeModel(); isScanning.value = true
+    await initializeModel()
+    isScanning.value = true
     const loop = async () => {
       if (!isScanning.value) return
       const boxes = await processLiveFrame(video)
       if (boxes.length > 0) {
-        const fen = gridToFen(updateBoardGrid(boxes))
-        if (fen !== lastFen.value && fen.length > 20) {
-          lastFen.value = fen; onDetected(fen)
+        const grid = updateBoardGrid(boxes)
+        const currentFen = gridToFen(grid)
+        if (currentFen !== lastFen.value) {
+          lastFen.value = currentFen
+          onDetected(currentFen)
         }
       }
       setTimeout(loop, 400)
@@ -63,5 +76,5 @@ export function useLiveScanner() {
     loop()
   }
 
-  return { isScanning, startScanning, stopScanning: () => isScanning.value = false }
+  return { isScanning, startScanning, stopScanning: () => isScanning.value = false, setManualPiece, manualOverrides }
 }
