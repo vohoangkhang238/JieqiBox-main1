@@ -7,7 +7,6 @@ export const useImageRecognition = () => {
   const isModelLoading = ref(false)
   const isInferenceBusy = ref(false)
 
-  // Khởi tạo và nạp duy nhất file best.onnx
   const initializeModel = async (): Promise<void> => {
     if (session.value) return
     try {
@@ -18,7 +17,7 @@ export const useImageRecognition = () => {
         base + 'models/best.onnx',
         { executionProviders: ['wasm'], graphOptimizationLevel: 'all' }
       )
-      console.log("AI: Đã nạp thành công model best.onnx");
+      console.log("AI: Model best.onnx đã sẵn sàng");
     } catch (error) {
       console.error('AI: Lỗi tải model:', error)
     } finally {
@@ -26,7 +25,6 @@ export const useImageRecognition = () => {
     }
   }
 
-  // Tiền xử lý ảnh về kích thước 640x640 chuẩn YOLO
   const letterbox = (image: CanvasImageSource): ProcessedImage => {
     const [newH, newW] = [640, 640]
     let imgW = (image as any).videoWidth || (image as any).width || 640
@@ -52,14 +50,13 @@ export const useImageRecognition = () => {
     return { tensor: new ort.Tensor('float32', input, [1, 3, 640, 640]), meta }
   }
 
-  // Phân tích đầu ra của YOLOv8/v11
   const parseOutput = (output: any, meta: any): DetectionBox[] => {
     const boxes: DetectionBox[] = [], data = output.data as Float32Array, shape = output.dims
     const { r, dw, dh } = meta
     const stride = shape[2] 
     for (let i = 0; i < stride; i++) {
       let maxScore = 0, labelIdx = -1
-      for (let c = 0; c < 34; c++) { // Giả định model có 34 classes cho cờ úp
+      for (let c = 0; c < 34; c++) { 
         const score = data[(4 + c) * stride + i]
         if (score > maxScore) { maxScore = score; labelIdx = c }
       }
@@ -85,13 +82,13 @@ export const useImageRecognition = () => {
       const results = await session.value!.run({ [session.value!.inputNames[0]]: prep.tensor })
       return parseOutput(results.output0 || Object.values(results)[0], prep.meta)
     } catch (e) {
+      console.error("Inference Error:", e)
       return []
     } finally {
       isInferenceBusy.value = false
     }
   }
 
-  // Hàm chuyển đổi danh sách tọa độ quân cờ thành lưới 10x9
   const updateBoardGrid = (boxes: DetectionBox[]) => {
     const board = boxes.find(b => LABELS[b.labelIndex].name === 'Board')
     const grid = Array(10).fill(null).map(() => Array(9).fill(null))
