@@ -11,7 +11,7 @@
           <div class="eval-marker" :style="{ top: currentEvalPercent + '%' }"></div>
         </div>
 
-        <div class="pieces" @click="boardClick" @contextmenu.prevent>
+        <div class="pieces" @click="boardClick" @contextmenu.prevent="onPieceRightClick">
           <img v-for="p in pieces" :key="p.id" :src="img(p)" class="piece" 
                :class="{ 
                  animated: isAnimating && showAnimations, 
@@ -20,6 +20,48 @@
                }" 
                :style="rcStyle(p.row, p.col, p.zIndex)" />
         </div>
+
+        <v-menu
+          v-model="showManualMenu"
+          :position-x="menuX"
+          :position-y="menuY"
+          absolute
+          offset-y
+        >
+          <v-list density="compact" nav>
+            <v-list-subheader class="text-primary font-weight-bold">SỬA QUÂN ĐỎ</v-list-subheader>
+            <v-list-item @click="applyManualFix('R')">
+              <template v-slot:prepend><v-avatar size="24"><img src="@/assets/red_chariot.png"/></v-avatar></template>
+              Xe Đỏ (R)
+            </v-list-item>
+            <v-list-item @click="applyManualFix('C')">
+              <template v-slot:prepend><v-avatar size="24"><img src="@/assets/red_cannon.png"/></v-avatar></template>
+              Pháo Đỏ (C)
+            </v-list-item>
+            <v-list-item @click="applyManualFix('N')">
+              <template v-slot:prepend><v-avatar size="24"><img src="@/assets/red_horse.png"/></v-avatar></template>
+              Mã Đỏ (N)
+            </v-list-item>
+            <v-list-item @click="applyManualFix('B')">
+              <template v-slot:prepend><v-avatar size="24"><img src="@/assets/red_elephant.png"/></v-avatar></template>
+              Tượng Đỏ (B)
+            </v-list-item>
+            <v-list-item @click="applyManualFix('K')">
+              <template v-slot:prepend><v-avatar size="24"><img src="@/assets/red_king.png"/></v-avatar></template>
+              Tướng Đỏ (K)
+            </v-list-item>
+            <v-list-item @click="applyManualFix('P')">
+              <template v-slot:prepend><v-avatar size="24"><img src="@/assets/red_pawn.png"/></v-avatar></template>
+              Tốt Đỏ (P)
+            </v-list-item>
+
+            <v-divider class="my-1"></v-divider>
+            <v-list-subheader class="text-secondary">QUÂN ĐEN & KHÁC</v-list-subheader>
+            <v-list-item @click="applyManualFix('X')">Quân Úp (X)</v-list-item>
+            <v-list-item @click="applyManualFix('empty')" prepend-icon="mdi-eraser" class="text-error">Xóa quân (Trống)</v-list-item>
+            <v-list-item @click="clearManualFix" prepend-icon="mdi-refresh">AI tự nhận diện lại</v-list-item>
+          </v-list>
+        </v-menu>
 
         <div v-if="selectedPiece && !pendingFlip" class="selection-mark" :style="rcStyle(selectedPiece.row, selectedPiece.col, 30)">
           <div class="corner top-left"></div><div class="corner top-right"></div>
@@ -94,10 +136,8 @@
     </div>
 
     <div class="side-panel">
-      
       <div class="absolute-pool top-zone">
         <div v-for="item in (isRedOnTop ? redPool : blackPool)" :key="item.char" class="pool-row">
-          
           <div class="pool-img-wrapper">
              <img :src="getPieceImageUrl(item.name)" class="pool-img" />
              <div v-if="item.count > 0" 
@@ -106,7 +146,6 @@
                   {{ item.count }}
              </div>
           </div>
-
           <div class="pool-btns">
              <button class="tiny-btn btn-red" 
                      @click="adjustUnrevealedCount(item.char, 1)" 
@@ -124,7 +163,6 @@
 
       <div class="absolute-pool bottom-zone">
         <div v-for="item in (isRedOnTop ? blackPool : redPool)" :key="item.char" class="pool-row">
-          
           <div class="pool-img-wrapper">
              <img :src="getPieceImageUrl(item.name)" class="pool-img" />
              <div v-if="item.count > 0" 
@@ -133,7 +171,6 @@
                   {{ item.count }}
              </div>
           </div>
-
           <div class="pool-btns">
              <button class="tiny-btn btn-red" 
                      @click="adjustUnrevealedCount(item.char, 1)" 
@@ -144,7 +181,6 @@
           </div>
         </div>
       </div>
-
     </div>
 
     <EvaluationChart v-if="showPositionChart" :history="history" :current-move-index="currentMoveIndex" :initial-fen="unref(gs?.initialFen)" @seek="handleChartSeek" />
@@ -152,12 +188,51 @@
 </template>
 
 <script setup lang="ts">
-import { inject, ref, watch, computed, watchEffect, onMounted, onUnmounted, unref } from 'vue'
+import { inject, ref, computed, watchEffect, onMounted, onUnmounted, unref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Piece } from '@/composables/useChessGame'
 import { useInterfaceSettings } from '@/composables/useInterfaceSettings'
 import ClearHistoryConfirmDialog from './ClearHistoryConfirmDialog.vue'
 import EvaluationChart from './EvaluationChart.vue'
+
+// --- LOGIC MANUAL FIX (CHUỘT PHẢI SỬA QUÂN) ---
+const scanner = inject<any>('live-scanner') 
+const showManualMenu = ref(false)
+const menuX = ref(0)
+const menuY = ref(0)
+const rightClickedCell = ref({ row: 0, col: 0 })
+
+const onPieceRightClick = (e: MouseEvent) => {
+  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  const xp = ((e.clientX - rect.left) / rect.width) * 100
+  const yp = ((e.clientY - rect.top) / rect.height) * 100
+  const col = Math.round(((xp - OX) / GX) * (COLS - 1))
+  const row = Math.round(((yp - OY) / GY) * (ROWS - 1))
+  
+  rightClickedCell.value = { 
+    row: Math.max(0, Math.min(ROWS - 1, row)), 
+    col: Math.max(0, Math.min(COLS - 1, col)) 
+  }
+  
+  menuX.value = e.clientX
+  menuY.value = e.clientY
+  showManualMenu.value = true
+}
+
+const applyManualFix = (pieceChar: string) => {
+  if (scanner?.setManualPiece) {
+    scanner.setManualPiece(rightClickedCell.value.row, rightClickedCell.value.col, pieceChar)
+  }
+  showManualMenu.value = false
+}
+
+const clearManualFix = () => {
+  if (scanner?.setManualPiece) {
+    scanner.setManualPiece(rightClickedCell.value.row, rightClickedCell.value.col, 'auto')
+  }
+  showManualMenu.value = false
+}
+// -----------------------------------------------------------
 
 const handleChartSeek = (idx: number) => { try { const gsAny: any = gs; if (gsAny?.replayToMove) gsAny.replayToMove(idx) } catch {} }
 const { t } = useI18n()
@@ -169,7 +244,7 @@ const gs: any = inject('game-state')
 const es = inject('engine-state') as { pvMoves: any; bestMove: any; isThinking: any; multiPvMoves: any; stopAnalysis: any; isPondering: any; isInfinitePondering: any; ponderMove: any; ponderhit: any; analysis?: any }
 const jaiEngine = inject('jai-engine-state') as any
 const isMatchRunning = computed(() => jaiEngine?.isMatchRunning?.value || false)
-const { pieces, selectedPieceId, handleBoardClick, isAnimating, lastMovePositions, registerArrowClearCallback, history, currentMoveIndex, unrevealedPieceCounts, adjustUnrevealedCount, getPieceNameFromChar, validationStatus, pendingFlip } = gs
+const { pieces, selectedPieceId, handleBoardClick, isAnimating, lastMovePositions, history, currentMoveIndex, unrevealedPieceCounts, adjustUnrevealedCount, getPieceNameFromChar, validationStatus, pendingFlip } = gs
 
 const selectedPiece = computed(() => { if (!unref(selectedPieceId)) return null; return unref(pieces).find((p: Piece) => p.id === unref(selectedPieceId)) })
 
@@ -198,7 +273,7 @@ const flipSelectionPieces = computed(() => {
 })
 
 const getRadialItemStyle = (index: number, total: number) => {
-  const radiusPercent = 30 // [ĐÃ CHỈNH] Tăng bán kính lên 30 cho thoáng
+  const radiusPercent = 30
   const angleStep = (2 * Math.PI) / total
   const angle = index * angleStep - (Math.PI / 2)
   const x = 50 + radiusPercent * Math.cos(angle)
@@ -381,7 +456,6 @@ const currentEvalPercent = computed(() => 50)
   flex-direction: column;
 }
 
-/* --- KHỐI TRÊN (QUÂN ĐEN) --- */
 .top-zone {
   top: 0; 
   bottom: 50%; 
@@ -389,20 +463,13 @@ const currentEvalPercent = computed(() => 50)
   gap: 0;
 }
 
-
-
-/* --- KHỐI DƯỚI (QUÂN ĐỎ) - ĐÃ CẬP NHẬT --- */
 .bottom-zone {
   top: 61%; 
-  
-  /* ĐẨY MẠNH XUỐNG DƯỚI NỮA (-12%) */
   bottom: -12%; 
-  
   justify-content: space-between; 
   gap: 0; 
 }
 
-/* --- DÒNG QUÂN --- */
 .pool-row {
   display: flex;
   align-items: center; 
@@ -415,7 +482,6 @@ const currentEvalPercent = computed(() => 50)
   min-height: 0;
 }
 
-/* --- ẢNH & BADGE --- */
 .pool-img-wrapper {
   width: 45%; 
   height: 100%;
@@ -426,7 +492,6 @@ const currentEvalPercent = computed(() => 50)
   overflow: visible; 
 }
 
-/* BADGE CƠ BẢN */
 .pool-num-badge {
   position: absolute;
   top: -0.2vmin;
@@ -445,26 +510,11 @@ const currentEvalPercent = computed(() => 50)
   z-index: 10;
 }
 
-/* BADGE ĐỎ */
-.badge-red {
-  background-color: #f44336; 
-  color: white;
-}
-
-/* BADGE ĐEN */
-.badge-black {
-  background-color: #000000; 
-  color: white;
-  border-color: #666;
-}
-
-
-.top-zone .pool-row:first-child .pool-img-wrapper { align-items: flex-start; }
-.bottom-zone .pool-row:last-child .pool-img-wrapper { align-items: flex-end; transform: none; }
+.badge-red { background-color: #f44336; color: white; }
+.badge-black { background-color: #000000; color: white; border-color: #666; }
 
 .pool-img { height: auto; width: auto; max-height: 100%; max-width: 100%; object-fit: contain; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5)); }
 
-/* --- NÚT BẤM (CONTAINER) --- */
 .pool-btns {
   display: flex;
   flex-direction: column;
@@ -473,154 +523,27 @@ const currentEvalPercent = computed(() => 50)
   background: transparent; 
   height: 40%; 
   width: 20%; 
-  margin-right: 0;
 }
 
-/* --- STYLE NÚT BẤM --- */
 .tiny-btn {
-  flex: 1;
-  width: 100%;
-  border: none;
-  border-radius: 0.5vmin; 
-  font-size: 2.2vmin; 
-  font-weight: 900;
-  padding: 0;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s ease;
-  line-height: 0.8;
-  text-shadow: none;
-
+  flex: 1; width: 100%; border: none; border-radius: 0.5vmin; font-size: 2.2vmin; font-weight: 900; padding: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease;
   &:hover:not(:disabled) { transform: scale(1.1); box-shadow: 0 0.3vmin 0.8vmin rgba(0,0,0,0.3); }
-  &:active:not(:disabled) { transform: scale(0.95); }
-  &:disabled { opacity: 0.5; cursor: default; }
+  &:disabled { opacity: 0.5; }
 }
 
-/* NÚT ĐỎ (Dùng chung cho cả 2 phe) */
-.tiny-btn.btn-red {
-  background-color: #ffffff !important;
-  color: #e53935 !important;
-  box-shadow: 0 0.2vmin 0.5vmin rgba(0,0,0,0.2); 
-}
+.tiny-btn.btn-red { background-color: #ffffff !important; color: #e53935 !important; }
 
-/* --- CÁC PHẦN KHÁC (GIỮ NGUYÊN) --- */
-.pool-error-floating { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5vmin; color: #ffeb3b; background: rgba(0,0,0,0.8); padding: 0.5vmin 1vmin; border-radius: 0.5vmin; white-space: nowrap; pointer-events: none; z-index: 10; }
 .bg { width: 100%; height: 100%; display: block; }
 .pieces { position: absolute; inset: 0; z-index: 20; }
-.piece { position: absolute; aspect-ratio: 1; pointer-events: none; &.animated { transition: all 0.2s ease; } &.inCheck { transform: translate(-50%, -50%) scale(1.1); filter: drop-shadow(0 0 10px red); z-index: 100; } &.being-flipped { opacity: 0.3; filter: grayscale(1); } }
-.flip-overlay-fixed { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.3); z-index: 9000; cursor: not-allowed; }
+.piece { position: absolute; aspect-ratio: 1; pointer-events: none; &.animated { transition: all 0.2s ease; } &.inCheck { transform: translate(-50%, -50%) scale(1.1); filter: drop-shadow(0 0 10px red); z-index: 100; } }
+
 .selection-mark { position: absolute; width: 12%; aspect-ratio: 1; transform: translate(-50%, -50%); z-index: 30; pointer-events: none; }
-.corner { position: absolute; width: 25%; height: 25%; border: 3px solid #007bff; box-shadow: 0 0 4px rgba(0, 123, 255, 0.6); }
+.corner { position: absolute; width: 25%; height: 25%; border: 3px solid #007bff; }
 .top-left { top: 0; left: 0; border-right: none; border-bottom: none; border-top-left-radius: 10px; }
 .top-right { top: 0; right: 0; border-left: none; border-bottom: none; border-top-right-radius: 10px; }
 .bottom-left { bottom: 0; left: 0; border-right: none; border-top: none; border-bottom-left-radius: 10px; }
 .bottom-right { bottom: 0; right: 0; border-left: none; border-top: none; border-bottom-right-radius: 10px; }
-.highlight.from { position: absolute; transform: translate(-50%,-50%); width: 2.5%; aspect-ratio: 1; background: rgba(255,0,0,0.5); border-radius: 50%; pointer-events: none; }
-.highlight.to { position: absolute; transform: translate(-50%,-50%); width: 12%; aspect-ratio: 1; border: 2px solid rgba(0,255,255,0.7); pointer-events: none; border-radius: 8px; }
-.valid-move-dot { position: absolute; transform: translate(-50%,-50%); width: 2.5%; aspect-ratio: 1; background: #4caf50; border-radius: 50%; pointer-events: none; z-index: 15; box-shadow: 0 0 5px #4caf50; }
-.eval-bar { position: absolute; top: 0; bottom: 0; left: -1.5vmin; width: 1vmin; background: #ddd; border-radius: 0.5vmin; overflow: hidden; z-index: 5; border: 1px solid #999; }
-.eval-top { width: 100%; transition: height 0.5s ease-in-out; }
-.eval-bottom { width: 100%; transition: height 0.5s ease-in-out; }
-.eval-marker { position: absolute; left: 0; right: 0; height: 2px; background: #fff; box-shadow: 0 0 2px #000; }
-.flip-hint-area { margin-top: 10px; background: rgba(0,0,0,0.7); color: #fff; padding: 8px; border-radius: 6px; text-align: center; font-size: 14px; backdrop-filter: blur(4px); }
+
+.eval-bar { position: absolute; top: 0; bottom: 0; left: -1.5vmin; width: 1vmin; background: #ddd; border-radius: 0.5vmin; }
 .ar, .user-drawings, .board-labels { position: absolute; inset: 0; pointer-events: none; }
-.annotation-layer { position: absolute; inset: 0; pointer-events: none; z-index: 50; }
-.annotation-badge { position: absolute; top: -1vmin; right: -1vmin; width: 2.5vmin; height: 2.5vmin; background: #007bff; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2vmin; border: 0.2vmin solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
-.board-labels { overflow: visible; .rank-labels span { position: absolute; right: -1.5vmin; color: #888; font-weight: bold; font-size: 1.5vmin; } .file-labels span { position: absolute; bottom: -2vmin; color: #888; font-weight: bold; font-size: 1.5vmin; } }
-.al { stroke-width: 1.5; stroke-opacity: 0.8; }
-
-/* --- MENU LẬT QUÂN NHỎ GỌN (4.5vmin) --- */
-.radial-menu-container {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  z-index: 9999;
-  animation: popIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  pointer-events: auto;
-  width: 0;
-  height: 0;
-  overflow: visible;
-}
-
-@keyframes popIn {
-  from { transform: translate(-50%, -50%) scale(0); opacity: 0; }
-  to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
-}
-
-.radial-item {
-  position: absolute;
-  
-  /* [ĐÃ CHỈNH] Kích thước 4.5vmin */
-  width: 4.5vmin; 
-  height: 4.5vmin;
-  
-  /* [ĐÃ CHỈNH] Căn giữa tâm (một nửa của 4.5 là 2.25) */
-  margin-left: -2.25vmin; 
-  margin-top: -2.25vmin;
-  
-  border-radius: 50%;
-  background: rgba(30, 30, 30, 0.95);
-  border: 0.2vmin solid rgba(255, 255, 255, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 0.5vmin 1.5vmin rgba(0,0,0,0.6);
-  transition: all 0.1s;
-  pointer-events: auto;
-
-  &:hover {
-    transform: scale(1.2);
-    background: #222;
-    border-color: #00d2ff;
-    z-index: 10000;
-  }
-  
-  &:active {
-    transform: scale(0.95);
-    background: #000;
-  }
-}
-
-.radial-img {
-  width: 85%;
-  height: 85%;
-  object-fit: contain;
-  pointer-events: none;
-}
-
-.radial-count {
-  position: absolute;
-  top: -0.5vmin;
-  right: -0.5vmin;
-  background: #f44336;
-  color: white;
-  font-size: 1vmin; 
-  width: 1.8vmin;
-  height: 1.8vmin;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 0.15vmin solid #fff;
-  pointer-events: none;
-  font-weight: bold;
-}
-
-.radial-error-btn {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  background: #f44336;
-  color: white;
-  padding: 1vmin 2vmin; 
-  border-radius: 0.8vmin;
-  font-weight: bold;
-  font-size: 1.8vmin; 
-  cursor: pointer;
-  white-space: nowrap;
-  box-shadow: 0 0.5vmin 1.5vmin rgba(0,0,0,0.5);
-  pointer-events: auto;
-  z-index: 10001;
-}
 </style>
