@@ -6,35 +6,16 @@ export function useLiveScanner() {
   const { processLiveFrame, updateBoardGrid, initializeModel } = useImageRecognition()
   const isScanning = ref(false)
   const lastFen = ref('')
-  
-  const pendingFen = ref('')
-  const stableCount = ref(0)
-  const REQUIRED_STABILITY = 2 
 
-  // MỞ RỘNG MAP NHÃN: Đảm bảo mọi kiểu tên nhãn đều được hỗ trợ
   const mapLabelToFen = (name: string): string => {
     const map: any = { 
-      'r_jiang':'K', 'r_general':'K', 'r_king':'K',
-      'r_che':'R', 'r_chariot':'R',
-      'r_ma':'N', 'r_horse':'N',
-      'r_pao':'C', 'r_cannon':'C',
-      'r_shi':'A', 'r_advisor':'A',
-      'r_xiang':'B', 'r_elephant':'B',
-      'r_bing':'P', 'r_soldier':'P', 'r_pawn':'P',
-      
-      'b_jiang':'k', 'b_general':'k', 'b_king':'k',
-      'b_che':'r', 'b_chariot':'r',
-      'b_ma':'n', 'b_horse':'n',
-      'b_pao':'c', 'b_cannon':'c',
-      'b_shi':'a', 'b_advisor':'a',
-      'b_xiang':'b', 'b_elephant':'b',
-      'b_bing':'p', 'b_soldier':'p', 'b_pawn':'p'
+      'r_jiang':'K', 'r_general':'K', 'r_che':'R', 'r_ma':'N', 'r_pao':'C', 'r_shi':'A', 'r_xiang':'B', 'r_bing':'P',
+      'b_jiang':'k', 'b_general':'k', 'b_che':'r', 'b_ma':'n', 'b_pao':'c', 'b_shi':'a', 'b_xiang':'b', 'b_bing':'p'
     }
     if (name.toLowerCase().includes('dark')) return 'X'
-    return map[name] || ''
+    return map[name] || '' // Trả về rỗng nếu là nhãn không xác định
   }
 
-  // SỬA LỖI FEN "DÀI THÒN": Đảm bảo số lượng ô trống được cộng dồn chuẩn xác
   const gridToFen = (grid: any[][]) => {
     let fen = ""
     for (let j = 0; j < 10; j++) {
@@ -43,8 +24,9 @@ export function useLiveScanner() {
         const piece = grid[j][i]
         const char = piece ? mapLabelToFen(LABELS[piece.labelIndex].name) : ''
         
+        // SỬA LỖI: Chỉ khi có quân cờ thực sự (char có giá trị) mới flush biến empty
         if (!char) {
-          empty++ // Nếu không có quân hoặc nhãn lạ, coi là ô trống
+          empty++
         } else {
           if (empty > 0) { fen += empty; empty = 0 }
           fen += char
@@ -65,21 +47,14 @@ export function useLiveScanner() {
       if (boxes.length > 0) {
         const currentFen = gridToFen(updateBoardGrid(boxes))
         
-        // Cơ chế ổn định bàn cờ
-        if (currentFen === pendingFen.value) {
-          stableCount.value++
-        } else {
-          pendingFen.value = currentFen
-          stableCount.value = 0
-        }
-
-        if (stableCount.value >= REQUIRED_STABILITY && currentFen !== lastFen.value && currentFen.length > 25) {
+        // GIẢM ĐỘ TRỄ: Chỉ cần ổn định 1 khung hình là cập nhật luôn cho nhanh
+        if (currentFen !== lastFen.value && currentFen.length > 25) {
           lastFen.value = currentFen
           onDetected(currentFen)
-          console.log("♟️ FEN CHUẨN:", currentFen)
         }
-      } 
-      setTimeout(loop, 400)
+      }
+      // TĂNG TỐC: Quét sau mỗi 100ms thay vì 400ms
+      setTimeout(loop, 100) 
     }
     loop()
   }
