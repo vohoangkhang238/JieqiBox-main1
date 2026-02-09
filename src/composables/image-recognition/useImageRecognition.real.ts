@@ -14,26 +14,6 @@ export const useImageRecognition = () => {
       executionProviders: ['wasm'], 
       graphOptimizationLevel: 'all' 
     })
-    console.log("AI: Đã nạp thành công model best.onnx");
-  }
-
-  // Hàm NMS để loại bỏ các Box trùng lặp hoặc chồng đè
-  const nms = (boxes: DetectionBox[]) => {
-    const sorted = [...boxes].sort((a, b) => b.score - a.score)
-    const result: DetectionBox[] = []
-    while (sorted.length > 0) {
-      const best = sorted.shift()!
-      result.push(best)
-      for (let i = 0; i < sorted.length; i++) {
-        const x1 = Math.max(best.box[0], sorted[i].box[0]), y1 = Math.max(best.box[1], sorted[i].box[1])
-        const x2 = Math.min(best.box[0] + best.box[2], sorted[i].box[0] + sorted[i].box[2])
-        const y2 = Math.min(best.box[1] + best.box[3], sorted[i].box[1] + sorted[i].box[3])
-        const inter = Math.max(0, x2 - x1) * Math.max(0, y2 - y1)
-        const iou = inter / (best.box[2] * best.box[3] + sorted[i].box[2] * sorted[i].box[3] - inter)
-        if (iou > 0.45) { sorted.splice(i, 1); i-- }
-      }
-    }
-    return result
   }
 
   const processLiveFrame = async (source: HTMLVideoElement): Promise<DetectionBox[]> => {
@@ -57,12 +37,14 @@ export const useImageRecognition = () => {
       for (let i = 0; i < stride; i++) {
         let score = 0, idx = -1
         for (let c = 0; c < 34; c++) { if (data[(4+c)*stride+i] > score) { score = data[(4+c)*stride+i]; idx = c } }
-        if (score > 0.4) {
+        
+        // ĐƯA VỀ MẶC ĐỊNH 50% NHƯ BẠN YÊU CẦU
+        if (score > 0.5) {
           const [cx, cy, w, h] = [data[0*stride+i], data[1*stride+i], data[2*stride+i], data[3*stride+i]]
           boxes.push({ box: [(cx-w/2)/meta.r, (cy-h/2)/meta.r, w/meta.r, h/meta.r], score, labelIndex: idx })
         }
       }
-      return nms(boxes)
+      return boxes
     } catch (e) { return [] } finally { isBusy.value = false }
   }
 
