@@ -4,40 +4,48 @@ import { LABELS } from './types'
 
 export function useLiveScanner() {
   const { processLiveFrame, updateBoardGrid, initializeModel } = useImageRecognition()
-  const isScanning = ref(false); const lastFen = ref('')
+  const isScanning = ref(false)
+  const lastFen = ref('')
   
-  // Lưu trữ các quân cờ do bạn sửa: { "row-col": "K" }
-  const manualOverrides = ref<Record<string, string>>({})
+  const pendingFen = ref('')
+  const stableCount = ref(0)
+  const REQUIRED_STABILITY = 2 
 
-  const setManualPiece = (row: number, col: number, char: string) => {
-    const key = `${row}-${col}`
-    if (char === 'auto') delete manualOverrides.value[key]
-    else manualOverrides.value[key] = char
-    console.log(`📍 Đã sửa ô [${row},${col}] thành: ${char}`)
+  // MỞ RỘNG MAP NHÃN: Đảm bảo mọi kiểu tên nhãn đều được hỗ trợ
+  const mapLabelToFen = (name: string): string => {
+    const map: any = { 
+      'r_jiang':'K', 'r_general':'K', 'r_king':'K',
+      'r_che':'R', 'r_chariot':'R',
+      'r_ma':'N', 'r_horse':'N',
+      'r_pao':'C', 'r_cannon':'C',
+      'r_shi':'A', 'r_advisor':'A',
+      'r_xiang':'B', 'r_elephant':'B',
+      'r_bing':'P', 'r_soldier':'P', 'r_pawn':'P',
+      
+      'b_jiang':'k', 'b_general':'k', 'b_king':'k',
+      'b_che':'r', 'b_chariot':'r',
+      'b_ma':'n', 'b_horse':'n',
+      'b_pao':'c', 'b_cannon':'c',
+      'b_shi':'a', 'b_advisor':'a',
+      'b_xiang':'b', 'b_elephant':'b',
+      'b_bing':'p', 'b_soldier':'p', 'b_pawn':'p'
+    }
+    if (name.toLowerCase().includes('dark')) return 'X'
+    return map[name] || ''
   }
 
+  // SỬA LỖI FEN "DÀI THÒN": Đảm bảo số lượng ô trống được cộng dồn chuẩn xác
   const gridToFen = (grid: any[][]) => {
     let fen = ""
-    const map: any = { 'r_jiang':'K','r_che':'R','r_ma':'N','r_pao':'C','r_shi':'A','r_xiang':'B','r_bing':'P','b_jiang':'k','b_che':'r','b_ma':'n','b_pao':'c','b_shi':'a','b_xiang':'b','b_bing':'p' }
-    
-    for (let j=0; j<10; j++) {
+    for (let j = 0; j < 10; j++) {
       let empty = 0
-      for (let i=0; i<9; i++) {
-        const key = `${j}-${i}`
-        let char = ''
+      for (let i = 0; i < 9; i++) {
+        const piece = grid[j][i]
+        const char = piece ? mapLabelToFen(LABELS[piece.labelIndex].name) : ''
         
-        // ƯU TIÊN 1: Lấy từ bạn sửa
-        if (manualOverrides.value[key]) {
-          char = manualOverrides.value[key] === 'empty' ? '' : manualOverrides.value[key]
-        } 
-        // ƯU TIÊN 2: Lấy từ AI
-        else if (grid[j][i]) {
-          const name = LABELS[grid[j][i].labelIndex].name
-          char = name.toLowerCase().includes('dark') ? 'X' : (map[name] || '')
-        }
-
-        if (!char) empty++
-        else {
+        if (!char) {
+          empty++ // Nếu không có quân hoặc nhãn lạ, coi là ô trống
+        } else {
           if (empty > 0) { fen += empty; empty = 0 }
           fen += char
         }
@@ -49,16 +57,32 @@ export function useLiveScanner() {
   }
 
   const startScanning = async (video: HTMLVideoElement, onDetected: (fen: string) => void) => {
-    await initializeModel(); isScanning.value = true
+    await initializeModel()
+    isScanning.value = true
     const loop = async () => {
       if (!isScanning.value) return
       const boxes = await processLiveFrame(video)
-      const fen = gridToFen(updateBoardGrid(boxes))
-      if (fen !== lastFen.value) { lastFen.value = fen; onDetected(fen) }
+      if (boxes.length > 0) {
+        const currentFen = gridToFen(updateBoardGrid(boxes))
+        
+        // Cơ chế ổn định bàn cờ
+        if (currentFen === pendingFen.value) {
+          stableCount.value++
+        } else {
+          pendingFen.value = currentFen
+          stableCount.value = 0
+        }
+
+        if (stableCount.value >= REQUIRED_STABILITY && currentFen !== lastFen.value && currentFen.length > 25) {
+          lastFen.value = currentFen
+          onDetected(currentFen)
+          console.log("♟️ FEN CHUẨN:", currentFen)
+        }
+      } 
       setTimeout(loop, 400)
     }
     loop()
   }
 
-  return { isScanning, startScanning, stopScanning: () => isScanning.value = false, setManualPiece }
+  return { isScanning, startScanning, stopScanning: () => isScanning.value = false }
 }

@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import * as ort from 'onnxruntime-web'
-import { LABELS, type DetectionBox, type ProcessedImage } from './types'
+import { LABELS, type DetectionBox } from './types'
 
 export const useImageRecognition = () => {
   const session = ref<ort.InferenceSession | null>(null)
@@ -11,13 +11,13 @@ export const useImageRecognition = () => {
     const base = (import.meta as any).env?.BASE_URL || '/'
     ort.env.wasm.wasmPaths = base + 'ort/'
     session.value = await ort.InferenceSession.create(base + 'models/best.onnx', { 
-      executionProviders: ['wasm'], 
-      graphOptimizationLevel: 'all' 
+      executionProviders: ['wasm'] 
     })
+    console.log("AI: Model best.onnx đã sẵn sàng.");
   }
 
   const processLiveFrame = async (source: HTMLVideoElement): Promise<DetectionBox[]> => {
-    if (isBusy.value || !session.value) return []
+    if (isBusy.value || !session.value || source.videoWidth === 0) return []
     isBusy.value = true
     try {
       const canvas = document.createElement('canvas'); canvas.width = 640; canvas.height = 640
@@ -33,13 +33,13 @@ export const useImageRecognition = () => {
       const stride = (res.output0 || Object.values(res)[0]).dims[2]
       
       const boxes: DetectionBox[] = []
-      const meta = { r: 640/source.videoWidth, dw: 0, dh: 0 }
+      const meta = { r: 640/source.videoWidth }
       for (let i = 0; i < stride; i++) {
         let score = 0, idx = -1
         for (let c = 0; c < 34; c++) { if (data[(4+c)*stride+i] > score) { score = data[(4+c)*stride+i]; idx = c } }
         
-        // ĐƯA VỀ MẶC ĐỊNH 50% NHƯ BẠN YÊU CẦU
-        if (score > 0.5) {
+        // Ngưỡng 0.4 giúp nhận diện ổn định
+        if (score > 0.4) {
           const [cx, cy, w, h] = [data[0*stride+i], data[1*stride+i], data[2*stride+i], data[3*stride+i]]
           boxes.push({ box: [(cx-w/2)/meta.r, (cy-h/2)/meta.r, w/meta.r, h/meta.r], score, labelIndex: idx })
         }
@@ -53,11 +53,17 @@ export const useImageRecognition = () => {
     const grid = Array(10).fill(null).map(() => Array(9).fill(null))
     if (!board) return grid
     const [bx, by, bw, bh] = board.box
-    boxes.filter(b => !['Board', 'board'].includes(LABELS[b.labelIndex].name)).forEach(p => {
+    
+    // Lọc lấy quân cờ và sắp xếp theo score cao nhất
+    const pieces = boxes
+      .filter(b => !['Board', 'board'].includes(LABELS[b.labelIndex].name))
+      .sort((a, b) => b.score - a.score)
+
+    pieces.forEach(p => {
       const i = Math.round(((p.box[0] + p.box[2]/2 - bx) / bw) * 8)
       const j = Math.round(((p.box[1] + p.box[3]/2 - by) / bh) * 9)
       if (i>=0 && i<9 && j>=0 && j<10) {
-        if (!grid[j][i] || p.score > grid[j][i].score) grid[j][i] = p
+        if (!grid[j][i]) grid[j][i] = p
       }
     })
     return grid
